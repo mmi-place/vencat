@@ -7,7 +7,7 @@
 
 	import { ref, onMounted, watch } from 'vue';
 
-	import { loadWeek, focusedCourse, focusedModule, focusType, type UICourse } from '@/scripts/timetable';
+	import { loadWeek, focusedCourse, focusedModule, focusType, type UICourse, calculateTotalCourseHours } from '@/scripts/timetable';
 	import { toFormatJJMoisAAAA } from '@/scripts/utils';
 
 
@@ -70,6 +70,7 @@
 		mediaQuery.addEventListener('change', handleChange);
 
 		days.value = await loadWeek(group_id.value, day.value, focusedModule.value ? [focusedModule.value] : undefined)
+		calculateTotalCourseHours(days.value);
 	});
 
 	watch(isMobileViewport, () => {
@@ -79,6 +80,7 @@
 
 	watch(group_id, async () => {
 		days.value = await loadWeek(group_id.value, day.value, focusedModule.value ? [focusedModule.value] : undefined)
+		calculateTotalCourseHours(days.value);
 	})
 
 
@@ -92,6 +94,7 @@
 
 		if (loadOnFinish) {
 			days.value = await loadWeek(group_id.value, day.value, focusedModule.value ? [focusedModule.value] : undefined)
+			calculateTotalCourseHours(days.value);
 		}
 	}
 
@@ -105,6 +108,7 @@
 
 		if (loadOnFinish) {
 			days.value = await loadWeek(group_id.value, day.value, focusedModule.value ? [focusedModule.value] : undefined)
+			calculateTotalCourseHours(days.value);
 		}
 	}
 
@@ -116,6 +120,7 @@
 		}
 
 		days.value = await loadWeek(group_id.value, day.value, focusedModule.value ? [focusedModule.value] : undefined)
+		calculateTotalCourseHours(days.value);
 	}
 
 	async function fbwd() {
@@ -126,6 +131,7 @@
 		}
 
 		days.value = await loadWeek(group_id.value, day.value, focusedModule.value ? [focusedModule.value] : undefined)
+		calculateTotalCourseHours(days.value);
 	}
 
 	function sectionDate(index: number) {
@@ -150,6 +156,7 @@
 
 	watch(focusedModule, async () => {
 		days.value = await loadWeek(group_id.value, day.value, focusedModule.value ? [focusedModule.value] : undefined)
+		calculateTotalCourseHours(days.value);
 	});
 </script>
 <template>

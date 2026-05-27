@@ -91,6 +91,24 @@ export async function loadWeek(group_id: string, startDate: Date, modules?: stri
 	}
 }
 
+export const hours = ref<Record<string, number>>({});
+
+export async function calculateTotalCourseHours(weekCourses: UICourse[][]): Promise<{ [key: string]: number }> {
+	let totalHours: Record<string, number> = {};
+
+	weekCourses.forEach(day => {
+		day.forEach(course => {
+			if (course.type !== 'pause' && course.type !== 'lunch') {
+				const duration = (course.end.getTime() - course.start.getTime()) / (1000 * 60 * 60);
+				totalHours[course.module] = (totalHours[course.module] || 0) + duration;
+			}
+		});
+	});
+
+	hours.value = totalHours;
+	return totalHours;
+}
+
 import { ref, watch } from 'vue';
 
 export const focusedCourse = ref<UICourse | null>(null);
