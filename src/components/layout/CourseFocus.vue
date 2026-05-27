@@ -8,11 +8,12 @@
 	import InfoIcon from '../icons/InfoIcon.vue';
 	import ExtLinkIcon from '../icons/ExtLinkIcon.vue';
 	import FunnelIcon from '../icons/FunnelIcon.vue';
+	import ClockIcon from '../icons/ClockIcon.vue';
 
 	import type { Module } from '@/scripts/utils';
 
-	import { toFormatHHMM, colors, modules } from '@/scripts/utils';
-	import { focusedCourse, focusedModule, focusType, type UICourse } from '@/scripts/timetable';
+	import { toFormatHHMM, colors, modules, durationHHMM } from '@/scripts/utils';
+	import { focusedCourse, focusedModule, focusType, type UICourse, hours } from '@/scripts/timetable';
 	import { maxScreen, isDark } from '@/scripts/media';
 
 	const props = defineProps<{
@@ -75,6 +76,15 @@
 				</div>
 				<div class="max-w-lg">
 					<p>{{ course.teachers.join(', ') || "Inconnu" }}</p>
+				</div>
+			</div>
+
+			<div class="flex">
+				<div class="shrink-0 flex items-center w-8">
+					<ClockIcon :color="color[3] || '#000000'" class="w-6 h-6" />
+				</div>
+				<div class="max-w-lg">
+					<p>{{ durationHHMM(hours[course.module] || 0 ) }} cette semaine</p>
 				</div>
 			</div>
 
