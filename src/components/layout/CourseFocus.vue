@@ -114,7 +114,7 @@
 				</div>
 			</div>
 			<div class="space-y-2">
-				<p class="text-base">Ce site est un projet étudiant et n'est affilié à l'IUT de Vélizy ni à l'UVSQ, ni à quelconque organisme officiel.</p>
+				<p class="text-sm">Ce site est un projet étudiant et n'est affilié à l'IUT de Vélizy ni à l'UVSQ, ni à quelconque organisme officiel.</p>
 				<p class="text-sm font-medium">© Loan JEAN, Bastian NOËL | <a href="https://mmi.place" target="_blank" class="underline decoration-transparent hover:decoration-inherit">MMI Place</a> 2025-2026</p>
 			</div>
 		</div>
