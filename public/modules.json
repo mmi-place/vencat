@@ -33,7 +33,7 @@
         "title": "Expression & Communication",
         "emoji": "🗣️",
         "short": "Expr. Communication",
-        "description": "Améliorez vos compétences en expression orale et écrite."
+        "description": "Améliorez vos compétences théoriques et pratiques en communication. Voyez des notions comme le triangle de Lasswell, les 5W, ethos/pathos/logos, etc."
     },
     "R 1.07": {
         "title": "Écriture Multimédia et Narration",
@@ -51,37 +51,37 @@
         "title": "Culture Artistique",
         "emoji": "🖼️",
         "short": "Cult. Artistique",
-        "description": "Explorez l'histoire et les mouvements de l'art à travers les âges."
+        "description": "Explorez certaines pratiques communes au cadre de l'entreprise et à l'art."
     },
     "R 1.10": {
         "title": "Audiovisuel",
         "emoji": "🎬",
         "short": "Audiovisuel",
-        "description": "Apprenez les techniques de production audiovisuelle."
+        "description": "Apprenez les techniques de production audiovisuelle, en tournage et post-production."
     },
     "R 1.11": {
         "title": "Intégration",
         "emoji": "🧩",
         "short": "Intégration",
-        "description": "Intégrez des maquettes en pages web fidèles, structurées et compatibles avec les standards du web."
+        "description": "Intégrez des maquettes en pages web fidèles, structurées et compatibles avec les standards du web (HTML/CSS)."
     },
     "R 1.12": {
         "title": "Développement Web",
         "emoji": "💻",
         "short": "Dev. Web",
-        "description": "Développez des fonctionnalités interactives et dynamiques pour donner vie à vos interfaces."
+        "description": "Développez des fonctionnalités interactives et dynamiques pour donner vie à vos interfaces (Javascript)."
     },
     "R 1.13": {
         "title": "Hébergement",
         "emoji": "☁️",
         "short": "Hébergement",
-        "description": "Mettez vos projets en ligne en configurant des solutions d’hébergement fiables et performantes."
+        "description": "Mettez vos projets en ligne en configurant des solutions d’hébergement fiables et performantes (o2switch)."
     },
     "R 1.14": {
         "title": "Représentation et Traitement Informatique",
         "emoji": "🧮",
         "short": "Repr. & Trait. Info",
-        "description": "Comprenez et manipulez les données numériques pour mieux les représenter, les structurer et les exploiter."
+        "description": "Apprenez les bases de la logique notamment via les tables de vérité et l'expression booléenne."
     },
     "R 1.15": {
         "title": "Gestion de Projet",
@@ -148,7 +148,7 @@
         "title": "Graphisme",
         "emoji": "🎨",
         "short": "Graphisme",
-        "description": "Apprenez les fondamentaux du graphisme : composition, couleur, typographie et outils de création."
+        "description": "Apprenez à maîtriser plus d'outils de la suite Adobe: InDesign, Illustrator"
     },
     "R209": {
         "title": "Culture Artistique",
@@ -160,13 +160,13 @@
         "title": "Audiovisuel",
         "emoji": "🎬",
         "short": "Audiovisuel",
-        "description": "Maîtrisez les bases de la production audiovisuelle : prise de vue, son, montage et diffusion."
+        "description": "Maîtrisez les bases de la diffusion audiovisuelle: formats, codecs, plateformes de diffusion, etc. Apprenez à maîtriser After Effects."
     },
     "R211": {
         "title": "Gestion de contenus",
         "emoji": "🗂️",
         "short": "Gestion de Contenus",
-        "description": "Organisez, structurez et administrez des contenus numériques (CMS, workflow, médiathèque, métadonnées)."
+        "description": "Utilisez le CMS Wordpress pour créer et gérer des sites web dynamiques et interactifs."
     },
     "R212": {
         "title": "Intégration",
@@ -178,7 +178,7 @@
         "title": "Développement Web",
         "emoji": "📋",
         "short": "Développement Web",
-        "description": "Bases de données, SQL, PHP."
+        "description": "Utilisez PHP pour développer des fonctionnalités dynamiques et interactives, en connectant votre site à une base de données MySQL."
     },
     "R214": {
         "title": "Systèmes d'Information",
@@ -320,49 +320,49 @@
         "title": "Design Graphique",
         "emoji": "🎨",
         "short": "Design Graphique",
-        "description": "Concevez des visuels cohérents et esthétiques en appliquant les principes fondamentaux du design."
+        "description": "Concevez des visuels cohérents et esthétiques en appliquant les principes fondamentaux du design. Ressources mobilisées: R108"
     },
     "SAE 1.04": {
         "title": "Audiovisuel",
         "emoji": "🎬",
         "short": "Audiovisuel",
-        "description": "Réalisez des contenus audiovisuels en maîtrisant la prise de vue, le montage et la narration visuelle."
+        "description": "Réalisez des contenus audiovisuels en maîtrisant la prise de vue, le montage et la narration visuelle. Ressources utilisées: R110"
     },
     "SAE 1.05": {
         "title": "Site Web",
         "emoji": "🖥️",
         "short": "Site Web",
-        "description": "Créez un site web complet en combinant conception graphique, intégration et développement."
+        "description": "Créez un site web complet en combinant conception graphique, intégration et développement. Ressources utilisées: R101, R102, R111, R113"
     },
     "SAE 1.06": {
         "title": "Gestion de Projet & Recommandation",
         "emoji": "🧠",
         "short": "Gest. Projet & Recomm.",
-        "description": "Menez un projet de bout en bout en produisant une recommandation argumentée et structurée."
+        "description": "Menez un projet de bout en bout en produisant une recommandation argumentée et structurée. Ressources utilisées: R105, R106"
     },
     "SAE201": {
         "title": "Explorer les Usages du Numérique",
         "emoji": "📊",
         "short": "Expl. Usages Numérique",
-        "description": "Analysez des besoins et proposez des solutions numériques adaptées à un contexte donné."
+        "description": "Analysez des besoins et proposez des solutions numériques adaptées à un contexte donné. Ressources mobilisées: R203, R111"
     },
     "SAE202": {
         "title": "Concevoir un service ou un produit et sa communication",
         "emoji": "🛠️",
         "short": "Concevoir Service & Com.",
-        "description": "Concevez et prototypez un service ou produit numérique, définissez son positionnement, ses fonctionnalités et la stratégie de communication associée."
+        "description": "Concevez et prototypez un service ou produit numérique, définissez son positionnement, ses fonctionnalités et la stratégie de communication associée. Ressources utilisées: R1XX et R2XX (toutes)"
     },
     "SAE203": {
         "title": "Concevoir un site Web avec une source de données",
         "emoji": "🖥️",
         "short": "Concevoir Site avec src.",
-        "description": "Créez un site web dynamique connecté à une source de données (API ou base), en concevant l'architecture, la récupération et l'affichage des données."
+        "description": "Créez un site web dynamique connecté à une source de données (API ou base), en concevant l'architecture, la récupération et l'affichage des données. Ressources utilisées: R213, R215"
     },
     "SAE204": {
         "title": "Construire sa présence en ligne",
         "emoji": "🌐",
         "short": "Présence en ligne",
-        "description": "Créez un site web complet en combinant conception graphique, intégration et développement."
+        "description": "Créez un site web complet en combinant conception graphique, intégration et développement. Ressources utilisées: R211, R217"
     },
     "SAE210": {
         "title": "Gestion de Projet & Recommandation",
@@ -394,12 +394,18 @@
         "title": "Entreprise",
         "emoji": "🔨",
         "short": "Entreprise",
-        "description": "Alternance"
+        "description": "Journée en entreprise dans le cadre de votre alternance."
     },
     "Réunion": {
         "title": "Réunion",
         "emoji": "🧠",
         "short": "Réunion",
-        "description": ""
+        "description": "Réunion"
+    },
+    "inconnu": {
+        "title": "Inconnu",
+        "emoji": "❓",
+        "short": "Inconnu",
+        "description": "Module non pris en charge ou non spécifié. Référez-vous à vos professeurs ou responsables pour plus d'informations."
     }
 }
