@@ -93,7 +93,7 @@
 					<InfoIcon :color="color[3] || '#000000'" class="w-6 h-6" />
 				</div>
 				<div class="max-w-lg">
-					<p>{{ module.description }}</p>
+					<p>{{ module.description || "Aucune description disponible." }}</p>
 				</div>
 			</div>
 
