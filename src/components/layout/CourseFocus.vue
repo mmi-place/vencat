@@ -113,6 +113,10 @@
 					<a :href="'https://plan-up.pages.dev?module=' + course.module" class="underline-offset-[1.5px] decoration-[1.5px] hover:underline">Consulter les devoirs pour ce module</a>
 				</div>
 			</div>
+			<div>
+				<p>Ce site est un projet étudiant et n'est affilié à l'IUT de Vélizy ni à l'UVSQ, ni à quelconque organisme officiel.</p>
+				<p>© Loan JEAN, Bastian NOËL | <a href="https://mmi.place" target="_blank" class="underline decoration-transparent hover:decoration-inherit">MMI Place</a> 2025-2026</p>
+			</div>
 		</div>
 	</section>
 </template>
