@@ -81,7 +81,7 @@ export interface Module {
 }
 
 export async function loadModules(): Promise<void> {
-	return fetch('https://raw.githubusercontent.com/MMI-CODES/vencat/refs/heads/main/public/modules.json')
+	return fetch('https://raw.githubusercontent.com/mmi-place/vencat/refs/heads/main/public/modules.json')
 		.then(response => response.json())
 		.then((data: Record<string, Module>) => {
 			modules.value = data;
