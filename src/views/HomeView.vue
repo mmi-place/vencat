@@ -42,6 +42,10 @@
 	const promo_id = ref<string>("MMI-1");
 	const group_id = ref<string>(groups[promo_id.value]!['A1']!);
 
+	watch(promo_id, () => {
+		group_id.value = groups[promo_id.value]!['A1']!;
+	})
+
 	const weekdays = [
 		'Lundi',
 		'Mardi',
