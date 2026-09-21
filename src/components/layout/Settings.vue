@@ -34,7 +34,7 @@ const copyToClipboard = () => {
 		class="select-none fixed top-0 z-500 bg-slate-300/60 backdrop-blur-md w-screen h-screen dark:bg-slate-950/60 md:flex md:flex-col md:items-center md:justify-center"
 	>
 		<div
-			class="bg-white font-bold shadow-2xl p-6 space-y-4 max-md:h-screen md:rounded-4xl md:min-w-1/2 md:p-8 lg:min-w-1/3 dark:bg-slate-900"
+			class="bg-slate-100 text-slate-950 font-bold shadow-2xl p-6 space-y-4 max-md:h-screen md:rounded-4xl md:min-w-1/2 md:p-8 lg:min-w-1/3 dark:bg-slate-900 dark:text-white"
 		>
 			<div class="flex items-center">
 				<h2 class="grow text-2xl font-bold">Préférences</h2>
