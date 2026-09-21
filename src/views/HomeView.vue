@@ -1,6 +1,7 @@
 <script setup lang="ts">
 	import CourseView from '@/components/CourseView.vue';
 	import CourseFocus from '@/components/layout/CourseFocus.vue';
+	import Settings from '@/components/layout/Settings.vue';
 
 	import { CursorArrowRippleIcon, FunnelIcon } from '@heroicons/vue/24/outline';
 	import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/vue/24/outline';
@@ -8,45 +9,10 @@
 	import { ref, onMounted, watch } from 'vue';
 
 	import { loadWeek, focusedCourse, focusedModule, focusType, type UICourse, calculateTotalCourseHours } from '@/scripts/timetable';
-	import { toFormatJJMoisAAAA } from '@/scripts/utils';
+	import { toFormatJJMoisAAAA, promo_id, group_id, group_label } from '@/scripts/utils';
 
 
 	const isMobileViewport = ref<boolean>(false);
-
-
-	const groups: Record<string, Record<string, string>> = {
-		'MMI-1': {
-			'A1': "G1-QJ2DMFYC5987", // chômeurs
-			'A2': "G1-PW2GUKMM5988",
-			'B1': "G1-HN2CHYNX5990",
-			'B2': "G1-QW2SJTJH5991" // chômeurs ++
-		},
-		'MMI-2': {
-			'A1': "G1-QS2QEJVB5994",
-			'A2': "G1-EG2LDXAM5995",
-			'B1': "G1-AE2BGJHX5997", // chômeurs pro max ultra
-			'B2': "G1-TM2VJCBU5998"
-		},
-		'MMI-3 dev': {
-			'FA A1': "G1-TS2PGRAD6003",
-			'FA A2': "G1-KL2GMWYW6004"
-		},
-		'MMI-3 crea': {
-			'FI A1': "G1-EB2URAPF6006",
-			'FI A2': "G1-JP2NSAYC6007",
-			'FA A1': "G1-CC2LTGMX6000",
-			'FA A2': "G1-HW2LKCBM6001"
-		}
-	}
-
-	const promo_id = ref<string>(localStorage.getItem('promo_id') || "MMI-1");
-	const group_id = ref<string>(localStorage.getItem('group_id') || Object.values(groups[promo_id.value]!)[0]!);
-
-	watch(promo_id, () => {
-		group_id.value = Object.values(groups[promo_id.value]!)[0]!;
-		localStorage.setItem('promo_id', promo_id.value);
-		localStorage.setItem('group_id', group_id.value);
-	})
 
 	const weekdays = [
 		'Lundi',
@@ -164,36 +130,34 @@
 		days.value = await loadWeek(group_id.value, day.value, focusedModule.value ? [focusedModule.value] : undefined)
 		calculateTotalCourseHours(days.value);
 	});
+
+	const isSettingsOpen = ref<boolean>(false);
 </script>
 <template>
 	<CourseFocus v-if="focusedCourse" :course="focusedCourse" />
+	<Settings v-if="isSettingsOpen" @close="isSettingsOpen = false" />
 
-	<nav class="flex justify-between p-4 max-sm:flex-col max-sm:justify-center max-sm:gap-2">
+	<nav class="flex justify-between p-4">
 		<div class="flex items-center justify-center gap-2">
 			<img src="@/assets/logo.svg" class="block w-6 h-6" /> <h1 class="select-none text-xl font-black max-sm:text-xl">Vencat</h1>
 		</div>
 		<div class="flex gap-2 justify-center">
 		</div>
-		<div class="flex items-center justify-center gap-2 max-sm:flex-col">
+		<div class="flex items-center justify-center gap-2">
 			<button
 				@click="focusType = focusType == 'none' ? 'hover' : 'none'"
 				class="group cursor-pointer duration-100"
-				:class="focusType == 'none' ? 'text-white opacity-50' : 'text-blue-400 opacity-100'"
+				:class="focusType == 'none' ? 'text-white opacity-50 max-sm:hidden' : 'text-blue-400 opacity-100'"
 			>
 				<FunnelIcon v-if="focusType == 'filter'" class="w-6 h-6" />
 				<CursorArrowRippleIcon v-else class="w-6 h-6" />
 			</button>
-			<select v-model="promo_id" class="block bg-slate-500/15 text-sm font-bold rounded-full px-4 py-2">
-				<option class="text-slate-900 text-sm text-center font-semibold" v-for="promo in Object.keys(groups)" :value="promo">{{ promo }}</option>
-			</select>
-			<div>
-				<button
-					class="text-white text-sm text-center font-bold border-b-4 px-4 py-2 duration-150"
-					:class="group_id == groups[promo_id]![group]! ? 'border-b-rose-500' : 'border-transparent hover:border-b-rose-500/50'"
-					v-for="group in Object.keys(groups[promo_id]!)"
-					@click="() => { group_id = groups[promo_id]![group]! }"
-				>{{ group }}</button>
-			</div>
+			<button
+				@click="isSettingsOpen = true"
+				class="group cursor-pointer bg-white/5 text-white text-sm font-bold rounded-xl px-3 py-1.5 duration-100 hover:bg-white/10"
+			>
+				{{ promo_id }} {{ group_label }}
+			</button>
 		</div>
 	</nav>
 	<header class="flex px-4 pb-4 gap-2 md:px-8">
