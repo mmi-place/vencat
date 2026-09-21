@@ -39,11 +39,13 @@
 		}
 	}
 
-	const promo_id = ref<string>("MMI-1");
-	const group_id = ref<string>(groups[promo_id.value]!['A1']!);
+	const promo_id = ref<string>(localStorage.getItem('promo_id') || "MMI-1");
+	const group_id = ref<string>(localStorage.getItem('group_id') || Object.values(groups[promo_id.value]!)[0]!);
 
 	watch(promo_id, () => {
-		group_id.value = groups[promo_id.value]!['A1']!;
+		group_id.value = Object.values(groups[promo_id.value]!)[0]!;
+		localStorage.setItem('promo_id', promo_id.value);
+		localStorage.setItem('group_id', group_id.value);
 	})
 
 	const weekdays = [
