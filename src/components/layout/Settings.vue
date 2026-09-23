@@ -2,6 +2,7 @@
 import {
 	AcademicCapIcon,
 	CalendarDaysIcon,
+	PhotoIcon,
 	XMarkIcon,
 } from "@heroicons/vue/16/solid";
 import {
@@ -14,7 +15,7 @@ import { ref, watch } from "vue";
 
 import { groups, dept_id, promo_id, group_id } from "@/scripts/utils";
 
-import { setDate, day, getMonday, ffwd, fbwd } from "@/scripts/logic";
+import { setDate, day, getMonday, ffwd, fbwd, backgroundViewMode } from "@/scripts/logic";
 
 const emit = defineEmits<{
 	(e: "close"): void;
@@ -76,6 +77,7 @@ const navigate = () => {
 			</div>
 			<div class="flex items-center gap-1">
 				<AcademicCapIcon class="w-6 h-6" />
+				<p class="text-sm font-semibold max-sm:hidden">Groupe:</p>
 				<select
 					v-model="dept_id"
 					class="bg-slate-500/20 text-sm font-bold rounded-xl px-3 py-2 cursor-pointer"
@@ -117,6 +119,7 @@ const navigate = () => {
 
 			<div class="flex items-center gap-1">
 				<CalendarDaysIcon class="w-6 h-6" />
+				<p class="text-sm font-semibold max-sm:hidden">Date:</p>
 				<BackwardIcon
 					class="w-5 h-5 cursor-pointer duration-150"
 					@click="() => fbwd(6)"
@@ -137,6 +140,20 @@ const navigate = () => {
 				>
 					Réinit.
 				</p>
+			</div>
+
+			<div class="flex items-center gap-1">
+				<PhotoIcon class="w-6 h-6" />
+				<p class="text-sm font-semibold max-sm:hidden">Arrière-plan:</p>
+				<select
+					v-model="backgroundViewMode"
+					class="bg-slate-500/10 text-sm font-medium rounded-xl px-3 py-2 cursor-pointer"
+				>
+					<option value="unified">Fond unifié</option>
+					<option value="image">Image</option>
+					<option value="image-darker">Image plus sombre</option>
+					<option value="image-blurried">Image floutée</option>
+				</select>
 			</div>
 
 			<div class="space-y-2">

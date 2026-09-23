@@ -239,3 +239,35 @@ export const isSameWeek = (date: Date, other: Date = new Date()): boolean => {
 watch([group_id, focusedModule], () => {
 	loadCurrentWeek();
 });
+
+/************************/
+
+const extractBgViewMode = ():
+	| "unified"
+	| "image"
+	| "image-darker"
+	| "image-blurried" => {
+	const storedValue = localStorage.getItem("backgroundViewMode");
+
+	if (
+		storedValue === "unified" ||
+		storedValue === "image" ||
+		storedValue === "image-darker" ||
+		storedValue === "image-blurried"
+	) {
+		return storedValue;
+	}
+
+	return "unified";
+};
+
+export const backgroundViewMode = ref<
+	| "unified" // Pas d'image, fond unifié
+	| "image" // Image avec un léger voile
+	| "image-darker" // Image avec un voile plus prononcé
+	| "image-blurried" // Image floutée avec un voile
+>(extractBgViewMode());
+
+watch(backgroundViewMode, (newValue) => {
+	localStorage.setItem("backgroundViewMode", newValue);
+});

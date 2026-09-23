@@ -4,3 +4,55 @@
 @theme {
 	--font-sans: Nunito, sans-serif;
 }
+
+
+
+body.bg-unified, body {
+	background-color: #020618;
+	color: white;
+}
+
+body.bg-unified > #app, body > #app {
+	background-color: #020618;
+	color: white;
+}
+
+
+body.bg-image {
+	background-image: url('/background.jpg');
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+}
+
+body.bg-image > #app {
+	background-color: #02061888;
+	color: white;
+}
+
+
+body.bg-image-darker {
+	background-image: url('/background.jpg');
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+}
+
+body.bg-image-darker > #app {
+	background-color: #020618cc;
+	color: white;
+}
+
+
+body.bg-image-blurried {
+	background-image: url('/background.jpg');
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+}
+
+body.bg-image-blurried > #app {
+	background-color: #02061888;
+	color: white;
+	backdrop-filter: blur(10px);
+}

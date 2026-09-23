@@ -37,8 +37,17 @@ import { updateMobileViewport } from "@/scripts/media";
 onMounted(updateMobileViewport);
 
 const isSettingsOpen = ref<boolean>(false);
-</script>
 
+const handleKeydown = (event: KeyboardEvent) => {
+	if (event.key === "Escape") {
+		if (focusedCourse.value) {
+			focusedCourse.value = null;
+		} else if (isSettingsOpen.value) {
+			isSettingsOpen.value = false;
+		}
+	}
+};
+</script>
 <template>
 	<CourseFocus v-if="focusedCourse" :course="focusedCourse" />
 
