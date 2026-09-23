@@ -1,13 +1,20 @@
 <script setup lang="ts">
-import { AcademicCapIcon, XMarkIcon } from "@heroicons/vue/16/solid";
-import { DocumentDuplicateIcon } from "@heroicons/vue/24/outline";
-
 import {
-	groups,
-	dept_id,
-	promo_id,
-	group_id,
-} from "@/scripts/utils";
+	AcademicCapIcon,
+	CalendarDaysIcon,
+	XMarkIcon,
+} from "@heroicons/vue/16/solid";
+import {
+	DocumentDuplicateIcon,
+	ForwardIcon,
+	BackwardIcon,
+} from "@heroicons/vue/24/outline";
+
+import { ref, watch } from "vue";
+
+import { groups, dept_id, promo_id, group_id } from "@/scripts/utils";
+
+import { setDate, day, getMonday, ffwd, fbwd } from "@/scripts/logic";
 
 const emit = defineEmits<{
 	(e: "close"): void;
@@ -25,8 +32,30 @@ const getAvailableGroups = (): [string, string][] => {
 };
 
 const copyToClipboard = () => {
-	navigator.clipboard.writeText(`webcals://celcat.iut-velizy.uvsq.fr/cal/ical/${group_id.value}/schedule.ics`);
-	alert("Lien copié ! Collez-le dans votre application de calendrier pour vous abonner à l'emploi du temps sur votre téléphone.");
+	navigator.clipboard.writeText(
+		`webcals://celcat.iut-velizy.uvsq.fr/cal/ical/${group_id.value}/schedule.ics`,
+	);
+	alert(
+		"Lien copié ! Collez-le dans votre application de calendrier pour vous abonner à l'emploi du temps sur votre téléphone.",
+	);
+};
+
+const formatDateInput = (date: Date): string => {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+
+	return `${year}-${month}-${day}`;
+};
+
+const selectedDate = ref(formatDateInput(day.value));
+
+watch(day, (newDate) => {
+	selectedDate.value = formatDateInput(newDate);
+});
+
+const navigate = () => {
+	setDate(new Date(`${selectedDate.value}T00:00:00`));
 };
 </script>
 <template>
@@ -84,6 +113,30 @@ const copyToClipboard = () => {
 					class="w-4 h-4 cursor-pointer duration-150"
 					@click="copyToClipboard"
 				/-->
+			</div>
+
+			<div class="flex items-center gap-1">
+				<CalendarDaysIcon class="w-6 h-6" />
+				<BackwardIcon
+					class="w-5 h-5 cursor-pointer duration-150"
+					@click="() => fbwd(6)"
+				/>
+				<input
+					type="date"
+					v-model="selectedDate"
+					class="bg-slate-500/10 text-sm font-medium rounded-xl px-3 py-2 cursor-pointer"
+					@change="navigate"
+				/>
+				<ForwardIcon
+					class="w-5 h-5 cursor-pointer duration-150"
+					@click="() => ffwd(6)"
+				/>
+				<p
+					@click="setDate(getMonday(new Date()))"
+					class="cursor-pointer text-sm font-medium underline decoration-transparent hover:decoration-inherit"
+				>
+					Réinit.
+				</p>
 			</div>
 
 			<div class="space-y-2">
