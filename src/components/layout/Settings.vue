@@ -132,7 +132,7 @@ const navigate = () => {
 					@click="() => ffwd(6)"
 				/>
 				<p
-					@click="setDate(getMonday(new Date()))"
+					@click="setDate(new Date())"
 					class="cursor-pointer text-sm font-medium underline decoration-transparent hover:decoration-inherit"
 				>
 					Réinit.
