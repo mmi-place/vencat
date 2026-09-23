@@ -32,7 +32,6 @@ import {
 	isSameWeek,
 } from "@/scripts/logic";
 
-import { updateMobileViewport } from "@/scripts/media";
 
 onMounted(updateMobileViewport);
 

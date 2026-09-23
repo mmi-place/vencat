@@ -37,12 +37,15 @@ export const isDark = (): boolean => {
 	);
 };
 
-import { onMounted, ref, watch } from "vue";
-import { dept_id, promo_id, group_id } from "@/scripts/utils";
-import { loadWeek, calculateTotalCourseHours, focusedModule, focusedCourse } from "@/scripts/timetable";
+import { watch } from "vue";
+import { group_id } from "@/scripts/utils";
+import {
+	loadWeek,
+	calculateTotalCourseHours,
+	focusedModule,
+} from "@/scripts/timetable";
 import { day, days, viewport, offset } from "@/scripts/logic";
-
-export const isMobileViewport = ref<boolean>(false);
+import { isMobileViewport } from "@/scripts/viewport";
 
 export const updateMobileViewport = async () => {
 	const mediaQuery = window.matchMedia("(max-width: 720px)");

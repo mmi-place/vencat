@@ -6,7 +6,7 @@ import {
 	focusedModule,
 } from "./timetable";
 import { group_id } from "./utils";
-import { isMobileViewport } from "./media";
+import { isMobileViewport } from "./viewport";
 
 export const weekdays = [
 	"Lundi",
