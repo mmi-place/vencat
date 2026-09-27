@@ -30,6 +30,7 @@ import {
 	fbwd,
 	sectionDate,
 	isSameWeek,
+	backgroundViewMode,
 } from "@/scripts/logic";
 
 import { updateMobileViewport } from "@/scripts/media";
@@ -38,7 +39,7 @@ onMounted(updateMobileViewport);
 
 const isSettingsOpen = ref<boolean>(false);
 
-const handleKeydown = (event: KeyboardEvent) => {
+document.addEventListener("keydown", (event: KeyboardEvent) => {
 	if (event.key === "Escape") {
 		if (focusedCourse.value) {
 			focusedCourse.value = null;
@@ -46,7 +47,43 @@ const handleKeydown = (event: KeyboardEvent) => {
 			isSettingsOpen.value = false;
 		}
 	}
-};
+});
+
+const isForwarding = ref<boolean>(false);
+const isBackwarding = ref<boolean>(false);
+
+setInterval(() => {
+	if (isForwarding.value) {
+		ffwd();
+	} else if (isBackwarding.value) {
+		fbwd();
+	}
+
+	isForwarding.value = false;
+	isBackwarding.value = false;
+}, 100);
+
+document.addEventListener("keydown", (event: KeyboardEvent) => {
+	if (event.key === "ArrowRight") {
+		isForwarding.value = true;
+	} else if (event.key === "ArrowLeft") {
+		isBackwarding.value = true;
+	} else if (event.key === "h") {
+		focusType.value = focusType.value === "none" ? "hover" : "none";
+	} else if (event.key === "x") {
+		isSettingsOpen.value = !isSettingsOpen.value;
+	} else if (event.key === "b") {
+		const modes = ["image", "image-darker", "image-blurried", "unified"];
+		const currentIndex = modes.indexOf(backgroundViewMode.value);
+
+		const nextIndex = (currentIndex + 1) % modes.length;
+		backgroundViewMode.value = modes[nextIndex]! as
+			| "image"
+			| "image-darker"
+			| "image-blurried"
+			| "unified";
+	}
+});
 </script>
 <template>
 	<CourseFocus v-if="focusedCourse" :course="focusedCourse" />

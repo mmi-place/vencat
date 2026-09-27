@@ -6,6 +6,11 @@
 }
 
 
+body, #app {
+	transition-duration: 0.3s;
+	transition-property: all;
+	transition-timing-function: ease-in-out;
+}
 
 body.bg-unified, body {
 	background-color: #020618;
