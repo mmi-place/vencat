@@ -1,0 +1,23 @@
+import 'fake-indexeddb/auto';
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { reactive } from 'vue';
+import { saveSnapshot, savedSnapshot, savedHistory, clearCalendarStorage } from '../src/scripts/storage.js';
+import type { Snapshot } from '../shared/changes.js';
+import { compareSnapshots } from '../shared/changes.js';
+test('IndexedDB atomically preserves two weeks, changes from reactive state, and separate fallback baselines', async () => {
+  const first: Snapshot = { version: 1, groupId: 'test', start: '2026-10-05', end: '2026-10-11', fetchedAt: new Date().toISOString(), source: 'post', courses: [{ uid: 'a', start: '2026-10-05T06:00:00Z', end: '2026-10-05T08:00:00Z', type: 'CM', summary: 'Cours', teachers: [], location: 'E57', module: 'R 1.01', source: 'post' }] };
+  await saveSnapshot(first, []);
+  const next = { ...first, courses: [{ ...first.courses[0]!, location: 'E58' }] };
+  await saveSnapshot(reactive(next), compareSnapshots(reactive(first), reactive(next)));
+  assert.equal((await savedSnapshot('test', first.start))!.courses[0]!.location, 'E58');
+  assert.equal((await savedHistory('test')).length, 1);
+  await saveSnapshot({ ...next, source: 'ical' }, []);
+  assert.equal((await savedSnapshot('test', first.start))!.source, 'ical');
+  assert.equal((await savedSnapshot('test', first.start, 'post'))!.source, 'post');
+  await saveSnapshot({ ...first, start: '2026-10-12', end: '2026-10-18', courses: [] }, []);
+  assert.equal((await savedSnapshot('test', '2026-10-12'))!.courses.length, 0);
+  assert.ok(await savedSnapshot('test', '2026-10-05'));
+  assert.equal(await savedSnapshot('test', '2026-10-19'), undefined);
+  await clearCalendarStorage(); assert.equal(await savedSnapshot('test', first.start), undefined); assert.deepEqual(await savedHistory('test'), []);
+});

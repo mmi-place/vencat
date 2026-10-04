@@ -1,0 +1,297 @@
+{
+  "department": "RT",
+  "version": 2,
+  "entries": {
+    "R1.01": {
+      "title": "Initiation aux réseaux informatiques",
+      "description": "Découvrez les réseaux informatiques et les systèmes d’exploitation pour comprendre les échanges TCP/IP, utiliser un réseau local et adopter les principes d’hygiène informatique.",
+      "confidence": 2,
+      "aliases": [
+        "Initiation aux reseaux informatiques",
+        "Initiation aux reseaux informatiques APP"
+      ]
+    },
+    "R1.02": {
+      "title": "Principes et architecture des réseaux",
+      "description": "Découvrez les architectures en couches, les topologies et les protocoles pour comprendre le fonctionnement d’un réseau et le rôle des échanges dans le modèle TCP/IP.",
+      "confidence": 2,
+      "aliases": [
+        "Principes et architecture des reseaux",
+        "Principes et architecture des reseaux APP"
+      ]
+    },
+    "R1.03": {
+      "title": "Réseaux locaux et équipements actifs",
+      "description": "Apprenez à configurer des réseaux locaux et leurs équipements actifs pour organiser les communications Ethernet, utiliser des VLAN et comprendre les mécanismes de commutation.",
+      "confidence": 2,
+      "aliases": [
+        "Reseaux locaux et equipements actifs",
+        "Reseaux locaux et equipements actifs APP"
+      ]
+    },
+    "R1.04": {
+      "title": "Fondamentaux des systèmes électroniques",
+      "description": "Découvrez les grandeurs électriques et les instruments de mesure pour analyser un système électronique, évaluer sa puissance et comprendre les conditions de son fonctionnement.",
+      "confidence": 2,
+      "aliases": [
+        "Fondamentaux des systemes electroniques",
+        "Fondamentaux des systemes electroniques / Fondamentaux des systemes electroniques APP",
+        "Fondamentaux des systemes electroniques APP"
+      ]
+    },
+    "R1.06": {
+      "title": "Architecture des systèmes numériques et informatiques",
+      "description": "Découvrez le codage binaire, les fonctions logiques et l’architecture des processeurs pour comprendre le fonctionnement des systèmes numériques et la représentation des informations.",
+      "confidence": 2,
+      "aliases": [
+        "Architecture des systemes numeriques et informatiques",
+        "Architecture des systemes numeriques et informatiques APP"
+      ]
+    },
+    "R1.07": {
+      "title": "Fondamentaux de la programmation",
+      "description": "Découvrez l’algorithmique et les méthodes de programmation pour concevoir des traitements, organiser leur développement et vérifier le fonctionnement de programmes adaptés aux besoins des réseaux.",
+      "confidence": 2,
+      "aliases": [
+        "Fondamentaux de la programmation",
+        "Fondamentaux de la programmation APP"
+      ]
+    },
+    "R1.08": {
+      "title": "Bases des systèmes d’exploitation",
+      "description": "Découvrez les systèmes d’exploitation pour utiliser les fichiers, les processus et les commandes, puis automatiser des tâches simples à l’aide de scripts.",
+      "confidence": 2,
+      "aliases": [
+        "Bases des systemes d'exploitation",
+        "Bases des systemes d'exploitation APP"
+      ]
+    },
+    "R1.09": {
+      "title": "Introduction aux technologies Web",
+      "description": "Découvrez les technologies web et les échanges client-serveur pour créer des pages HTML et CSS, organiser leur contenu et comprendre leur fonctionnement sur Internet.",
+      "confidence": 2,
+      "aliases": [
+        "Introduction aux technologies Web",
+        "Introduction aux technologies Web APP"
+      ]
+    },
+    "R1.10": {
+      "title": "Anglais technique 1",
+      "description": "Développez votre anglais général et technique pour comprendre des documents, présenter des informations et participer à des échanges liés aux réseaux et aux télécommunications.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais technique 1",
+        "Anglais technique 1 APP"
+      ]
+    },
+    "R1.11": {
+      "title": "Expression-Culture-Communication Professionnelles : Introduction à la communication et au savoir-être professionnels",
+      "description": "Développez votre expression et votre recherche documentaire pour rédiger des informations techniques, présenter un travail et adopter une communication adaptée aux situations professionnelles.",
+      "confidence": 2,
+      "aliases": [
+        "Expression-Culture-Communication Professionnelles : Introduction a la communication et au savoir-etre professionnels APP"
+      ]
+    },
+    "R1.12": {
+      "title": "Projet Personnel et Professionnel",
+      "description": "Explorez vos compétences et les métiers des réseaux et des télécommunications pour construire votre projet professionnel, identifier vos objectifs et préparer vos premières démarches.",
+      "confidence": 2,
+      "aliases": [
+        "Projet Personnel et Professionnel"
+      ]
+    },
+    "R1.13": {
+      "title": "Mathématiques du signal",
+      "description": "Découvrez les outils mathématiques utilisés pour représenter les signaux, étudier leur périodicité et comprendre les grandeurs nécessaires à l’analyse des systèmes de communication.",
+      "confidence": 2,
+      "aliases": [
+        "Mathematiques du signal",
+        "Mathematiques du signal APP"
+      ]
+    },
+    "R1.14": {
+      "title": "Mathématiques des transmissions",
+      "description": "Consolidez les outils de trigonométrie, les logarithmes et les nombres complexes pour analyser les transmissions et comprendre les calculs utilisés dans les télécommunications.",
+      "confidence": 2,
+      "aliases": [
+        "Mathematiques des transmissions",
+        "Mathematiques des transmissions APP"
+      ]
+    },
+    "R3.01": {
+      "title": "Réseaux de campus",
+      "description": "Approfondissez les réseaux de campus pour configurer le routage, les VLAN et les accès, en organisant des communications adaptées aux besoins d’un réseau d’entreprise.",
+      "confidence": 2,
+      "aliases": [
+        "Reseaux de campus",
+        "Reseaux de campus APP"
+      ]
+    },
+    "R3.03": {
+      "title": "Services réseaux avancés",
+      "description": "Approfondissez les services réseau en configurant la résolution de noms et la messagerie, pour comprendre leurs protocoles et assurer les échanges entre utilisateurs et serveurs.",
+      "confidence": 2,
+      "aliases": [
+        "Services reseaux avances",
+        "Services reseaux avances APP"
+      ]
+    },
+    "R3.04": {
+      "title": "Services d’annuaires",
+      "description": "Découvrez les services d’annuaire pour organiser les utilisateurs et les ressources, comprendre leur hiérarchie et administrer les informations nécessaires au fonctionnement d’un réseau d’entreprise.",
+      "confidence": 2,
+      "aliases": [
+        "Services d'annuaires",
+        "Services d'annuaires APP"
+      ]
+    },
+    "R3.05": {
+      "title": "Chaînes de transmissions numériques",
+      "description": "Découvrez les chaînes de transmission numérique pour analyser les modulations, les signaux et les performances d’une liaison, de l’émetteur au récepteur et à son canal.",
+      "confidence": 2,
+      "aliases": [
+        "Chaines de transmissions numeriques",
+        "Chaines de transmissions numeriques APP"
+      ]
+    },
+    "R3.06": {
+      "title": "Fibres optiques et propagation",
+      "description": "Découvrez les fibres optiques et la propagation des signaux pour analyser une liaison, mesurer ses caractéristiques et comprendre les pertes ainsi que les contraintes de transmission.",
+      "confidence": 2,
+      "aliases": [
+        "Fibres optiques et propagation"
+      ]
+    },
+    "R3.08": {
+      "title": "Consolidation de la programmation",
+      "description": "Approfondissez la programmation orientée objet et le traitement des données pour structurer des applications, gérer les erreurs et organiser les échanges d’informations entre programmes.",
+      "confidence": 2,
+      "aliases": [
+        "Consolidation de la programmation",
+        "Consolidation de la programmation APP"
+      ]
+    },
+    "R3.11": {
+      "title": "Anglais professionnel 1",
+      "description": "Approfondissez votre anglais technique pour présenter des activités, comprendre des documents spécialisés et communiquer à l’oral comme à l’écrit dans un environnement professionnel.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais professionnel",
+        "Anglais professionnel 1 APP"
+      ]
+    },
+    "R3.12": {
+      "title": "Expression-Culture-Communication professionnelles : Savoir collaborer",
+      "description": "Développez vos pratiques de collaboration et de communication pour présenter des informations techniques, préparer une candidature et participer efficacement aux échanges d’une équipe professionnelle.",
+      "confidence": 2,
+      "aliases": [
+        "Expression-Culture-Communication professionnelles : Savoir collaborer"
+      ]
+    },
+    "R3.14": {
+      "title": "Analyse de Fourier",
+      "description": "Découvrez l’analyse de Fourier pour étudier le contenu fréquentiel des signaux, comprendre le filtrage et relier l’échantillonnage aux contraintes des systèmes de transmission.",
+      "confidence": 2,
+      "aliases": [
+        "Analyse de Fourier",
+        "Analyse de Fourier APP"
+      ]
+    },
+    "R3.18": {
+      "title": "Infrastructures de sécurité",
+      "description": "Découvrez les infrastructures de sécurité pour organiser les accès, utiliser des réseaux privés et comprendre le rôle des certificats, des pare-feu et des services sécurisés.",
+      "confidence": 2,
+      "aliases": [
+        "Infrastructures de sécurité APP"
+      ]
+    },
+    "R3.CYBER.16": {
+      "title": "Méthodologie du pentesting",
+      "description": "Découvrez la démarche d’un test d’intrusion dans un cadre autorisé, pour identifier des vulnérabilités, analyser leurs conséquences et présenter des recommandations de sécurité.",
+      "confidence": 2,
+      "aliases": [
+        "Methodologie du pentesting"
+      ]
+    },
+    "R5.01": {
+      "title": "WiFi avancé",
+      "description": "Approfondissez les réseaux Wi-Fi pour dimensionner une couverture, configurer les équipements et analyser les contraintes de propagation, de performance et de sécurité d’une installation.",
+      "confidence": 2,
+      "aliases": [
+        "WiFi avance APP"
+      ]
+    },
+    "R5.04": {
+      "title": "Cycle de vie d’un projet informatique",
+      "description": "Apprenez à suivre le cycle de vie d’un projet informatique pour organiser ses étapes, choisir les méthodes de travail et accompagner son évolution jusqu’à la livraison.",
+      "confidence": 2,
+      "aliases": [
+        "Cycle de vie d'un projet informatique APP"
+      ]
+    },
+    "R5.05": {
+      "title": "Anglais : Insertion professionnelle 1",
+      "description": "Préparez votre insertion professionnelle en anglais pour présenter vos compétences, participer à des échanges techniques et rédiger des documents adaptés aux démarches de recrutement.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais : Insertion professionnelle 1 APP"
+      ]
+    },
+    "R5.CYBER.09": {
+      "title": "Architectures sécurisées",
+      "description": "Approfondissez les architectures sécurisées pour organiser l’authentification, contrôler les accès et intégrer des mécanismes de détection ou de prévention des intrusions dans un système d’information.",
+      "confidence": 2,
+      "aliases": [
+        "Architectures securisees APP"
+      ]
+    },
+    "SAE1.04": {
+      "title": "Se présenter sur Internet",
+      "description": "Construisez une présentation sur Internet pour valoriser votre profil et vos réalisations, en préparant des contenus adaptés au web et à votre identité numérique.",
+      "confidence": 2,
+      "aliases": [
+        "Se presenter sur Internet"
+      ]
+    },
+    "SAE1.05": {
+      "title": "Traiter des données",
+      "description": "Traitez des données à l’aide de programmes pour extraire des informations, organiser les résultats et répondre à un besoin lié aux réseaux ou aux télécommunications.",
+      "confidence": 2,
+      "aliases": [
+        "Traiter des donnees"
+      ]
+    },
+    "SAE3.01": {
+      "title": "Mettre en oeuvre un système de transmission",
+      "description": "Mettez en œuvre un système de transmission pour préparer ses équipements, réaliser des mesures et analyser les résultats au regard des contraintes de la liaison.",
+      "confidence": 2,
+      "aliases": [
+        "Mettre en oeuvre un systeme de transmission APP"
+      ]
+    },
+    "SAE3.CYBER.04": {
+      "title": "Découvrir le pentesting",
+      "description": "Réalisez une première démarche de test d’intrusion dans un environnement autorisé, pour rechercher des vulnérabilités et rendre compte des observations ainsi que des mesures de protection.",
+      "confidence": 2,
+      "aliases": [
+        "Decouvrir le pentesting"
+      ]
+    },
+    "SAE5.01": {
+      "title": "Concevoir, réaliser et présenter une solution technique",
+      "description": "Concevez et réalisez une solution technique répondant à un besoin, en coordonnant les étapes du projet et en présentant ses choix ainsi que ses résultats.",
+      "confidence": 2,
+      "aliases": [
+        "Concevoir, realiser et presenter une solution technique APP"
+      ]
+    },
+    "SAE5.02": {
+      "title": "Piloter un projet informatique",
+      "description": "Pilotez un projet informatique en organisant les tâches, les échanges et le suivi, pour coordonner l’équipe et adapter la réalisation aux contraintes rencontrées.",
+      "confidence": 2,
+      "aliases": [
+        "Piloter un projet informatique APP"
+      ]
+    }
+  }
+}

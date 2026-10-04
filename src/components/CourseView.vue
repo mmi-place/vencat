@@ -1,155 +1,26 @@
 <script setup lang="ts">
-	import { ref, onMounted, watch } from 'vue';
-
-	import type { Module } from '@/scripts/utils';
-
-	import { toFormatHHMM, durationHHMM, getDuration, colors, modules } from '@/scripts/utils';
-	import { maxScreen } from '@/scripts/media';
-	import { focusedCourse, focusedModule, focusType, type UICourse } from '@/scripts/timetable';
-
-	const props = defineProps<{
-		course: UICourse,
-		index: number
-	}>();
-
-	const module: Module = modules.value[props.course.module] || { title: props.course.module, emoji: '', short: props.course.module, description: '', coeff: 0 };
-
-	const size = ref<number>(0)
-	const marginTop = ref<number>(0)
-	const color = ref<string[]>(colors['unknown']!)
-
-	const calcSize = () => {
-		if (maxScreen('xs')) {
-			if (props.course.type == 'pause') size.value = 0
-			else if (props.course.type == 'lunch') size.value = 64
-			else if (getDuration(props.course.start, props.course.end) >= 1.5) size.value = 112
-			else size.value = 96
-		} else {
-			let duration = getDuration(props.course.start, props.course.end)
-
-			if (duration >= 1.5 || ['lunch', 'pause'].includes(props.course.type)) size.value = 80 * getDuration(props.course.start, props.course.end) - 8 // -8 for the padding
-			else size.value = 80 - 8 // same
-		}
-	}
-
-	const calcMargin = () => {
-		if (props.index != 0) {
-			marginTop.value = 0
-			return
-		}
-
-		let morning = new Date(
-			props.course.start.getFullYear(),
-			props.course.start.getMonth(),
-			props.course.start.getDate(),
-			8
-		)
-
-		let unit = getDuration(morning, props.course.start)
-		let multiplier = maxScreen('xs') ? 0 : 80
-
-		marginTop.value = unit * multiplier
-	}
-
-	const calcColor = () => {
-		if (props.course.type == 'pause') {
-			color.value = colors['pause']!
-		} else if (props.course.end < new Date()) {
-			color.value = colors['finished']!
-		} else {
-			color.value = colors[props.course.type] || colors['unknown']!
-		}
-	}
-
-	onMounted(() => {
-		calcSize();
-		calcColor();
-		calcMargin();
-	});
-
-	watch(() => props.course, () => {
-		calcSize();
-		calcColor();
-		calcMargin();
-	}, { deep: true });
-
-	onMounted(() => {
-		document.getElementById(props.course.uid)?.addEventListener('mouseover', (e) => {
-			if (focusType.value == 'hover') focusedModule.value = props.course.module
-		});
-
-		document.getElementById(props.course.uid)?.addEventListener('mouseout', (e) => {
-			if (focusType.value == 'hover') focusedModule.value = null
-		});
-	});
+import { computed } from 'vue';
+import { ClockIcon, MapPinIcon, UserIcon, UserGroupIcon } from '@heroicons/vue/24/outline';
+import type { CourseDTO } from '../../shared/courses';
+import { campusTime } from '../../shared/calendar';
+import { courseColor, colorText, focused, preferences, history, clock } from '../scripts/calendarStore';
+const props = defineProps<{ course: CourseDTO; short?: boolean; week?: boolean; list?: boolean }>();
+const color = computed(() => courseColor(props.course));
+const past = computed(() => Date.parse(props.course.end) <= clock.value.getTime());
+const ongoing = computed(() => Date.parse(props.course.start) <= clock.value.getTime() && !past.value);
+const changed = computed(() => history.value.some(item => item.after?.uid === props.course.uid && item.after?.start === props.course.start));
+const label = computed(() => [props.course.summary, props.course.type, campusTime(props.course.start) + ' à ' + campusTime(props.course.end), props.course.location || 'Salle non renseignée', ...props.course.teachers, props.course.group].filter(Boolean).join(' · '));
 </script>
 <template>
-	<div
-		:id="course.uid"
-		:key="course.uid"
-		v-if="course.type == 'pause'"
-		class="select-none sm:py-1"
-		:style="{ marginTop: marginTop + 'px' }"
-	>
-		<div
-			:style="maxScreen('xs') ? {} : { height: size  + 'px' }"
-			class="flex gap-4 px-8"
-			:class="maxScreen('xs') ? 'items-center h-8' : 'pt-2'"
-		>
-			<div class="grow flex gap-4 items-center h-fit">
-				<div class="grow bg-white/40 rounded-full h-0.5"></div>
-				<h3 class="text-white/75 text-xs text-center">Pause de {{ durationHHMM(getDuration(course.start, course.end)) }}</h3>
-				<div class="grow bg-white/40 rounded-full h-0.5"></div>
-			</div>
-		</div>
-	</div>
-	<div
-		:id="course.uid"
-		class="select-none py-1"
-		v-else-if="course.type == 'lunch'"
-		:style="{ marginTop: marginTop + 'px' }"
-	>
-		<div
-			class="flex bg-[#ffffff20] text-white rounded-[20px] w-full overflow-hidden"
-			:style="{ cursor: maxScreen('xs') ? 'pointer' : 'default', opacity: +!!maxScreen('sm'), height: size + 'px' }"
-		>
-			<div class="w-8 h-full p-3 overflow-hidden">
-				<div class="rounded-full h-full" :style="{ backgroundColor: '#ffffff30' }"></div>
-			</div>
-			<div class="flex-1 py-2 pr-4">
-				<div class="flex items-center gap-1 h-full">
-					<div class="text-2xl">{{ module.emoji }}</div>
-					<h3 class="grow font-black line-clamp-1">{{ module.short }}</h3>
-					<span class="text-sm font-semibold line-clamp-1">{{ toFormatHHMM(new Date(course.start)) }} - {{ toFormatHHMM(new Date(course.end)) }}</span>
-				</div>
-			</div>
-		</div>
-	</div>
-	<div
-		:id="course.uid"
-		class="select-none duration-500 py-1 hover:scale-102"
-		:class="course.hidden ? 'opacity-25' : ''"
-		v-else
-		:style="{ marginTop: marginTop + 'px' }"
-	>
-		<div class="cursor-pointer flex text-white rounded-[20px] w-full overflow-hidden" :style="{ backgroundColor: props.course.end < new Date() ? '#ffffff30' : color[3], color: 'white', height: size + 'px' }" v-on:click="focusedCourse = course">
-			<div class="w-8 h-full p-3 overflow-hidden">
-				<div class="rounded-full h-full" :style="{ backgroundColor: props.course.end < new Date() ? '#ffffff50' : color[2], opacity: .5 }"></div>
-			</div>
-			<div class="flex-1 py-2 pr-4">
-				<div class="flex items-center gap-2">
-					<span class="shrink-0 bg-slate-950/5 text-xs font-semibold truncate rounded-lg max-w-18 px-2 py-1" :style="{ backgroundColor: props.course.end < new Date() ? '#ffffff30' : (color[2] + '30') }">{{ course.location.split('-')[0]!.trim() || "Salle Inconnue" }}</span>
-					<span class="flex-1 text-xs text-center font-semibold py-1">{{ module.emoji }} {{ course.module }}</span>
-					<span class="text-xs font-semibold line-clamp-1">{{ toFormatHHMM(new Date(course.start)) }} - {{ toFormatHHMM(new Date(course.end)) }}</span>
-				</div>
-				<div class="py-0.5 -space-y-1">
-					<h3 class="text-[17px] font-bold line-clamp-1">{{ module.short }}</h3>
-					<span v-if="getDuration(course.start, course.end) >= 1.5 || maxScreen('xs')" class="text-sm font-semibold line-clamp-1">
-						<span v-if="course.teachers.length == 1">{{ course.teachers[0] }}</span>
-						<span v-else>{{ course.teachers.length }} intervenants</span>
-					</span>
-				</div>
-			</div>
-		</div>
-	</div>
+<button class="course" :class="{ 'past-course': past, 'ongoing-course': ongoing, 'list-course': list, 'week-course': week, 'short-course': short, 'full-course': preferences.density === 'full' }" :style="{ '--course-color': color, '--course-ink': colorText(color), '--course-light-ink': colorText(color) === '#000000' ? '#172033' : color }" :aria-label="label" :title="label" @click="focused = course">
+  <span class="course-stripe" aria-hidden="true"></span>
+  <span class="course-content">
+    <span class="course-meta"><span class="course-type">{{ course.type === 'inconnu' ? 'Cours' : course.type }}</span><span v-if="changed" class="change-label">Modifié</span><span v-if="course.module && course.module !== course.summary" class="course-module">{{ course.module }}</span></span>
+    <span class="course-time"><ClockIcon aria-hidden="true" /><span>{{ campusTime(course.start) }}–{{ campusTime(course.end) }}</span></span>
+    <strong class="course-title">{{ course.summary }}</strong>
+    <span class="course-room"><MapPinIcon aria-hidden="true" /><span>{{ course.location || 'Salle non renseignée' }}</span></span>
+    <span v-if="preferences.density === 'full'" class="course-teachers"><UserIcon aria-hidden="true" /><span>{{ course.teachers.join(', ') || 'Enseignant non renseigné' }}</span></span>
+    <span v-if="preferences.density === 'full' && course.group" class="course-group"><UserGroupIcon aria-hidden="true" /><span>{{ course.group }}</span></span>
+  </span>
+</button>
 </template>

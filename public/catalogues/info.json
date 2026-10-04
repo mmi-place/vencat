@@ -1,0 +1,337 @@
+{
+  "department": "INF",
+  "version": 2,
+  "entries": {
+    "R1.01": {
+      "title": "Initiation au développement",
+      "description": "Découvrez les bases de l’algorithmique et de la programmation pour écrire des traitements simples, utiliser les structures de contrôle et développer des habitudes de codage rigoureuses.",
+      "confidence": 2,
+      "aliases": [
+        "Initiation au developpement"
+      ]
+    },
+    "R1.02": {
+      "title": "Développement d’interfaces web",
+      "description": "Apprenez à concevoir des interfaces web en préparant des maquettes, puis en réalisant des pages structurées et mises en forme pour répondre aux besoins des utilisateurs.",
+      "confidence": 2,
+      "aliases": [
+        "Developpement d'interfaces web"
+      ]
+    },
+    "R1.03": {
+      "title": "Introduction à l’architecture des ordinateurs",
+      "description": "Découvrez l’organisation d’un ordinateur et le codage de l’information pour comprendre les échanges entre ses composants et le fonctionnement des représentations binaires.",
+      "confidence": 2,
+      "aliases": [
+        "Introduction a l'architecture des ordinateurs"
+      ]
+    },
+    "R1.04": {
+      "title": "Introduction aux systèmes d’exploitation et à leur fonctionnement",
+      "description": "Découvrez le fonctionnement des systèmes d’exploitation pour installer un environnement, utiliser les commandes et gérer les fichiers ainsi que les comptes d’utilisateurs.",
+      "confidence": 2,
+      "aliases": [
+        "Introduction aux systemes d'exploitation et a leur fonctionnement"
+      ]
+    },
+    "R1.05": {
+      "title": "Introduction aux bases de données et SQL",
+      "description": "Apprenez à modéliser des données et à utiliser SQL pour créer une base relationnelle, interroger son contenu et répondre aux besoins d’une application.",
+      "confidence": 2,
+      "aliases": [
+        "Introduction aux bases de donnees et SQL"
+      ]
+    },
+    "R1.06": {
+      "title": "Mathématiques discrètes",
+      "description": "Découvrez la logique, les ensembles et les relations pour formaliser des problèmes informatiques, comprendre les raisonnements discrets et construire des solutions rigoureuses.",
+      "confidence": 2,
+      "aliases": [
+        "Mathematiques discretes"
+      ]
+    },
+    "R1.07": {
+      "title": "Outils mathématiques fondamentaux",
+      "description": "Consolidez vos connaissances sur les fonctions, les polynômes et les matrices pour utiliser les outils mathématiques nécessaires à la résolution de problèmes informatiques.",
+      "confidence": 2,
+      "aliases": []
+    },
+    "R1.08": {
+      "title": "Introduction à la gestion des organisations",
+      "description": "Découvrez le fonctionnement des organisations et leurs stratégies pour comprendre le rôle des systèmes d’information et les effets de la transformation numérique sur leurs activités.",
+      "confidence": 2,
+      "aliases": [
+        "Introduction a la gestion des organisations"
+      ]
+    },
+    "R1.09": {
+      "title": "Introduction à l’économie durable et numérique",
+      "description": "Découvrez les acteurs et les modèles de l’économie numérique pour comprendre les marchés, la place des données et les enjeux du développement durable.",
+      "confidence": 2,
+      "aliases": [
+        "Introduction a l'economie durable et numerique"
+      ]
+    },
+    "R1.10": {
+      "title": "Anglais",
+      "description": "Développez votre anglais en travaillant le vocabulaire informatique, la compréhension de documents et les présentations orales, pour communiquer dans un contexte technique et professionnel.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais"
+      ]
+    },
+    "R1.11": {
+      "title": "Bases de la communication",
+      "description": "Apprenez à analyser et synthétiser des informations, préparer un document et prendre la parole, pour transmettre un message clair dans un contexte universitaire ou professionnel.",
+      "confidence": 2,
+      "aliases": [
+        "Bases de la communication"
+      ]
+    },
+    "R1.12": {
+      "title": "Projet professionnel et personnel",
+      "description": "Explorez vos intérêts, vos compétences et les métiers de l’informatique pour commencer à construire votre projet personnel et professionnel et préparer vos premières démarches.",
+      "confidence": 2,
+      "aliases": [
+        "Projet professionnel et personnel"
+      ]
+    },
+    "R3.01": {
+      "title": "Développement web",
+      "description": "Approfondissez la programmation web pour développer une application à partir de spécifications, organiser ses traitements et prendre en compte les exigences de sécurité.",
+      "confidence": 2,
+      "aliases": [
+        "Developpement web",
+        "Developpement web APP"
+      ]
+    },
+    "R3.02": {
+      "title": "Développement efficace",
+      "description": "Apprenez à choisir des structures de données et des algorithmes adaptés pour améliorer l’efficacité d’un programme et analyser les performances des solutions envisagées.",
+      "confidence": 2,
+      "aliases": [
+        "Developpement efficace",
+        "Developpement efficace APP"
+      ]
+    },
+    "R3.03": {
+      "title": "Analyse",
+      "description": "Apprenez à recueillir et formaliser les besoins d’un logiciel, en décrivant les exigences, les cas d’utilisation et les scénarios nécessaires à sa conception.",
+      "confidence": 2,
+      "aliases": [
+        "Analyse",
+        "Analyse APP"
+      ]
+    },
+    "R3.04": {
+      "title": "Qualité de développement",
+      "description": "Approfondissez la qualité logicielle en travaillant l’architecture, les patrons de conception et les tests, pour améliorer la structure et la maintenance d’un programme.",
+      "confidence": 2,
+      "aliases": [
+        "Qualite de developpement",
+        "Qualite de developpement APP"
+      ]
+    },
+    "R3.05": {
+      "title": "Programmation système",
+      "description": "Découvrez la programmation système pour manipuler les processus et les mécanismes de bas niveau, puis comprendre les échanges nécessaires aux applications et aux services.",
+      "confidence": 2,
+      "aliases": [
+        "Programmation systeme",
+        "Programmation systeme APP"
+      ]
+    },
+    "R3.06": {
+      "title": "Architecture des réseaux",
+      "description": "Découvrez l’architecture des réseaux et leurs protocoles pour comprendre les échanges entre machines, l’interconnexion des équipements et le fonctionnement des services de communication.",
+      "confidence": 2,
+      "aliases": [
+        "Architecture des reseaux"
+      ]
+    },
+    "R3.08": {
+      "title": "Probabilités",
+      "description": "Découvrez les lois de probabilité et leurs applications pour modéliser des phénomènes aléatoires, interpréter des résultats et utiliser un raisonnement adapté aux problèmes informatiques.",
+      "confidence": 2,
+      "aliases": [
+        "Probabilites",
+        "Probabilites APP"
+      ]
+    },
+    "R3.10": {
+      "title": "Management des systèmes d’information",
+      "description": "Apprenez à analyser et organiser un système d’information en utilisant les processus et les méthodes agiles, pour coordonner une équipe et suivre un projet.",
+      "confidence": 2,
+      "aliases": [
+        "Management des systemes d'information",
+        "Management des systemes d'information APP"
+      ]
+    },
+    "R3.11": {
+      "title": "Droit des contrats et du numérique",
+      "description": "Découvrez les contrats informatiques et les règles du numérique pour comprendre la protection de la vie privée, les créations numériques et les obligations liées à la cybersécurité.",
+      "confidence": 2,
+      "aliases": [
+        "Droit des contrats et du numerique",
+        "Droit des contrats et du numerique APP"
+      ]
+    },
+    "R3.12": {
+      "title": "Anglais",
+      "description": "Approfondissez votre anglais professionnel pour présenter des projets informatiques, comprendre des documents techniques et échanger sur vos compétences dans un contexte international et professionnel.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais",
+        "Anglais APP"
+      ]
+    },
+    "R3.13": {
+      "title": "Communication professionnelle",
+      "description": "Développez votre communication professionnelle pour préparer une candidature, présenter votre travail et vulgariser des informations techniques auprès de publics différents, à l’oral comme à l’écrit.",
+      "confidence": 2,
+      "aliases": [
+        "Communication professionnelle"
+      ]
+    },
+    "R3.14": {
+      "title": "Projet personnel et professionnel",
+      "description": "Précisez votre orientation et vos objectifs professionnels en analysant vos compétences, les métiers et vos expériences, pour préparer vos démarches dans le secteur informatique.",
+      "confidence": 2,
+      "aliases": [
+        "Projet personnel et professionnel"
+      ]
+    },
+    "R5.01": {
+      "title": "Initiation au management d’une équipe de projet informatique",
+      "description": "Découvrez le management d’une équipe informatique pour répartir les compétences, favoriser la collaboration et suivre la performance collective en tenant compte des contraintes du projet.",
+      "confidence": 2,
+      "aliases": [
+        "Initiation au management d'une equipe de projet informatique",
+        "Initiation au management d'une equipe de projet informatique APP"
+      ]
+    },
+    "R5.02": {
+      "title": "Projet personnel et professionnel",
+      "description": "Préparez votre insertion professionnelle en précisant votre plan de carrière, vos compétences et votre réseau, pour adopter une posture adaptée aux métiers de l’informatique.",
+      "confidence": 2,
+      "aliases": [
+        "Projet personnel et professionnel",
+        "Projet personnel et professionnel / Projet personnel et professionnel APP"
+      ]
+    },
+    "R5.03": {
+      "title": "Politique de communication",
+      "description": "Apprenez à définir une politique de communication en organisant la veille, les réunions et les échanges, pour transmettre les informations utiles au fonctionnement d’un projet.",
+      "confidence": 2,
+      "aliases": [
+        "Politique de communication",
+        "Politique de communication APP"
+      ]
+    },
+    "R5.REAL.04": {
+      "title": "Qualité algorithmique",
+      "description": "Approfondissez l’analyse des algorithmes pour mesurer leur complexité, identifier les limites d’une solution et améliorer les performances d’un programme à l’aide d’indicateurs adaptés.",
+      "confidence": 2,
+      "aliases": [
+        "Qualite algorithmique",
+        "Qualite algorithmique APP"
+      ]
+    },
+    "R5.REAL.05": {
+      "title": "Programmation avancée",
+      "description": "Approfondissez vos pratiques de programmation en utilisant des outils et des frameworks avancés, pour organiser le développement et réaliser des applications adaptées à leurs contraintes.",
+      "confidence": 2,
+      "aliases": [
+        "Programmation avancee",
+        "Programmation avancee APP"
+      ]
+    },
+    "R5.REAL.08": {
+      "title": "Qualité de développement",
+      "description": "Approfondissez la qualité du développement en travaillant la robustesse, la documentation et les revues de code, pour rendre une application plus sûre et maintenable.",
+      "confidence": 2,
+      "aliases": [
+        "Qualite de developpement",
+        "Qualite de developpement APP"
+      ]
+    },
+    "R5.REAL.09": {
+      "title": "Virtualisation avancée",
+      "description": "Approfondissez la virtualisation pour organiser des environnements isolés, utiliser les conteneurs et préparer des configurations adaptées au développement ainsi qu’au fonctionnement des applications.",
+      "confidence": 2,
+      "aliases": [
+        "Virtualisation avancee",
+        "Virtualisation avancee APP"
+      ]
+    },
+    "R5.REAL.10": {
+      "title": "Nouveaux paradigmes de base de données",
+      "description": "Découvrez les modèles de bases de données non relationnelles pour choisir une organisation adaptée aux données, comprendre leurs usages et comparer les approches de stockage.",
+      "confidence": 2,
+      "aliases": [
+        "Nouveaux paradigmes de base de donnees",
+        "Nouveaux paradigmes de base de donnees APP"
+      ]
+    },
+    "R5.REAL.11": {
+      "title": "Méthodes d’optimisation pour l’aide à la décision",
+      "description": "Découvrez les méthodes d’optimisation et les heuristiques pour formaliser un problème de décision, comparer des solutions et rechercher une réponse adaptée aux contraintes rencontrées.",
+      "confidence": 2,
+      "aliases": [
+        "Methodes d'optimisation pour l'aide a la decision",
+        "Methodes d'optimisation pour l'aide a la decision APP"
+      ]
+    },
+    "R5.REAL.12": {
+      "title": "Modélisations mathématiques",
+      "description": "Apprenez à construire et exploiter des modèles mathématiques pour représenter un problème appliqué, choisir les hypothèses et interpréter les résultats dans un contexte informatique.",
+      "confidence": 2,
+      "aliases": [
+        "Modelisations mathematiques",
+        "Modelisations mathematiques APP"
+      ]
+    },
+    "R5.REAL.13": {
+      "title": "Économie durable et numérique",
+      "description": "Approfondissez les modèles économiques du numérique et leurs coûts pour comprendre les enjeux de confiance, de développement durable et de responsabilité dans les projets informatiques.",
+      "confidence": 2,
+      "aliases": [
+        "Economie durable et numerique",
+        "Economie durable et numerique APP"
+      ]
+    },
+    "R5.REAL.14": {
+      "title": "Anglais",
+      "description": "Développez votre anglais pour travailler en équipe, participer à des réunions et rédiger des documents informatiques, en adaptant votre expression aux situations professionnelles.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais",
+        "Anglais APP"
+      ]
+    },
+    "SAE1.03": {
+      "title": "Installation d’un poste pour le développement",
+      "description": "Installez et configurez un poste de développement pour préparer un environnement utilisable, vérifier ses outils et documenter les choix nécessaires à la réalisation d’applications.",
+      "confidence": 2,
+      "aliases": [
+        "Installation d'un poste pour le developpement"
+      ]
+    },
+    "SAE3.A.01": {
+      "title": "Développement d’une application",
+      "description": "Développez une application répondant aux besoins d’un client, en organisant sa conception, ses données et son serveur, puis en vérifiant la qualité du résultat.",
+      "confidence": 2,
+      "aliases": [
+        "Developpement d'une application"
+      ]
+    },
+    "SAE5.REAL.01": {
+      "title": "Développement avancé",
+      "description": "Réalisez un développement avancé en équipe pour répondre à des besoins complexes, coordonner les étapes du projet et produire une application dont la qualité est vérifiée.",
+      "confidence": 2,
+      "aliases": [
+        "Developpement avance"
+      ]
+    }
+  }
+}

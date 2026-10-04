@@ -1,35 +1,13 @@
 <script setup lang="ts">
-import { watch, onMounted } from "vue";
-import { RouterView } from "vue-router";
-
-import { backgroundViewMode } from "@/scripts/logic";
-
-const updateBackground = (newMode: string) => {
-	const body = document.body;
-
-	switch (newMode) {
-		case "image":
-			body.className = "bg-image"
-			break;
-		case "image-darker":
-			body.className = "bg-image-darker"
-			break;
-		case "image-blurried":
-			body.className = "bg-image-blurried"
-			break;
-		case "unified":
-			body.className = "bg-unified"
-			break;
-	}
-};
-
-
-onMounted(() => {
-	updateBackground(backgroundViewMode.value);
-});
-
-watch(backgroundViewMode, updateBackground);
+import { watch } from 'vue';
+import { RouterView } from 'vue-router';
+import { preferences } from './scripts/calendarStore';
+import { backgroundStyle } from './scripts/appearance';
+import { effectiveTheme } from './scripts/theme';
+watch([() => preferences.value.background, effectiveTheme], ([background, theme]) => {
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.setProperty('--app-background', backgroundStyle(background, theme));
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f4f5f8' : '#020618');
+}, { immediate: true });
 </script>
-<template>
-	<RouterView />
-</template>
+<template><RouterView /></template>

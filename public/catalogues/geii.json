@@ -1,0 +1,374 @@
+{
+  "department": "GEII",
+  "version": 2,
+  "entries": {
+    "R1.01": {
+      "title": "Anglais",
+      "description": "Développez votre anglais général, scientifique et technique pour comprendre des documents, présenter des informations et communiquer dans les situations universitaires ainsi que professionnelles.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais"
+      ]
+    },
+    "R1.02": {
+      "title": "Culture et Communication",
+      "description": "Développez votre culture et vos compétences de communication pour analyser des informations, rédiger des documents et présenter un travail de manière claire à différents publics.",
+      "confidence": 2,
+      "aliases": [
+        "Culture et Communication"
+      ]
+    },
+    "R1.03": {
+      "title": "Vie de l’Entreprise : introduction à la gestion de projet",
+      "description": "Découvrez la gestion de projet pour analyser un besoin, préparer un cahier des charges et planifier une réalisation en tenant compte des ressources et des contraintes.",
+      "confidence": 2,
+      "aliases": [
+        "Vie de l’Entreprise : introduction a la gestion de projet"
+      ]
+    },
+    "R1.04": {
+      "title": "Outils Mathématiques et Logiciels",
+      "description": "Consolidez les outils mathématiques et logiciels pour représenter des fonctions et des signaux, utiliser les nombres complexes et analyser les grandeurs rencontrées en génie électrique.",
+      "confidence": 2,
+      "aliases": [
+        "Outils Mathematiques et Logiciels"
+      ]
+    },
+    "R1.06": {
+      "title": "Intégration à l’Université",
+      "description": "Découvrez les méthodes de travail universitaire pour organiser vos apprentissages, développer votre autonomie et coopérer avec les autres étudiants dans les activités de la formation.",
+      "confidence": 2,
+      "aliases": [
+        "Integration a l’Universite"
+      ]
+    },
+    "R1.07": {
+      "title": "Automatisme",
+      "description": "Découvrez les bases de l’automatisme industriel et de la logique combinatoire pour comprendre les fonctions d’un système et préparer sa commande par un automate programmable.",
+      "confidence": 2,
+      "aliases": [
+        "Automatisme"
+      ]
+    },
+    "R1.08": {
+      "title": "Informatique",
+      "description": "Découvrez l’algorithmique et la programmation pour utiliser les variables, les tableaux et les fonctions, puis réaliser des traitements simples adaptés aux besoins techniques.",
+      "confidence": 2,
+      "aliases": [
+        "Informatique"
+      ]
+    },
+    "R1.09": {
+      "title": "Electronique",
+      "description": "Découvrez les composants et les circuits électroniques pour comprendre leur fonctionnement, analyser des grandeurs électriques et préparer la conception ainsi que la vérification d’un montage.",
+      "confidence": 2,
+      "aliases": [
+        "Electronique"
+      ]
+    },
+    "R1.10": {
+      "title": "Energie",
+      "description": "Découvrez les grandeurs et les alimentations électriques pour réaliser des mesures, comprendre les échanges d’énergie et appliquer les principes de sécurité des personnes et des équipements.",
+      "confidence": 2,
+      "aliases": [
+        "Energie"
+      ]
+    },
+    "R1.11": {
+      "title": "Physique Appliquée : Métrologie et Thermique",
+      "description": "Découvrez la métrologie et les phénomènes thermiques pour réaliser des mesures, comprendre leurs limites et analyser les grandeurs physiques rencontrées dans les systèmes électriques.",
+      "confidence": 2,
+      "aliases": [
+        "Physique Appliquee : Metrologie et Thermique"
+      ]
+    },
+    "R3.01": {
+      "title": "Anglais",
+      "description": "Approfondissez votre anglais scientifique et professionnel pour comprendre des documents spécialisés, présenter des activités techniques et échanger dans les situations rencontrées en entreprise.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais",
+        "Anglais APP"
+      ]
+    },
+    "R3.02": {
+      "title": "Culture et communication",
+      "description": "Développez votre communication professionnelle et votre veille pour présenter des informations techniques, travailler en équipe et adapter vos échanges à différents interlocuteurs et contextes.",
+      "confidence": 2,
+      "aliases": [
+        "Culture et communication",
+        "Culture et communication APP"
+      ]
+    },
+    "R3.03": {
+      "title": "Vie de l’Entreprise : Environnement éco-socio-technologique de l’entreprise, normalisation, réglementation REP",
+      "description": "Découvrez l’environnement économique et social de l’entreprise, les normes et les réglementations pour comprendre les responsabilités associées aux activités et aux productions industrielles.",
+      "confidence": 2,
+      "aliases": [
+        "Vie de l’Entreprise : Environnement eco-socio-technologique de l’entreprise, normalisation, reglementation REP",
+        "Vie de l’Entreprise : Environnement eco-socio-technologique de l’entreprise, normalisation, reglementation REP APP"
+      ]
+    },
+    "R3.04": {
+      "title": "Outils Mathématiques et Logiciels",
+      "description": "Approfondissez les outils mathématiques du traitement des signaux pour utiliser l’analyse fréquentielle, comprendre l’échantillonnage et étudier des systèmes à l’aide de représentations adaptées.",
+      "confidence": 2,
+      "aliases": [
+        "Outils Mathematiques et Logiciels",
+        "Outils Mathematiques et Logiciels APP"
+      ]
+    },
+    "R3.05": {
+      "title": "Projet Personnel et Professionnel",
+      "description": "Précisez votre projet professionnel en analysant vos compétences et les métiers du génie électrique, pour préparer votre orientation et vos démarches auprès des entreprises.",
+      "confidence": 2,
+      "aliases": [
+        "Projet Personnel et Professionnel",
+        "Projet Personnel et Professionnel APP"
+      ]
+    },
+    "R3.06": {
+      "title": "Automatique",
+      "description": "Découvrez la modélisation et la commande des systèmes pour analyser leur comportement, étudier leurs réponses et comprendre les principes de régulation utilisés en automatique.",
+      "confidence": 2,
+      "aliases": [
+        "Automatique",
+        "Automatique APP"
+      ]
+    },
+    "R3.07": {
+      "title": "Informatique Industrielle",
+      "description": "Approfondissez la programmation des systèmes industriels pour utiliser les microcontrôleurs, leurs périphériques et leurs communications, en reliant les traitements logiciels aux équipements matériels.",
+      "confidence": 2,
+      "aliases": [
+        "Informatique Industrielle",
+        "Informatique Industrielle APP"
+      ]
+    },
+    "R3.08": {
+      "title": "Electronique",
+      "description": "Approfondissez l’analyse et la mise en œuvre de circuits électroniques pour comprendre leurs fonctions, exploiter les mesures et vérifier leur comportement dans un système technique.",
+      "confidence": 2,
+      "aliases": [
+        "Electronique",
+        "Electronique APP"
+      ]
+    },
+    "R3.09": {
+      "title": "Energie",
+      "description": "Découvrez la conversion et le stockage de l’énergie électrique pour comprendre les alimentations, les machines et les dispositifs de variation de vitesse utilisés dans les systèmes.",
+      "confidence": 2,
+      "aliases": [
+        "Energie",
+        "Energie APP"
+      ]
+    },
+    "R3.10": {
+      "title": "Physique Appliquée : Mécanique et Propagation guidée",
+      "description": "Découvrez la mécanique et la propagation guidée pour analyser les mouvements, les efforts et les transmissions de signaux dans les câbles ou les fibres optiques.",
+      "confidence": 2,
+      "aliases": [
+        "Physique Appliquee : Mecanique et Propagation guidee",
+        "Physique Appliquee : Mecanique et Propagation guidee / Physique Appliquee : Mecanique et Propagation guidee APP",
+        "Physique Appliquee : Mecanique et Propagation guidee APP"
+      ]
+    },
+    "R3.11": {
+      "title": "Maintenance",
+      "description": "Découvrez les méthodes de maintenance pour analyser un dysfonctionnement, organiser un diagnostic et choisir les outils nécessaires à la remise en état d’un système technique.",
+      "confidence": 2,
+      "aliases": [
+        "Maintenance",
+        "Maintenance APP"
+      ]
+    },
+    "R3.12": {
+      "title": "Généralités sur les réseaux et la cybersécurité",
+      "description": "Découvrez les réseaux et les principes de cybersécurité pour comprendre les échanges entre équipements, les protocoles et les moyens de protection d’une installation industrielle.",
+      "confidence": 2,
+      "aliases": [
+        "Generalites sur les reseaux et la cybersecurite",
+        "Generalites sur les reseaux et la cybersecurite APP"
+      ]
+    },
+    "R3.AII.14": {
+      "title": "Réseaux spécialisés AII et EME",
+      "description": "Découvrez les communications entre équipements industriels pour installer un réseau, comprendre les échanges de données et diagnostiquer les défauts rencontrés sur une installation.",
+      "confidence": 2,
+      "aliases": [
+        "Bus Communication",
+        "Bus communication"
+      ]
+    },
+    "R3.ESE.16": {
+      "title": "Electronique spécialisée",
+      "description": "Approfondissez l’électronique spécialisée pour analyser les fonctions d’un système, choisir ses composants et vérifier les performances des montages au regard des besoins techniques.",
+      "confidence": 2,
+      "aliases": [
+        "Électronique spécialisée"
+      ]
+    },
+    "R5.01": {
+      "title": "Anglais",
+      "description": "Développez votre anglais spécialisé pour communiquer en entreprise, présenter des solutions techniques et travailler avec des interlocuteurs internationaux, en adaptant votre expression aux situations professionnelles.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais APP"
+      ]
+    },
+    "R5.02": {
+      "title": "Culture et Communication",
+      "description": "Approfondissez votre communication professionnelle pour produire des documents techniques, présenter un projet et faciliter les échanges ainsi que la cohésion d’une équipe dans un environnement industriel.",
+      "confidence": 2,
+      "aliases": [
+        "Culture et Communication APP"
+      ]
+    },
+    "R5.03": {
+      "title": "Vie de l’Entreprise : Entrepreneuriat social, innovation sociale, RSE, intelligence écono- mique",
+      "description": "Découvrez l’entrepreneuriat social, la responsabilité des entreprises et l’intelligence économique pour comprendre les formes d’innovation et leurs effets sur les activités ainsi que sur la société.",
+      "confidence": 2,
+      "aliases": [
+        "Vie de l’Entreprise : Entrepreneuriat social, innovation sociale, RSE, intelligence economique APP"
+      ]
+    },
+    "R5.04": {
+      "title": "Outils Mathématiques et Logiciels",
+      "description": "Approfondissez les méthodes mathématiques et leurs outils logiciels pour modéliser des problèmes techniques, exploiter des calculs et interpréter les résultats dans les applications du génie électrique.",
+      "confidence": 2,
+      "aliases": [
+        "Outils Mathematiques et Logiciels APP"
+      ]
+    },
+    "R5.05": {
+      "title": "Projet Personnel et Professionnel",
+      "description": "Préparez votre insertion professionnelle en valorisant vos compétences et vos expériences, pour préciser votre orientation et construire des démarches adaptées aux métiers du génie électrique.",
+      "confidence": 2,
+      "aliases": [
+        "Projet Personnel et Professionnel APP"
+      ]
+    },
+    "R5.06": {
+      "title": "Maintenance",
+      "description": "Approfondissez l’organisation de la maintenance pour établir des procédures, préparer un plan d’intervention et analyser les coûts nécessaires au maintien en fonctionnement d’un système industriel.",
+      "confidence": 2,
+      "aliases": [
+        "Maintenance APP"
+      ]
+    },
+    "R5.07": {
+      "title": "Base de données",
+      "description": "Découvrez les bases de données et les requêtes SQL pour organiser des informations techniques, exploiter les données d’un système et répondre aux besoins d’une application industrielle.",
+      "confidence": 2,
+      "aliases": [
+        "Base de donnees APP"
+      ]
+    },
+    "R5.08": {
+      "title": "Physique Appliquée : CEM",
+      "description": "Découvrez la compatibilité électromagnétique pour analyser les perturbations, comprendre leurs couplages et choisir des moyens de protection adaptés aux systèmes ainsi qu’aux équipements électroniques.",
+      "confidence": 2,
+      "aliases": [
+        "Physique Appliquee : CEM APP"
+      ]
+    },
+    "R5.AII.09": {
+      "title": "Energie spécialisée",
+      "description": "Approfondissez l’efficacité énergétique des installations pour dimensionner des sources et du stockage d’énergie, analyser les consommations et comprendre la gestion électrique des bâtiments.",
+      "confidence": 2,
+      "aliases": [
+        "Energie specialisee APP"
+      ]
+    },
+    "R5.AII.10": {
+      "title": "Informatique spécialisée",
+      "description": "Approfondissez la programmation orientée objet et les bases de données pour organiser les informations et les traitements nécessaires au fonctionnement d’un système automatisé.",
+      "confidence": 2,
+      "aliases": [
+        "Informatique specialisee"
+      ]
+    },
+    "R5.AII.11": {
+      "title": "Réseaux et Supervision avancés",
+      "description": "Découvrez les réseaux industriels avancés et les objets connectés pour organiser les communications, intégrer des capteurs et remonter leurs données vers une supervision ou des services.",
+      "confidence": 2,
+      "aliases": [
+        "Cours Magistraux (CM)",
+        "Travaux Dirigés (TD)",
+        "Travaux Pratiques (TP)"
+      ]
+    },
+    "R5.AII.12": {
+      "title": "Industrie du futur",
+      "description": "Découvrez les technologies de l’industrie du futur pour comprendre l’intégration de systèmes industriels, analyser leurs évolutions et identifier leurs usages dans les procédés de production.",
+      "confidence": 2,
+      "aliases": [
+        "Industrie du futur-Robotique Industrielle APP"
+      ]
+    },
+    "R5.ESE.09": {
+      "title": "Electronique spécialisée",
+      "description": "Approfondissez la conception et la vérification de circuits électroniques complexes pour organiser leurs fonctions, analyser les signaux et tester leurs performances dans un système embarqué.",
+      "confidence": 2,
+      "aliases": [
+        "Electronique specialisee-Transmissions numeriques APP"
+      ]
+    },
+    "R5.ESE.10": {
+      "title": "Systèmes embarqués",
+      "description": "Approfondissez les systèmes embarqués pour relier le logiciel aux composants matériels, organiser leurs échanges et développer une application adaptée aux contraintes d’un équipement électronique.",
+      "confidence": 2,
+      "aliases": [
+        "Systemes embarques - Informatique embarquee et applications APP"
+      ]
+    },
+    "SAE3.02ESE": {
+      "title": "Implantation d’une chaîne d’acquisition ou de restitution sur un système électronique",
+      "description": "Implantez une chaîne d’acquisition ou de restitution sur un système électronique, en associant ses composants et ses traitements pour répondre aux exigences du projet.",
+      "confidence": 2,
+      "aliases": [
+        "Implantation d’une chaine d’acquisition et/ou de restitution sur un systeme electronique en associant les circ"
+      ]
+    },
+    "SAE3.03ESE": {
+      "title": "Vérification et maintenance d’un système électronique et systèmes embarqués",
+      "description": "Vérifiez et maintenez un système électronique ou embarqué en préparant les essais, en analysant les résultats et en réalisant un diagnostic adapté aux défauts observés.",
+      "confidence": 2,
+      "aliases": [
+        "Verification et maintenance d’un systeme electronique et systemes embarques"
+      ]
+    },
+    "SAE3.AII.01": {
+      "title": "Intégration et programmation d’un système automatisé dans le mode de fonctionnement normal",
+      "description": "Intégrez et programmez un système automatisé pour assurer son fonctionnement normal, en préparant les échanges entre équipements et en vérifiant les résultats obtenus.",
+      "confidence": 2,
+      "aliases": [
+        "Integration et programmation d’un systeme automatise dans le mode de fonctionnement normal"
+      ]
+    },
+    "SAE3.AII.02": {
+      "title": "Vérification et maintenance d’un système automatisé",
+      "description": "Vérifiez et maintenez un système automatisé en organisant les essais, en recherchant les défauts et en préparant les interventions nécessaires à son fonctionnement.",
+      "confidence": 2,
+      "aliases": [
+        "Verification et maintenance d’un systeme automatise"
+      ]
+    },
+    "SAE5.AII.01": {
+      "title": "Intégration d’outils communicants et numériques dans un système automatisé industriel",
+      "description": "Intégrez des outils communicants et numériques dans un système industriel automatisé, en organisant les échanges de données et en vérifiant le fonctionnement de l’ensemble.",
+      "confidence": 2,
+      "aliases": [
+        "Integration d’outils communicants et numeriques dans un systeme automatise industriel APP"
+      ]
+    },
+    "SAE5.ESE.01": {
+      "title": "Mettre en œuvre un système électronique et/ou embarqué spécifique",
+      "description": "Mettez en œuvre un système électronique ou embarqué spécifique en coordonnant sa conception, ses traitements et ses essais pour répondre aux contraintes du projet.",
+      "confidence": 2,
+      "aliases": [
+        "Mettre en œuvre un systeme electronique et/ou embarque specifique APP"
+      ]
+    }
+  }
+}

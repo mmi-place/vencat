@@ -1,0 +1,818 @@
+{
+  "department": "MMI",
+  "version": 2,
+  "entries": {
+    "R1.01": {
+      "title": "Anglais",
+      "description": "Développez votre compréhension et votre expression en anglais, à l’oral comme à l’écrit, pour échanger sur les médias et les usages numériques.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais"
+      ]
+    },
+    "R1.02": {
+      "title": "Anglais Renforcé ou LV2",
+      "description": "Renforcez votre pratique d’une langue vivante en travaillant la compréhension et l’expression, pour communiquer dans des situations liées aux médias et au numérique.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais Renforce ou LV2"
+      ]
+    },
+    "R1.03": {
+      "title": "Ergonomie et Accessibilité",
+      "description": "Découvrez les principes de l’ergonomie et de l’accessibilité numérique pour évaluer des interfaces, comprendre leurs utilisateurs et identifier des pistes d’amélioration.",
+      "confidence": 2,
+      "aliases": [
+        "Ergonomie & Accessibilite",
+        "Ergonomie et Accessibilité"
+      ]
+    },
+    "R1.04": {
+      "title": "Culture numérique",
+      "description": "Explorez l’histoire d’Internet, les usages numériques et leurs effets sur la société pour mieux comprendre les médias et leurs publics.",
+      "confidence": 2,
+      "aliases": [
+        "Culture Numérique",
+        "Culture numerique"
+      ]
+    },
+    "R1.05": {
+      "title": "Stratégies de communication et marketing",
+      "description": "Découvrez les bases du marketing et de la communication pour analyser une organisation, identifier ses publics et comprendre ses choix de diffusion.",
+      "confidence": 2,
+      "aliases": [
+        "Strategies de communication et marketing",
+        "Stratégies de Communication"
+      ]
+    },
+    "R1.06": {
+      "title": "Expression, communication et rhétorique",
+      "description": "Améliorez vos compétences théoriques et pratiques en communication. Voyez des notions comme le triangle de Lasswell, les 5W, ethos/pathos/logos, etc.",
+      "confidence": 3,
+      "aliases": [
+        "Expression & Communication",
+        "Expression, communication et rhetorique"
+      ]
+    },
+    "R1.07": {
+      "title": "Écriture multimédia et narration",
+      "description": "Découvrez les méthodes d’écriture et de narration multimédia pour préparer un scénario, une interview ou un storyboard adapté à un objectif de communication.",
+      "confidence": 2,
+      "aliases": [
+        "Ecriture multimedia et narration",
+        "Écriture Multimédia et Narration"
+      ]
+    },
+    "R1.08": {
+      "title": "Production graphique",
+      "description": "Apprenez à composer des visuels et à retoucher des images, en utilisant les principes graphiques pour transmettre un message sur différents supports.",
+      "confidence": 2,
+      "aliases": [
+        "Graphisme",
+        "Production graphique"
+      ]
+    },
+    "R1.09": {
+      "title": "Culture artistique",
+      "description": "Développez votre culture artistique et votre créativité en analysant des œuvres, leurs langages visuels et leurs liens avec les productions numériques.",
+      "confidence": 2,
+      "aliases": [
+        "Culture Artistique",
+        "Culture artistique"
+      ]
+    },
+    "R1.10": {
+      "title": "Production audio et vidéo",
+      "description": "Découvrez la prise de vues, la prise de son et le montage pour produire des contenus audiovisuels cohérents, adaptés à leur diffusion.",
+      "confidence": 2,
+      "aliases": [
+        "Audiovisuel",
+        "Production audio & video"
+      ]
+    },
+    "R1.11": {
+      "title": "Intégration",
+      "description": "Apprenez à construire des pages web structurées et accessibles avec HTML et CSS, puis à vérifier leur mise en forme et leur validité.",
+      "confidence": 2,
+      "aliases": [
+        "Integration",
+        "Intégration"
+      ]
+    },
+    "R1.12": {
+      "title": "Développement Web",
+      "description": "Découvrez les bases de l’algorithmique et du développement web pour programmer des traitements simples et organiser le fonctionnement d’une application numérique.",
+      "confidence": 2,
+      "aliases": [
+        "Developpement Web",
+        "Développement Web"
+      ]
+    },
+    "R1.13": {
+      "title": "Hébergement",
+      "description": "Découvrez les systèmes d’exploitation et les serveurs web pour préparer votre environnement de travail, héberger un site et comprendre sa mise en ligne.",
+      "confidence": 2,
+      "aliases": [
+        "Hebergement",
+        "Hébergement"
+      ]
+    },
+    "R1.14": {
+      "title": "Représentation et traitement de l’information",
+      "description": "Apprenez à représenter, analyser et encoder l’information en découvrant les statistiques, la numérisation et la compression des données utilisées dans les médias numériques.",
+      "confidence": 2,
+      "aliases": [
+        "Representation et traitement de l'information",
+        "Représentation et Traitement Informatique"
+      ]
+    },
+    "R1.15": {
+      "title": "Gestion de projet",
+      "description": "Découvrez les bases de la gestion de projet pour définir un besoin, répartir les tâches et planifier une production numérique en équipe.",
+      "confidence": 2,
+      "aliases": [
+        "Gestion de Projet",
+        "Gestion de projet"
+      ]
+    },
+    "R1.16": {
+      "title": "Économie, gestion et droit du numérique",
+      "description": "Découvrez l’économie numérique et le fonctionnement des organisations pour situer un projet dans son environnement professionnel, comprendre ses acteurs et ses enjeux.",
+      "confidence": 2,
+      "aliases": [
+        "Economie, gestion & droit du numerique",
+        "Économie & Droit"
+      ]
+    },
+    "R1.17": {
+      "title": "Projet Personnel et Professionnel",
+      "description": "Explorez vos intérêts, vos compétences et les métiers du numérique pour commencer à construire un projet personnel et professionnel adapté à vos aspirations.",
+      "confidence": 2,
+      "aliases": [
+        "PPP",
+        "Projet Personnel Professionnel"
+      ]
+    },
+    "R2.01": {
+      "title": "Anglais",
+      "description": "Approfondissez votre anglais en analysant des médias et en produisant des contenus, pour argumenter et présenter des sujets liés aux usages numériques.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais"
+      ]
+    },
+    "R2.02": {
+      "title": "Anglais Renforcé ou LV2",
+      "description": "Poursuivez votre pratique d’une langue vivante pour gagner en autonomie, enrichir vos échanges et présenter des contenus dans un contexte numérique international.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais Renforce ou LV2"
+      ]
+    },
+    "R2.03": {
+      "title": "Ergonomie et Accessibilité",
+      "description": "Approfondissez l’évaluation ergonomique et l’accessibilité des interfaces pour proposer des améliorations fondées sur les besoins des utilisateurs et les bonnes pratiques numériques.",
+      "confidence": 2,
+      "aliases": [
+        "Ergonomie & Accessibilite",
+        "Ergonomie et Accessibilité"
+      ]
+    },
+    "R2.04": {
+      "title": "Culture numérique",
+      "description": "Analysez les pratiques d’information et de communication numériques pour comprendre les attentes des publics et les transformations des usages sur différents médias.",
+      "confidence": 2,
+      "aliases": [
+        "Culture Numérique",
+        "Culture numerique"
+      ]
+    },
+    "R2.05": {
+      "title": "Stratégies de communication et marketing",
+      "description": "Apprenez à élaborer une recommandation et un plan de communication, en reliant les objectifs, les publics et les supports d’une organisation.",
+      "confidence": 2,
+      "aliases": [
+        "Strategie de communication",
+        "Stratégies de Communication"
+      ]
+    },
+    "R2.06": {
+      "title": "Expression, communication et rhétorique",
+      "description": "Renforcez votre capacité à argumenter et à communiquer, en adaptant vos écrits et vos prises de parole aux objectifs et aux publics visés.",
+      "confidence": 2,
+      "aliases": [
+        "Expression & Communication",
+        "Expression, communication et rhetorique"
+      ]
+    },
+    "R2.07": {
+      "title": "Écriture multimédia et narration",
+      "description": "Apprenez à organiser l’information et à définir une ligne éditoriale pour écrire des contenus multimédias cohérents, adaptés aux supports et aux publics.",
+      "confidence": 2,
+      "aliases": [
+        "Ecriture multimedia et narration",
+        "Écriture Multimédia et Narration"
+      ]
+    },
+    "R2.08": {
+      "title": "Production graphique",
+      "description": "Approfondissez la composition et la production graphiques pour réaliser des maquettes visuelles cohérentes, en respectant les contraintes techniques et les objectifs de communication.",
+      "confidence": 2,
+      "aliases": [
+        "Graphisme",
+        "Production graphique"
+      ]
+    },
+    "R2.09": {
+      "title": "Culture artistique",
+      "description": "Explorez les références artistiques et graphiques pour construire une identité visuelle, développer des pistes créatives et justifier vos choix de conception.",
+      "confidence": 2,
+      "aliases": [
+        "Culture Artistique",
+        "Culture artistique"
+      ]
+    },
+    "R2.10": {
+      "title": "Production audio et vidéo",
+      "description": "Approfondissez l’écriture audiovisuelle, le tournage et la postproduction pour réaliser un contenu dont le scénario, le montage et la diffusion restent cohérents.",
+      "confidence": 2,
+      "aliases": [
+        "Audiovisuel",
+        "Production audio & video"
+      ]
+    },
+    "R2.11": {
+      "title": "Gestion de contenus",
+      "description": "Découvrez les systèmes de gestion de contenus pour organiser des publications, administrer un site et adapter ses contenus aux besoins des utilisateurs.",
+      "confidence": 2,
+      "aliases": [
+        "Gestion de contenus"
+      ]
+    },
+    "R2.12": {
+      "title": "Intégration",
+      "description": "Approfondissez l’intégration web pour réaliser des mises en page adaptatives, ajouter des interactions et préserver l’accessibilité sur différents écrans et usages.",
+      "confidence": 2,
+      "aliases": [
+        "Integration",
+        "Intégration"
+      ]
+    },
+    "R2.13": {
+      "title": "Développement Web",
+      "description": "Approfondissez le développement web en reliant les traitements côté client et côté serveur, pour créer des pages interactives exploitant des données.",
+      "confidence": 2,
+      "aliases": [
+        "Developpement Web",
+        "Développement Web"
+      ]
+    },
+    "R2.14": {
+      "title": "Système d’information",
+      "description": "Apprenez à modéliser un système d’information et à interroger une base de données relationnelle, en reliant les besoins d’une application aux requêtes SQL.",
+      "confidence": 2,
+      "aliases": [
+        "Systeme d'information",
+        "Systèmes d'Information"
+      ]
+    },
+    "R2.15": {
+      "title": "Hébergement",
+      "description": "Approfondissez les réseaux et l’hébergement web pour comprendre les échanges entre serveurs, préparer une mise en ligne et identifier les enjeux de sécurité.",
+      "confidence": 2,
+      "aliases": [
+        "Hebergement",
+        "Hébergement"
+      ]
+    },
+    "R2.16": {
+      "title": "Représentation et traitement de l’information",
+      "description": "Approfondissez l’analyse et la visualisation des données, ainsi que la compression de l’information, pour comprendre et présenter les résultats d’une étude numérique.",
+      "confidence": 2,
+      "aliases": [
+        "Representation et traitement de l'information",
+        "Représentation et Traitement Informatique"
+      ]
+    },
+    "R2.17": {
+      "title": "Gestion de projet",
+      "description": "Apprenez à cadrer un projet numérique en évaluant sa proposition de valeur, ses délais, ses coûts et ses risques, pour organiser sa réalisation.",
+      "confidence": 2,
+      "aliases": [
+        "Gestion de projet"
+      ]
+    },
+    "R2.18": {
+      "title": "Économie, gestion et droit du numérique",
+      "description": "Découvrez les règles de propriété intellectuelle et du droit à l’image pour comprendre les responsabilités liées à la création et à la diffusion numériques.",
+      "confidence": 2,
+      "aliases": [
+        "Economie et Droit du numerique",
+        "Économie et Droit du Numérique"
+      ]
+    },
+    "R2.19": {
+      "title": "Projet Personnel et Professionnel",
+      "description": "Approfondissez votre connaissance des métiers et de vos compétences pour préciser votre orientation, préparer vos démarches et construire votre projet professionnel dans le numérique.",
+      "confidence": 2,
+      "aliases": [
+        "PPP",
+        "Projet Personnel Professionnel"
+      ]
+    },
+    "R3.01": {
+      "title": "Anglais",
+      "description": "Utilisez l’anglais pour rechercher des informations, présenter vos compétences et préparer des échanges professionnels, en adaptant votre expression aux métiers du numérique.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais"
+      ]
+    },
+    "R3.02": {
+      "title": "Anglais Renforcé ou LV2",
+      "description": "Renforcez votre expression dans une langue vivante pour présenter un projet, comprendre des documents et participer à des échanges professionnels dans un contexte international.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais Renforce ou LV2"
+      ]
+    },
+    "R3.03": {
+      "title": "Design d’expérience",
+      "description": "Apprenez à concevoir une expérience utilisateur en définissant des profils, des parcours et des maquettes fonctionnelles, pour répondre aux besoins d’un service numérique.",
+      "confidence": 2,
+      "aliases": [
+        "Design d'experience",
+        "Design d'expérience (UX)"
+      ]
+    },
+    "R3.04": {
+      "title": "Culture numérique",
+      "description": "Analysez les formes de communication plurimédia et transmédia pour comprendre la circulation de l’information, les pratiques des publics et les transformations des contenus numériques.",
+      "confidence": 2,
+      "aliases": [
+        "Culture Numérique",
+        "Culture numerique"
+      ]
+    },
+    "R3.05": {
+      "title": "Stratégies de communication et marketing",
+      "description": "Apprenez à concevoir une stratégie de communication digitale en coordonnant les médias sociaux, les contenus éditoriaux et les actions marketing pour atteindre un public.",
+      "confidence": 2,
+      "aliases": [
+        "Strategies de communication et marketing",
+        "Stratégies de Communication & Marketing"
+      ]
+    },
+    "R3.06": {
+      "title": "Référencement",
+      "description": "Découvrez les méthodes de référencement et d’analyse de trafic pour améliorer la visibilité d’un site, choisir des mots-clés et suivre ses performances.",
+      "confidence": 2,
+      "aliases": [
+        "Referencement"
+      ]
+    },
+    "R3.07": {
+      "title": "Expression, communication et rhétorique",
+      "description": "Développez votre communication professionnelle pour animer des réunions, travailler en équipe et produire des écrits clairs, adaptés aux situations rencontrées dans un projet.",
+      "confidence": 2,
+      "aliases": [
+        "Expression, Communication & Réthorique",
+        "Expression, communication et rhetorique"
+      ]
+    },
+    "R3.08": {
+      "title": "Écriture multimédia et narration",
+      "description": "Approfondissez l’écriture journalistique et documentaire pour rechercher des informations, construire un récit et produire des contenus multimédias adaptés à leur public et à leur support.",
+      "confidence": 2,
+      "aliases": [
+        "Ecriture multimedia et narration",
+        "Écriture Multimédia et Narration"
+      ]
+    },
+    "R3.09": {
+      "title": "Création et design interactif (UI)",
+      "description": "Apprenez à concevoir des interfaces interactives cohérentes en organisant leurs composants, leurs comportements et leur identité visuelle, à l’aide d’un système de design.",
+      "confidence": 2,
+      "aliases": [
+        "Creation et design interactif (UI)",
+        "Création et Design Interactif (UI)"
+      ]
+    },
+    "R3.10": {
+      "title": "Culture artistique",
+      "description": "Enrichissez votre culture graphique en analysant le design interactif et le design d’information, pour développer des références utiles à vos créations numériques.",
+      "confidence": 2,
+      "aliases": [
+        "Culture Artistique",
+        "Culture artistique"
+      ]
+    },
+    "R3.11": {
+      "title": "Audiovisuel et Motion design",
+      "description": "Approfondissez la production audiovisuelle, l’animation graphique et le design sonore pour créer des contenus multimédias cohérents, en justifiant vos choix esthétiques et techniques.",
+      "confidence": 2,
+      "aliases": [
+        "Audiovisuel & Motion Design",
+        "Audiovisuel et Motion design"
+      ]
+    },
+    "R3.12": {
+      "title": "Développement Front et intégration",
+      "description": "Apprenez à développer des interfaces web adaptatives et accessibles, en manipulant le document, ses styles et ses interactions pour répondre aux usages des utilisateurs.",
+      "confidence": 2,
+      "aliases": [
+        "Developpement Front et integration",
+        "Intégration (Front-End)"
+      ]
+    },
+    "R3.14": {
+      "title": "Déploiement de services",
+      "description": "Apprenez à configurer et déployer des services web pour mettre une application en ligne, comprendre son environnement d’hébergement et organiser son fonctionnement.",
+      "confidence": 2,
+      "aliases": [
+        "Deploiement de services",
+        "Déploiement de services"
+      ]
+    },
+    "R3.15": {
+      "title": "Représentation et traitement de l’information",
+      "description": "Approfondissez le traitement des médias numériques et l’analyse statistique pour comprendre la compression, exploiter des données et choisir une représentation adaptée aux résultats.",
+      "confidence": 2,
+      "aliases": [
+        "Representation et traitement de l'information",
+        "Représentation et Traitement Informatique"
+      ]
+    },
+    "R3.16": {
+      "title": "Gestion de projet",
+      "description": "Découvrez les méthodes agiles et les outils de suivi pour organiser un projet numérique, coordonner l’équipe et adapter la réalisation aux changements.",
+      "confidence": 2,
+      "aliases": [
+        "Gestion de Projet",
+        "Gestion de projet"
+      ]
+    },
+    "R3.17": {
+      "title": "Economie, gestion et droit du numérique",
+      "description": "Approfondissez la propriété intellectuelle, la protection des données et l’économie des médias pour identifier les obligations et les enjeux d’un projet numérique.",
+      "confidence": 2,
+      "aliases": [
+        "Economie, gestion & droit du numerique",
+        "Économie, Gestion et Droit du Numérique"
+      ]
+    },
+    "R3.18": {
+      "title": "Projet Personnel et Professionnel",
+      "description": "Précisez votre projet professionnel en analysant vos compétences et les possibilités d’orientation, pour préparer vos expériences et votre positionnement dans les métiers du numérique.",
+      "confidence": 2,
+      "aliases": [
+        "PPP",
+        "Projet Personnel Professionnel"
+      ]
+    },
+    "R3.19": {
+      "title": "Environnement de développement interactif",
+      "description": "Maîtrisez les environnements de développement interactif pour créer des applications et interfaces utilisateurs.",
+      "confidence": 3,
+      "aliases": [
+        "Environnement de développement interactif"
+      ]
+    },
+    "R4.01": {
+      "title": "Anglais",
+      "description": "Utilisez l’anglais pour analyser des documents professionnels, présenter un projet et participer à des réunions, en adaptant votre communication aux productions numériques.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais"
+      ]
+    },
+    "R4.02": {
+      "title": "Economie, gestion et Droit du numérique",
+      "description": "Découvrez les contrats et les statuts professionnels du secteur numérique pour comprendre les règles encadrant une activité, ses engagements et ses responsabilités.",
+      "confidence": 2,
+      "aliases": [
+        "Économie & Droit du numérique"
+      ]
+    },
+    "R4.03": {
+      "title": "Design d’expérience",
+      "description": "Apprenez à préparer et analyser des tests utilisateurs pour évaluer une interface, faire évoluer ses prototypes et améliorer l’expérience proposée par un service numérique.",
+      "confidence": 2,
+      "aliases": [
+        "Design d'expérience"
+      ]
+    },
+    "R4.04": {
+      "title": "Expression, communication",
+      "description": "Apprenez à produire et organiser la documentation d’un projet multimédia pour structurer les informations, vérifier leur cohérence et faciliter leur utilisation par l’équipe.",
+      "confidence": 2,
+      "aliases": [
+        "Expression, Communication / PPP",
+        "Expression, communication / PPP"
+      ]
+    },
+    "R4.05CN": {
+      "title": "Ecriture multimédia et narration",
+      "description": "Approfondissez l’écriture de fiction audiovisuelle pour construire un scénario linéaire ou interactif, définir son univers narratif et adapter le récit aux médias choisis.",
+      "confidence": 2,
+      "aliases": [
+        "Ecriture multimédia et narration",
+        "Écriture Multimédia et Narration"
+      ]
+    },
+    "R4.06CN": {
+      "title": "Culture artistique",
+      "description": "Explorez les arts numériques, l’animation et le design sonore pour enrichir vos références et comprendre les relations entre l’image, le mouvement et le son.",
+      "confidence": 2,
+      "aliases": [
+        "Culture Artistique",
+        "Culture artistique"
+      ]
+    },
+    "R4.07CN": {
+      "title": "Audiovisuel - Motion design",
+      "description": "Approfondissez l’animation et la production audiovisuelle pour réaliser des contenus à partir d’un storyboard, en maîtrisant leurs choix esthétiques et leur diffusion.",
+      "confidence": 2,
+      "aliases": [
+        "Audiovisuel",
+        "Audiovisuel - Motion design"
+      ]
+    },
+    "R4.08CN": {
+      "title": "Gestion de contenus spécialisée",
+      "description": "Apprenez à personnaliser un système de gestion de contenus en créant un thème et une organisation éditoriale adaptés aux besoins d’un site web.",
+      "confidence": 2,
+      "aliases": [
+        "Gestion de contenus"
+      ]
+    },
+    "R4.09DWDI": {
+      "title": "Déploiement de services",
+      "description": "Apprenez à gérer les environnements de développement et de production pour déployer une application web, sécuriser son hébergement et accompagner les évolutions du code.",
+      "confidence": 2,
+      "aliases": [
+        "Déploiement de services"
+      ]
+    },
+    "R4.10DWDI": {
+      "title": "Création et design interactif",
+      "description": "Découvrez le développement de dispositifs interactifs pour combiner des médias, programmer leurs comportements et concevoir une expérience adaptée à une plateforme ou à un usage.",
+      "confidence": 2,
+      "aliases": [
+        "Création et design interactif"
+      ]
+    },
+    "R4.11DWDI": {
+      "title": "Développement front",
+      "description": "Approfondissez le développement côté client pour générer des interfaces, exploiter des services web et gérer les interactions ainsi que les données d’une application.",
+      "confidence": 2,
+      "aliases": [
+        "Développement front"
+      ]
+    },
+    "R4.12DWDI": {
+      "title": "Développement back",
+      "description": "Approfondissez le développement côté serveur pour organiser une application orientée objet, utiliser un framework et exposer des données au moyen de services web.",
+      "confidence": 2,
+      "aliases": [
+        "Développement back"
+      ]
+    },
+    "R5.01": {
+      "title": "Anglais",
+      "description": "Développez votre anglais professionnel pour collaborer, animer des échanges et présenter un projet numérique, en adaptant votre expression aux interlocuteurs et aux objectifs.",
+      "confidence": 2,
+      "aliases": [
+        "Anglais"
+      ]
+    },
+    "R5.02": {
+      "title": "Management et Assurance qualité",
+      "description": "Découvrez le management et l’assurance qualité pour organiser une équipe, améliorer les méthodes de travail et suivre la réalisation d’un projet numérique.",
+      "confidence": 2,
+      "aliases": [
+        "Management et Assurance qualite"
+      ]
+    },
+    "R5.03": {
+      "title": "Entrepreneuriat",
+      "description": "Découvrez les étapes de création d’une entreprise pour définir une proposition de valeur, construire un modèle économique et préparer le financement d’un projet numérique.",
+      "confidence": 2,
+      "aliases": [
+        "Entrepreneuriat"
+      ]
+    },
+    "R5.CREA.06": {
+      "title": "Création numérique",
+      "description": "Approfondissez votre démarche de création numérique pour produire des réalisations graphiques, animées ou interactives, en articulant vos intentions artistiques et vos choix techniques.",
+      "confidence": 2,
+      "aliases": [
+        "Creation numerique"
+      ]
+    },
+    "R5.CREA.07": {
+      "title": "Ecriture Multimédia et narration",
+      "description": "Approfondissez la narration multimédia pour concevoir des scénarios interactifs et des contenus animés, en organisant les possibilités de lecture et la participation du public.",
+      "confidence": 2,
+      "aliases": [
+        "Ecriture Multimedia et narration"
+      ]
+    },
+    "R5.DWEB-DI.05": {
+      "title": "Développement front avancé",
+      "description": "Approfondissez le développement d’interfaces par composants pour construire des applications interactives, exploiter des API et gérer les échanges entre plusieurs utilisateurs et services.",
+      "confidence": 2,
+      "aliases": [
+        "Developpement front avance APP"
+      ]
+    },
+    "R5.DWEB-DI.06": {
+      "title": "Développement back avancé",
+      "description": "Approfondissez l’architecture côté serveur pour concevoir des API, organiser l’accès aux données et intégrer les exigences de sécurité dans une application web.",
+      "confidence": 2,
+      "aliases": [
+        "Developpement back avance APP"
+      ]
+    },
+    "R5.DWEB-DI.07": {
+      "title": "Dispositifs interactifs",
+      "description": "Approfondissez la conception de dispositifs interactifs pour développer des expériences en trois dimensions, en réalité virtuelle ou en jeu vidéo adaptées aux usages visés.",
+      "confidence": 2,
+      "aliases": [
+        "Dispositifs interactifs APP"
+      ]
+    },
+    "R6.01": {
+      "title": "Entrepreneuriat",
+      "description": "Explorez la responsabilité sociale des entreprises et les formes d’entrepreneuriat pour comprendre leurs engagements, les relations de travail et les enjeux d’un projet professionnel.",
+      "confidence": 2,
+      "aliases": [
+        "Entrepreneuriat"
+      ]
+    },
+    "R6.DWEB-DI.02": {
+      "title": "Développement Web et dispositif interactif",
+      "description": "Consolidez vos pratiques de développement web et interactif pour tester une application, organiser son intégration continue et préparer son déploiement dans un environnement professionnel.",
+      "confidence": 2,
+      "aliases": [
+        "Developpement Web APP"
+      ]
+    },
+    "SAE1.01": {
+      "title": "Auditer une communication numérique",
+      "description": "Réalisez l’audit d’une communication numérique en étudiant ses publics, ses contenus et ses interfaces, pour identifier ses points forts et proposer des améliorations argumentées.",
+      "confidence": 2,
+      "aliases": [
+        "Auditer une communication numerique"
+      ]
+    },
+    "SAE1.02": {
+      "title": "Concevoir une recommandation de communication numérique",
+      "description": "Concevez une recommandation de communication numérique à partir d’un besoin, en définissant les publics, les objectifs et les actions adaptées au contexte du commanditaire.",
+      "confidence": 2,
+      "aliases": [
+        "Concevoir une recommandation de communication numerique",
+        "Recommandation Numérique"
+      ]
+    },
+    "SAE1.03": {
+      "title": "Produire les éléments d’une communication visuelle",
+      "description": "Produisez les éléments d’une communication visuelle en développant une identité graphique, puis en adaptant vos créations aux supports et aux objectifs du projet.",
+      "confidence": 2,
+      "aliases": [
+        "Design Graphique",
+        "Produire les elements d'une communication visuelle"
+      ]
+    },
+    "SAE1.04": {
+      "title": "Produire un contenu audio et vidéo",
+      "description": "Réalisez un contenu audiovisuel à partir d’un objectif de communication, en préparant le scénario, les captations et le montage pour une diffusion adaptée au public.",
+      "confidence": 2,
+      "aliases": [
+        "Audiovisuel",
+        "Realiser une production audio et video"
+      ]
+    },
+    "SAE1.05": {
+      "title": "Produire un site Web",
+      "description": "Produisez un site web en organisant ses contenus et ses pages, puis en réalisant une intégration accessible et adaptée aux différents écrans.",
+      "confidence": 2,
+      "aliases": [
+        "Produire un site web",
+        "Site Web"
+      ]
+    },
+    "SAE1.06": {
+      "title": "Gérer un projet de communication numérique",
+      "description": "Organisez un projet de communication numérique en définissant les tâches, les responsabilités et les étapes, pour coordonner le travail et suivre la réalisation en équipe.",
+      "confidence": 2,
+      "aliases": [
+        "Gerer un projet de communication numerique",
+        "Gestion de Projet & Recommandation"
+      ]
+    },
+    "SAE2.01": {
+      "title": "Explorer les usages du numérique",
+      "description": "Explorez les usages du numérique en recueillant et analysant des observations, pour comprendre les pratiques des utilisateurs et formuler des conclusions étayées sur leurs besoins.",
+      "confidence": 2,
+      "aliases": [
+        "Exploration des usages",
+        "Explorer les Usages du Numérique"
+      ]
+    },
+    "SAE2.02": {
+      "title": "Concevoir un produit ou un service et sa communication",
+      "description": "Concevez un produit ou un service avec sa communication, en reliant les besoins des publics, l’identité visuelle et les contenus aux objectifs du projet.",
+      "confidence": 2,
+      "aliases": [
+        "Conception d'un production ou d'un service et sa communication",
+        "Concevoir un service ou un produit et sa communication"
+      ]
+    },
+    "SAE2.03": {
+      "title": "Concevoir un site web avec une source de données",
+      "description": "Concevez un site web relié à une source de données, en développant les interactions et les traitements nécessaires pour proposer un service accessible et fonctionnel.",
+      "confidence": 2,
+      "aliases": [
+        "Concevoir un site Web avec une source de données",
+        "Site Web et BDD"
+      ]
+    },
+    "SAE2.04": {
+      "title": "Construire sa présence en ligne",
+      "description": "Construisez votre présence en ligne en présentant vos compétences et vos réalisations, pour développer une identité professionnelle cohérente et préparer vos démarches dans le numérique.",
+      "confidence": 2,
+      "aliases": [
+        "Construire sa presence en ligne",
+        "Construire sa présence en ligne"
+      ]
+    },
+    "SAE3.01": {
+      "title": "Développer des parcours utilisateur au sein d’un système d’information",
+      "description": "Concevez des parcours et des interfaces utilisateurs à partir d’un besoin, puis réalisez leur intégration dans une application en vérifiant la cohérence de l’expérience proposée.",
+      "confidence": 2,
+      "aliases": [
+        "Concevoir et developper une experience utilisateur",
+        "Concevoir et développer une expérience utilisateur"
+      ]
+    },
+    "SAE3.02": {
+      "title": "Produire des contenus pour une communication plurimédia",
+      "description": "Produisez des contenus pour une communication plurimédia en coordonnant les messages, les formats et les supports, pour répondre aux objectifs et aux publics du projet.",
+      "confidence": 2,
+      "aliases": [
+        "Produire des contenus pour une com. plurimedia",
+        "Produire des contenus pour une communication plurimedia"
+      ]
+    },
+    "SAE3.03": {
+      "title": "Concevoir des visualisations de données pour le web et un support animé",
+      "description": "Concevez des visualisations de données pour des supports web et animés, en organisant l’information pour rendre les résultats compréhensibles et adaptés au public.",
+      "confidence": 2,
+      "aliases": [
+        "Concevoir des visualisations de donnees",
+        "Concevoir des visualisations de données"
+      ]
+    },
+    "SAE4.01CN": {
+      "title": "Créer pour une campagne de communication visuelle",
+      "description": "Créez les éléments d’une campagne de communication visuelle en développant une direction artistique et des supports cohérents, adaptés aux publics et aux objectifs du commanditaire.",
+      "confidence": 2,
+      "aliases": [
+        "Créer pour une campagne de communication visuelle"
+      ]
+    },
+    "SAE4.02CN": {
+      "title": "Produire du contenu multimédia",
+      "description": "Produisez un contenu multimédia en articulant narration, images et sons, puis en justifiant vos choix de création et les modalités de diffusion retenues.",
+      "confidence": 2,
+      "aliases": [
+        "Produire du contenu multimédia"
+      ]
+    },
+    "SAE4.03DWDI": {
+      "title": "Développer pour le Web",
+      "description": "Développez une application web à partir d’un besoin, en organisant son architecture, ses données et ses interfaces pour préparer une mise en production adaptée.",
+      "confidence": 2,
+      "aliases": [
+        "Développer pour le Web"
+      ]
+    },
+    "SAE4.04DWDI": {
+      "title": "Concevoir un dispositif interactif",
+      "description": "Concevez un dispositif interactif en choisissant les médias, les interactions et les technologies, pour réaliser une expérience cohérente avec les usages et les objectifs visés.",
+      "confidence": 2,
+      "aliases": [
+        "Concevoir un dispositif interactif"
+      ]
+    },
+    "SAE5.CREA.01": {
+      "title": "Créer par/pour le numérique",
+      "description": "Développez une création numérique en conduisant une démarche artistique et technique, pour produire une expérience originale et défendre vos choix auprès d’un public ou commanditaire.",
+      "confidence": 2,
+      "aliases": [
+        "Creer par/pour le numerique"
+      ]
+    }
+  }
+}
