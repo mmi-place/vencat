@@ -443,7 +443,7 @@ input::placeholder { color: var(--muted); }
 @media (min-width: 768px) { .mobile-overlays { display: none; } }
 
 /* One date row, with navigation beside the heading on every screen. */
-.planning-header { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; background: var(--header); }
+.planning-header { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; background: transparent; }
 .planning-header .week-navigation { background: transparent; padding: 0; gap: 0; min-width: 0; }
 .planning-header .period-label { display: none; }
 .planning-header .week-navigation .icon-button { width: 36px; padding: 8px; }
@@ -499,7 +499,7 @@ input::placeholder { color: var(--muted); }
 .timeline-day, .timeline-corner, .list-day-header { background: var(--header); color: var(--text); }
 .list-day-heading { background: var(--header); color: var(--text); }
 .hour-axis { background: var(--header); }
-.list-day { background: color-mix(in srgb, var(--panel) 92%, transparent); }
+.list-day { background: transparent; }
 .app-dialog::backdrop { background: #040a18aa; backdrop-filter: blur(3px); }
 :root[data-theme=light] { --header: #f9fbfff0; --surface: #e9eef7; --surface-hover: #dce5f3; --muted: #4c5b73; --line: #becadb; --selected: #e1d5f5; --accent: #62448f; }
 [data-theme=light] .course:not(.past-course):not(.ongoing-course) { background: color-mix(in srgb, var(--course-color) 23%, white); color: #17243a; --course-accent: #17243a; }
@@ -507,7 +507,7 @@ input::placeholder { color: var(--muted); }
 [data-theme=light] .course.ongoing-course { background: color-mix(in srgb, var(--course-color) 40%, white); color: #101b2c; }
 [data-theme=light] .course-meta { color: inherit; }
 [data-theme=light] .course-stripe { background: var(--course-color); }
-[data-theme=light] .timeline-column { background-color: #ffffffd4; border-color: #17243a20; background-image: repeating-linear-gradient(to bottom, transparent 0 calc(var(--hour-height) / 2 - 1px), #17243a08 calc(var(--hour-height) / 2 - 1px) calc(var(--hour-height) / 2), transparent calc(var(--hour-height) / 2) var(--hour-height)); }
+[data-theme=light] .timeline-column { background-color: transparent; border-color: #17243a20; background-image: repeating-linear-gradient(to bottom, transparent 0 calc(var(--hour-height) / 2 - 1px), #17243a08 calc(var(--hour-height) / 2 - 1px) calc(var(--hour-height) / 2), transparent calc(var(--hour-height) / 2) var(--hour-height)); }
 [data-theme=light] .hour-rule { border-color: #17243a20; }
 [data-theme=light] .noon-rule { border-color: #17243a40; }
 [data-theme=light] .background-option { background: var(--panel); }
@@ -544,4 +544,24 @@ input::placeholder { color: var(--muted); }
   .date-text > span { font-size: .65rem; }
   .mobile-clock { gap: 2px; font-size: .85rem; }
   .mobile-clock .icon-button, .planning-header .week-navigation .icon-button { width: 36px; }
+}
+
+/* The wallpaper is one continuous canvas; day columns never paint over it. */
+:root { --calendar-glass: #02061838; --calendar-muted: #e8edf7; }
+:root[data-theme=light] { --calendar-glass: #ffffff38; --calendar-muted: #29374e; }
+.calendar-app { --muted: var(--calendar-muted); }
+.calendar-scroll { background: transparent; }
+.timeline-column { background-color: transparent; }
+.planning-header, .planning-header .week-navigation, .list-day { background: transparent; }
+.timeline-day, .timeline-corner, .list-day-heading, .hour-axis {
+  background: var(--calendar-glass);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+[data-theme=light] .hour-axis { background: var(--calendar-glass); }
+.hour-axis > span, .hour-axis > .afternoon { color: var(--calendar-muted); }
+.list-pause, .list-empty { color: var(--calendar-muted); }
+.planning-header .period-label, .date-text > span { color: var(--calendar-muted); }
+@media print {
+  .timeline-day, .timeline-corner, .list-day-heading, .hour-axis { backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
