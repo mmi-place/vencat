@@ -16,7 +16,7 @@ export default defineConfig({
 			workbox: {
 				navigateFallbackDenylist: [/^\/api(?:\/|$)/], importScripts: ['/retire-device-alerts.js'],
 				globPatterns: ['**/*.{js,css,html,svg,woff2}'],
-				runtimeCaching: [{ urlPattern: /\/(background|noel)\.jpg$/, handler: 'CacheFirst', options: { cacheName: 'vencat-background', expiration: { maxEntries: 2, maxAgeSeconds: 30 * 86400 } } }],
+				runtimeCaching: [{ urlPattern: /\/(?:(?:background|noel)\.jpg|backgrounds\/[^/]+\.jpg)$/, handler: 'CacheFirst', options: { cacheName: 'vencat-background', expiration: { maxEntries: 8, maxAgeSeconds: 30 * 86400 } } }],
 			},
 			registerType: 'autoUpdate',
 			includeAssets: ['favicon.ico', 'retire-device-alerts.js', 'icons/*.png'],

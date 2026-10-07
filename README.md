@@ -137,3 +137,11 @@ La route planning accepte un écart maximal de 62 jours entre `start` et `end`. 
 ## Licence du backend
 
 Le backend CELCAT importé est sous **GPL-3.0**. Voir [sa licence](backend/LICENSE.md) et [sa documentation](backend/README.md).
+
+## Fonds de l’application
+
+Les fonds sont regroupés en couleurs unies, dégradés, motifs et images. Une image personnelle (JPG, PNG, WebP ou AVIF, 10 Mo maximum) est redimensionnée et enregistrée dans IndexedDB sur cet appareil ; elle n’est pas envoyée au serveur.
+
+Les photos supplémentaires proviennent d’Unsplash : [lac](https://images.unsplash.com/photo-1470770841072-f978cf4d019e), [océan](https://images.unsplash.com/photo-1518837695005-2083093ee35b), [collines](https://images.unsplash.com/photo-1500534623283-312aade485b7). Voir la [licence Unsplash](https://unsplash.com/license).
+
+Dans l’historique, la corbeille masque un changement sur cet appareil, y compris après rechargement. Elle ne supprime pas l’historique partagé des autres utilisateurs.

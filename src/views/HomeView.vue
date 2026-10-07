@@ -1,33 +1,38 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeftIcon, ArrowRightIcon, ArrowPathIcon, Cog6ToothIcon, MagnifyingGlassIcon, Bars3Icon, CalendarDaysIcon, ViewColumnsIcon, XMarkIcon, ClockIcon, BellIcon, ListBulletIcon, SunIcon, MoonIcon, ComputerDesktopIcon } from '@heroicons/vue/24/outline';
-import CourseView from '../components/CourseView.vue';
+import { ArrowLeftIcon, ArrowRightIcon, ArrowPathIcon, Cog6ToothIcon, MagnifyingGlassIcon, Bars3Icon, CalendarDaysIcon, ViewColumnsIcon, ClockIcon, BellIcon, ListBulletIcon, SunIcon, MoonIcon, ComputerDesktopIcon } from '@heroicons/vue/24/outline';
 import CourseFocus from '../components/layout/CourseFocus.vue';
 import Settings from '../components/layout/Settings.vue';
 import AuthorCredits from '../components/AuthorCredits.vue';
 import GroupPicker from '../components/GroupPicker.vue';
 import ListCalendar from '../components/ListCalendar.vue';
 import CalendarSkeleton from '../components/CalendarSkeleton.vue';
-import ThemePicker from '../components/ThemePicker.vue';
+import ChangesDialog from '../components/ChangesDialog.vue';
 import { todayPlanningDate, mondayOf } from '../../shared/calendar';
-import { repairText } from '../../shared/text';
 import { type SearchCriterion } from '../../shared/search';
 import SearchDialog from '../components/SearchDialog.vue';
 import { BellIcon as BellSolidIcon } from '@heroicons/vue/24/solid';
 import CalendarGrid from '../components/CalendarGrid.vue';
 import InstallPrompt from '../components/InstallPrompt.vue';
 import AccessibleDialog from '../components/AccessibleDialog.vue';
-import { selection, date, view, week, preferences, selectedIds, loading, error, storageError, hasData, missingGroups, lastFetched, online, fallback, loadCalendar, weekCourses, clock, focused, history, unseenChanges, markChangesSeen, resolveTodayDate, snapshots } from '../scripts/calendarStore';
+import { selection, date, view, week, preferences, selectedIds, loading, error, storageError, hasData, missingGroups, lastFetched, online, fallback, loadCalendar, weekCourses, clock, focused, history, unseenChanges, resolveTodayDate, snapshots } from '../scripts/calendarStore';
 import { readPreference, writePreference } from '../scripts/storage';
 import { groupById, groupByPath, type GroupOption } from '../../shared/selection';
-import { campusDate, campusTime, frenchDate, addDay, validDay, courseKey } from '../../shared/calendar';
+import { campusDate, campusTime, frenchDate, addDay, validDay } from '../../shared/calendar';
 const route = useRoute(), router = useRouter();
 const settingsOpen = ref(false), pickerOpen = ref(false), changesOpen = ref(false);
 const routeError = ref('');
 const searchInitial = ref<SearchCriterion>();
-const menuOpen = ref(false), modesOpen = ref(false), dateOpen = ref(false), searchOpen = ref(false);
-const themeOpen = ref(false);
+const modesOpen = ref(false), dateOpen = ref(false), searchOpen = ref(false);
+const themeNotice = ref('');
+let noticeTimer: ReturnType<typeof setTimeout>;
+function cycleTheme() {
+  const choices = ['dark', 'light', 'system'] as const;
+  preferences.value.theme = choices[(choices.indexOf(preferences.value.theme) + 1) % choices.length]!;
+  themeNotice.value = { dark: 'Thème sombre', light: 'Thème clair', system: 'Thème de l’appareil' }[preferences.value.theme];
+  clearTimeout(noticeTimer); noticeTimer = setTimeout(() => themeNotice.value = '', 2600);
+}
 const viewport = window.matchMedia('(max-width: 1023px)');
 const narrow = ref(viewport.matches);
 const resized = () => narrow.value = viewport.matches;
@@ -97,9 +102,9 @@ async function refreshSharedChanges() {
   history.value = [...new Map([...data, ...history.value].map(item => [item.id, item])).values()].sort((a, b) => b.detectedAt.localeCompare(a.detectedAt));
 }
 async function openChanges() { changesOpen.value = true; await refreshSharedChanges(); }
-function closeChanges() { changesOpen.value = false; markChangesSeen(); }
+function closeChanges() { changesOpen.value = false; }
 function keydown(event: KeyboardEvent) {
-  if (searchOpen.value || themeOpen.value || menuOpen.value || modesOpen.value || dateOpen.value || settingsOpen.value || pickerOpen.value || changesOpen.value || focused.value || event.ctrlKey || event.metaKey || event.altKey || (event.target as HTMLElement)?.closest('input, select, textarea, button, [contenteditable]')) return;
+  if (searchOpen.value || modesOpen.value || dateOpen.value || settingsOpen.value || pickerOpen.value || changesOpen.value || focused.value || event.ctrlKey || event.metaKey || event.altKey || (event.target as HTMLElement)?.closest('input, select, textarea, button, [contenteditable]')) return;
   if (event.key === 'ArrowRight') { event.preventDefault(); move(1); }
   if (event.key === 'ArrowLeft') { event.preventDefault(); move(-1); }
   if (event.key === '/') { event.preventDefault(); toggleSearch(); }
@@ -108,7 +113,7 @@ function reconnect() { online.value = navigator.onLine; if (online.value && sele
 function foreground() { clock.value = new Date(); if (!document.hidden && preferences.value.refresh && selection.value) loadCalendar().then(refreshSharedChanges); }
 let refreshTimer: ReturnType<typeof setInterval>, clockTimer: ReturnType<typeof setInterval>;
 onMounted(() => { viewport.addEventListener('change', resized); clockTimer = setInterval(() => clock.value = new Date(), 30_000); window.addEventListener('keydown', keydown); window.addEventListener('online', reconnect); window.addEventListener('offline', reconnect); document.addEventListener('visibilitychange', foreground); refreshTimer = setInterval(foreground, 10 * 60_000); });
-onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.removeEventListener('keydown', keydown); window.removeEventListener('online', reconnect); window.removeEventListener('offline', reconnect); document.removeEventListener('visibilitychange', foreground); clearInterval(refreshTimer); clearInterval(clockTimer); });
+onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.removeEventListener('keydown', keydown); window.removeEventListener('online', reconnect); window.removeEventListener('offline', reconnect); document.removeEventListener('visibilitychange', foreground); clearInterval(refreshTimer); clearInterval(clockTimer); clearTimeout(noticeTimer); });
 </script>
 
 <template>
@@ -116,7 +121,7 @@ onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.
 <div class="app-shell" :class="{ 'calendar-app': selection }">
   <nav class="app-nav" :class="{ 'onboarding-nav': !selection }" aria-label="Navigation principale">
     <div class="brand-row"><a class="brand" href="/" @click.prevent="router.push('/')"><img src="../assets/logo.svg" width="26" height="26" alt=""><span>Vencat</span></a><button v-if="selection" class="icon-button quiet" :disabled="loading || !online" aria-label="Actualiser les cours" @click="loadCalendar(true)"><ArrowPathIcon :class="{ refreshing: loading }" /></button></div>
-    <div v-if="selection" class="desktop-actions"><button class="group-button" @click="pickerOpen = true">{{ groupLabel }}</button><button class="icon-button quiet" :aria-pressed="searchOpen" aria-label="Rechercher un cours" @click="toggleSearch"><MagnifyingGlassIcon /></button><button class="icon-button quiet theme-shortcut" aria-label="Choisir le thème" @click="themeOpen = true"><SunIcon v-if="preferences.theme === 'light'" /><ComputerDesktopIcon v-else-if="preferences.theme === 'system'" /><MoonIcon v-else /></button><button class="icon-button quiet" aria-label="Réglages" @click="settingsOpen = true"><Cog6ToothIcon /></button><button class="icon-button quiet" :class="{ 'unread-bell': unseenChanges.length }" :aria-label="unseenChanges.length ? 'Changements du planning non lus' : 'Changements du planning'" @click="openChanges"><BellSolidIcon v-if="unseenChanges.length" /><BellIcon v-else /></button></div>
+    <div v-if="selection" class="desktop-actions"><button class="group-button" @click="pickerOpen = true">{{ groupLabel }}</button><button class="icon-button quiet" :aria-pressed="searchOpen" aria-label="Rechercher un cours" @click="toggleSearch"><MagnifyingGlassIcon /></button><button class="icon-button quiet theme-shortcut" aria-label="Changer de thème : sombre, clair, appareil" @click="cycleTheme"><SunIcon v-if="preferences.theme === 'light'" /><ComputerDesktopIcon v-else-if="preferences.theme === 'system'" /><MoonIcon v-else /></button><button class="icon-button quiet" aria-label="Réglages" @click="settingsOpen = true"><Cog6ToothIcon /></button><button class="icon-button quiet" :class="{ 'unread-bell': unseenChanges.length }" :aria-label="unseenChanges.length ? 'Changements du planning non lus' : 'Changements du planning'" @click="openChanges"><BellSolidIcon v-if="unseenChanges.length" /><BellIcon v-else /></button></div>
   </nav>
   <p v-if="routeError" role="alert" class="notice">{{ routeError }}</p>
   <main v-if="resolvingDate && !selection" id="planning" class="onboarding"><p role="status">Chargement du planning…</p></main>
@@ -124,10 +129,11 @@ onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.
   <main v-else id="planning" class="planning">
     <header class="planning-header">
       <button class="date-heading" aria-label="Choisir une date" @click="dateOpen = true"><span class="date-number" :class="{ today: date === campusDate(clock) }">{{ frenchDate(date, { day: 'numeric' }) }}</span><span class="date-text"><h1>{{ frenchDate(date, { weekday: 'long' }) }}</h1><span>{{ frenchDate(date, { month: 'long', year: 'numeric' }) }}</span></span></button>
+    <div class="week-navigation"><button class="icon-button quiet" :aria-label="daily ? 'Jour précédent' : 'Semaine précédente'" @click="move(-1)"><ArrowLeftIcon /></button><button class="period-label" @click="dateOpen = true">{{ daily ? frenchDate(date, { weekday: 'short', day: 'numeric', month: 'short' }) : frenchDate(week, { day: 'numeric', month: 'short' }) + ' – ' + frenchDate(addDay(week, 6), { day: 'numeric', month: 'short' }) }}<span class="sr-only"> · Choisir une date</span></button><button class="icon-button quiet" :aria-label="daily ? 'Jour suivant' : 'Semaine suivante'" @click="move(1)"><ArrowRightIcon /></button><button class="desktop-today" :disabled="onToday" @click="today">Aujourd’hui</button></div>
       <div class="mobile-clock"><time :datetime="clock.toISOString()">{{ campusTime(clock) }}</time><button class="icon-button" :disabled="loading || !online" aria-label="Actualiser les cours" @click="loadCalendar(true)"><ArrowPathIcon :class="{ refreshing: loading }" /></button></div>
       <div class="desktop-view-controls"><div class="view-switch" aria-label="Vue du planning"><button :aria-pressed="view === 'list'" @click="view = 'list'">Liste</button><button :aria-pressed="view === 'day'" @click="view = 'day'">Jour</button><button :aria-pressed="view === 'week'" @click="view = 'week'">Semaine</button></div><div class="view-switch" aria-label="Détail des cartes"><button :aria-pressed="preferences.density === 'compact'" @click="preferences.density = 'compact'">Compact</button><button :aria-pressed="preferences.density === 'full'" @click="preferences.density = 'full'">Complet</button></div></div>
     </header>
-    <div class="week-navigation"><button class="icon-button quiet" :aria-label="daily ? 'Jour précédent' : 'Semaine précédente'" @click="move(-1)"><ArrowLeftIcon /></button><button class="period-label" @click="dateOpen = true">{{ daily ? frenchDate(date, { weekday: 'short', day: 'numeric', month: 'short' }) : frenchDate(week, { day: 'numeric', month: 'short' }) + ' – ' + frenchDate(addDay(week, 6), { day: 'numeric', month: 'short' }) }}<span class="sr-only"> · Choisir une date</span></button><button class="icon-button quiet" :aria-label="daily ? 'Jour suivant' : 'Semaine suivante'" @click="move(1)"><ArrowRightIcon /></button><button class="desktop-today" :disabled="onToday" @click="today">Aujourd’hui</button></div>
+
     <div v-if="!online || error || fallback || loading && !hasData" class="sync-status" role="status" aria-live="polite"><span v-if="loading && !hasData">Chargement des cours…</span><span v-else-if="!online">Hors ligne{{ lastFetched ? ' · copie du ' + new Date(lastFetched).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' }) : ' · aucune copie disponible' }}</span><span v-else-if="fallback">Planning de secours</span></div>
     <p v-if="error" role="alert" class="notice">{{ error }} <button :disabled="loading || !online" @click="loadCalendar(true)">Réessayer</button></p><p v-if="storageError" role="alert" class="notice">{{ storageError }}</p>
     <p v-if="missingGroups.length && !loading" class="notice">Cette semaine n’est pas enregistrée pour {{ groupLabel }}. {{ online ? 'Actualisez pour la charger.' : 'Reconnectez-vous pour la charger.' }}</p>
@@ -135,18 +141,17 @@ onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.
     <div v-if="hasData || weekCourses.length" class="timeline-stage" @touchstart.passive="startSwipe" @touchend.passive="finishSwipe" @click.capture="interceptClick"><ListCalendar v-if="view === 'list'" :daily="daily" /><CalendarGrid v-else ref="calendar" /></div>
     <div class="mobile-overlays"><button v-if="!onToday" class="floating-today" @click="today"><ClockIcon aria-hidden="true" />Aujourd’hui</button>
     <InstallPrompt class="mobile-install" /></div>
-    <nav class="mobile-dock" aria-label="Commandes du planning"><div class="dock-left"><button class="icon-button" aria-label="Ouvrir le menu" @click="menuOpen = true"><Bars3Icon /><span v-if="unseenChanges.length" class="changes-dot"></span></button><button class="group-button" @click="pickerOpen = true">{{ groupLabel }}</button></div><div class="dock-right"><button class="icon-button" :aria-pressed="searchOpen" aria-label="Rechercher un cours" @click="toggleSearch"><MagnifyingGlassIcon /></button><button class="icon-button" aria-label="Choisir la vue et le détail des cartes" @click="modesOpen = true"><ListBulletIcon v-if="view === 'list'" /><CalendarDaysIcon v-else-if="view === 'day'" /><ViewColumnsIcon v-else /></button></div></nav>
+    <nav class="mobile-dock" aria-label="Commandes du planning"><div class="dock-left"><button class="icon-button" aria-label="Ouvrir le menu" @click="settingsOpen = true"><Bars3Icon /><span v-if="unseenChanges.length" class="changes-dot"></span></button><button class="group-button" @click="pickerOpen = true">{{ groupLabel }}</button></div><div class="dock-right"><button class="icon-button" :aria-pressed="searchOpen" aria-label="Rechercher un cours" @click="toggleSearch"><MagnifyingGlassIcon /></button><button class="icon-button" aria-label="Choisir la vue et le détail des cartes" @click="modesOpen = true"><ListBulletIcon v-if="view === 'list'" /><CalendarDaysIcon v-else-if="view === 'day'" /><ViewColumnsIcon v-else /></button></div></nav>
   </main>
   <footer v-if="!selection" class="app-footer"><AuthorCredits /></footer>
 </div>
 <SearchDialog v-if="searchOpen" :initial="searchInitial" @close="searchOpen = false" @open="focused = $event" />
 <CourseFocus v-if="focused" @close="focused = undefined" @search="searchFromCourse" />
-<Settings v-if="settingsOpen" @close="settingsOpen = false" />
+<Settings v-if="settingsOpen" :mobile="narrow" @close="settingsOpen = false" @changes="settingsOpen = false; openChanges()" @date="settingsOpen = false; dateOpen = true" />
 <AccessibleDialog v-if="pickerOpen" title="Changer de groupe" @close="pickerOpen = false"><GroupPicker :initial="selection" @select="selectGroup" /></AccessibleDialog>
-<AccessibleDialog v-if="menuOpen" title="Vencat" @close="menuOpen = false"><div class="menu-list"><button @click="menuOpen = false; settingsOpen = true"><Cog6ToothIcon />Réglages et apparence</button><button @click="menuOpen = false; openChanges()"><BellIcon />Changements du planning<span v-if="unseenChanges.length" class="menu-notice-dot" aria-label="Changements non lus"></span></button><button @click="menuOpen = false; dateOpen = true"><CalendarDaysIcon />Choisir une date</button></div><p class="muted menu-sync">{{ lastFetched ? 'Mis à jour le ' + new Date(lastFetched).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Planning pas encore chargé.' }}</p><InstallPrompt explicit /><AuthorCredits class="menu-credits" /></AccessibleDialog>
 <AccessibleDialog v-if="modesOpen" title="Affichage" @close="modesOpen = false"><section class="settings-section"><h3>Vue du planning</h3><div class="view-switch"><button :aria-pressed="view === 'list'" @click="view = 'list'">Liste</button><button :aria-pressed="view === 'day'" @click="view = 'day'">Jour</button><button :aria-pressed="view === 'week'" @click="view = 'week'">Semaine</button></div><p class="muted">Liste affiche une journée sur petit écran et la semaine sur grand écran.</p><h3>Informations des cartes</h3><div class="view-switch"><button :aria-pressed="preferences.density === 'compact'" @click="preferences.density = 'compact'">Compact</button><button :aria-pressed="preferences.density === 'full'" @click="preferences.density = 'full'">Complet</button></div><p class="muted">Compact : titre, horaires, salle et type. Complet : enseignants et groupe en plus. Touchez un cours pour retrouver tous ses détails.</p><button @click="modesOpen = false">Revenir au planning</button></section></AccessibleDialog>
-<AccessibleDialog v-if="themeOpen" title="Thème de l’application" subtitle="Le changement est enregistré automatiquement." wide @close="themeOpen = false"><ThemePicker /></AccessibleDialog>
 <AccessibleDialog v-if="dateOpen" title="Choisir une date" @close="dateOpen = false"><label class="settings-label">Date du planning<input type="date" :value="date" @change="event => { const value = (event.target as HTMLInputElement).value; if (validDay(value)) { date = value; dateOpen = false; } }"></label><button class="date-today" @click="today(); dateOpen = false">Revenir à aujourd’hui</button></AccessibleDialog>
-<AccessibleDialog v-if="changesOpen" title="Changements du planning" @close="closeChanges"><p v-if="!history.length" class="empty-day">Aucun changement pour le moment.</p><ol class="change-list"><li v-for="change in history" :key="change.id"><strong>{{ change.kind === 'added' ? 'Ajouté' : change.kind === 'removed' ? 'Retiré du planning' : change.fields.join(' et ') + ' modifié(s)' }} · {{ repairText((change.after ?? change.before)?.summary ?? '') }}</strong><p v-if="change.before">Avant : {{ frenchDate(campusDate(change.before.start)) }}, {{ campusTime(change.before.start) }}–{{ campusTime(change.before.end) }} · {{ repairText(change.before.location || 'Salle non renseignée') }}</p><p v-if="change.after">Après : {{ frenchDate(campusDate(change.after.start)) }}, {{ campusTime(change.after.start) }}–{{ campusTime(change.after.end) }} · {{ repairText(change.after.location || 'Salle non renseignée') }}</p><p class="muted">Détecté le {{ new Date(change.detectedAt).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' }) }}</p></li></ol></AccessibleDialog>
+<ChangesDialog v-if="changesOpen" @close="closeChanges" />
+<div v-if="themeNotice" class="theme-notice" role="status">{{ themeNotice }}</div>
 
 </template>

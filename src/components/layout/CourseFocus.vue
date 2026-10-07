@@ -18,11 +18,11 @@ watch(() => selection.value?.department, (department, _previous, onCleanup) => {
 const description = computed(() => focused.value ? courseDescription(catalog.value, focused.value) : '');
 function find(field: SearchField, value: string) { emit('search', { field, value }); }
 const rows = computed(() => focused.value ? [
-  { field: 'module' as const, label: 'Matière', icon: BookOpenIcon, values: focused.value.module ? [focused.value.module] : [] },
-  { field: 'type' as const, label: 'Type de cours', icon: TagIcon, values: courseValues(focused.value, 'type') },
+  { field: 'teacher' as const, label: 'Enseignant(s)', icon: UserIcon, values: courseValues(focused.value, 'teacher') },
   { field: 'room' as const, label: 'Salle', icon: MapPinIcon, values: courseValues(focused.value, 'room') },
-  { field: 'teacher' as const, label: 'Enseignant', icon: UserIcon, values: courseValues(focused.value, 'teacher') },
   { field: 'group' as const, label: 'Groupe du cours', icon: UserGroupIcon, values: courseValues(focused.value, 'group') },
+  { field: 'type' as const, label: 'Type de cours', icon: TagIcon, values: courseValues(focused.value, 'type') },
+{ field: 'module' as const, label: 'Matière', icon: BookOpenIcon, values: focused.value.module ? [focused.value.module] : [] },
 ] : []);
 </script>
 <template><AccessibleDialog v-if="focused" :title="focused.summary" @close="emit('close')"><div class="course-detail">

@@ -49,8 +49,19 @@ export const savedCourses = computed(() => {
   return [...map.values()].sort((a, b) => a.start.localeCompare(b.start));
 });
 export const weekCourses = computed(() => savedCourses.value.filter(course => campusDate(course.start) <= addDay(week.value, 6) && campusDate(course.end) >= week.value));
-export const unseenChanges = computed(() => history.value.filter(change => Date.parse(change.detectedAt) > readPreference<number>('vencat:changes-seen', 0)));
-export function markChangesSeen() { writePreference('vencat:changes-seen', Date.now()); history.value = [...history.value]; }
+const storedDismissals = readPreference<unknown>('vencat:changes-dismissed', []);
+const dismissedChanges = ref<string[]>(Array.isArray(storedDismissals) ? storedDismissals.filter(id => typeof id === 'string') : []);
+const changesSeenAt = ref(readPreference<number>('vencat:changes-seen', 0));
+const storedReadIds = readPreference<unknown>('vencat:changes-read', []);
+const readChangeIds = ref<string[]>(Array.isArray(storedReadIds) ? storedReadIds.filter(id => typeof id === 'string') : []);
+export const visibleChanges = computed(() => history.value.filter(change => !dismissedChanges.value.includes(change.id)));
+export const unseenChanges = computed(() => visibleChanges.value.filter(change => Date.parse(change.detectedAt) > changesSeenAt.value && !readChangeIds.value.includes(change.id)));
+export function markChangeSeen(id: string) { readChangeIds.value = [...new Set([...readChangeIds.value, id])].slice(-6000); writePreference('vencat:changes-read', readChangeIds.value); }
+export function markChangesSeen() { changesSeenAt.value = Date.now(); writePreference('vencat:changes-seen', changesSeenAt.value); }
+export function dismissChanges(ids: string[]) {
+  dismissedChanges.value = [...new Set([...dismissedChanges.value, ...ids])].slice(-6000);
+  return writePreference('vencat:changes-dismissed', dismissedChanges.value);
+}
 
 const inFlight = new Map<string, Promise<Snapshot>>();
 export async function fetchSnapshot(id: string, start: string): Promise<Snapshot> {

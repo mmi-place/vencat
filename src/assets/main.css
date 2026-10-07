@@ -441,3 +441,107 @@ input::placeholder { color: var(--muted); }
 .mobile-overlays > .floating-today { position: static; transform: none; pointer-events: auto; }
 .mobile-overlays > .mobile-install { position: static; width: 100%; margin: 0; pointer-events: auto; }
 @media (min-width: 768px) { .mobile-overlays { display: none; } }
+
+/* One date row, with navigation beside the heading on every screen. */
+.planning-header { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; background: var(--header); }
+.planning-header .week-navigation { background: transparent; padding: 0; gap: 0; min-width: 0; }
+.planning-header .period-label { display: none; }
+.planning-header .week-navigation .icon-button { width: 36px; padding: 8px; }
+.date-heading { gap: 8px; }
+.theme-notice { position: fixed; bottom: 24px; right: 24px; z-index: 30; padding: 12px 18px; background: var(--panel); color: var(--text); border-radius: 12px; box-shadow: 0 6px 24px #0004; pointer-events: none; }
+.search-facet-bar { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); overflow: visible; width: 100%; gap: 8px; }
+.search-facet { min-width: 0; max-width: none; width: 100%; }
+.search-facet select, .search-facet:nth-child(3) select, .search-facet:nth-child(5) select, .search-facet.chosen select { width: 100%; max-width: none; padding-right: 22px; }
+.settings-credits { display: block; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.settings-menu strong .menu-notice-dot { margin-left: 8px; vertical-align: middle; }
+.background-categories { display: flex; flex-wrap: wrap; gap: 6px; }
+.background-categories button { flex: 1; padding-inline: 10px; font-size: .85rem; }
+.image-import { display: grid; gap: 10px; margin-top: 8px; }
+.upload-background { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px; border: 1px dashed var(--muted); border-radius: 12px; cursor: pointer; overflow: hidden; }
+.upload-background svg { width: 20px; height: 20px; }
+.upload-background input { position: absolute; inset: 0; opacity: 0; cursor: pointer; max-width: none; }
+.upload-background:focus-within { outline: 3px solid var(--accent); outline-offset: 3px; }
+.group-picker { width: 100%; }
+.group-picker fieldset { min-inline-size: 0; }
+.group-picker legend { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.picker-step { width: 26px; height: 26px; display: inline-flex; justify-content: center; align-items: center; background: var(--surface); border-radius: 50%; color: var(--accent); font-size: .85rem; }
+.group-picker .choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.group-picker .choices button { width: 100%; min-width: 0; min-height: 48px; }
+.course-detail-fields dt { overflow-wrap: anywhere; }
+.picker-help { padding-block: 8px; }
+.onboarding { width: 100%; padding: 0 8px; }
+.changes-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.changes-toolbar .text-action, .changes-footer .text-action { display: flex; align-items: center; gap: 6px; min-height: 44px; }
+.changes-toolbar svg, .changes-footer svg { width: 18px; height: 18px; }
+.changes-toolbar .view-switch button { white-space: nowrap; }
+.preview-light .preview-event { background: #dcccef; color: #17243a; }
+.changes-feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.change-entry { padding: 16px; background: var(--surface); border-radius: 12px; }
+.change-entry.unread { background: color-mix(in srgb, var(--selected) 55%, var(--panel)); }
+.change-entry-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.change-entry-header > div { min-width: 0; }
+.change-entry-header h3 { margin-top: 6px; line-height: 1.4; overflow-wrap: anywhere; font-size: 1rem; }
+.change-entry-header .icon-button { margin-top: -6px; margin-right: -8px; color: var(--muted); }
+.change-kind { color: var(--muted); font-size: .75rem; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.unread-tag { color: var(--alert); font-weight: 800; display: inline-flex; align-items: center; gap: 5px; }
+.unread-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.change-course-date { margin-top: 8px; font-size: .8rem; color: var(--muted); }
+.changed-values { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 8px 10px; margin: 14px 0; align-items: baseline; }
+.changed-values dt { font-size: .8rem; color: var(--muted); }
+.changed-values dd { margin: 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .9rem; overflow-wrap: anywhere; }
+.changed-values del { color: var(--muted); text-decoration-thickness: 1px; }
+.changed-values strong { color: var(--text); }
+.changed-values svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--accent); }
+.change-detected { font-size: .75rem; color: var(--muted); }
+.change-entry-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
+.change-entry-footer button { min-height: 36px; font-size: .75rem; }
+.changes-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px; }
+.timeline-day, .timeline-corner, .list-day-header { background: var(--header); color: var(--text); }
+.list-day-heading { background: var(--header); color: var(--text); }
+.hour-axis { background: var(--header); }
+.list-day { background: color-mix(in srgb, var(--panel) 92%, transparent); }
+.app-dialog::backdrop { background: #040a18aa; backdrop-filter: blur(3px); }
+:root[data-theme=light] { --header: #f9fbfff0; --surface: #e9eef7; --surface-hover: #dce5f3; --muted: #4c5b73; --line: #becadb; --selected: #e1d5f5; --accent: #62448f; }
+[data-theme=light] .course:not(.past-course):not(.ongoing-course) { background: color-mix(in srgb, var(--course-color) 23%, white); color: #17243a; --course-accent: #17243a; }
+[data-theme=light] .course:not(.past-course):hover { background: color-mix(in srgb, var(--course-color) 33%, white); }
+[data-theme=light] .course.ongoing-course { background: color-mix(in srgb, var(--course-color) 40%, white); color: #101b2c; }
+[data-theme=light] .course-meta { color: inherit; }
+[data-theme=light] .course-stripe { background: var(--course-color); }
+[data-theme=light] .timeline-column { background-color: #ffffffd4; border-color: #17243a20; background-image: repeating-linear-gradient(to bottom, transparent 0 calc(var(--hour-height) / 2 - 1px), #17243a08 calc(var(--hour-height) / 2 - 1px) calc(var(--hour-height) / 2), transparent calc(var(--hour-height) / 2) var(--hour-height)); }
+[data-theme=light] .hour-rule { border-color: #17243a20; }
+[data-theme=light] .noon-rule { border-color: #17243a40; }
+[data-theme=light] .background-option { background: var(--panel); }
+[data-theme=light] .background-option[aria-pressed=true] { background: var(--selected); }
+[data-theme=light] .preview-course { background: #d4b9ef; }
+[data-theme=light] .preview-course:last-child { background: #b2dce8; }
+@media (min-width: 768px) {
+  .planning-header { grid-template-columns: auto auto minmax(0, 1fr); gap: 14px; padding: 8px 12px; }
+  .planning-header .period-label { display: block; padding-inline: 4px; }
+  .desktop-view-controls { justify-self: end; }
+  .course-when { display: flex; justify-content: space-between; gap: 20px; align-items: center; }
+  .course-when p { margin: 0; }
+}
+@media (min-width: 768px) and (max-width: 1099px) {
+  .planning-header { gap: 8px; }
+  .planning-header .period-label { display: none; }
+  .desktop-view-controls .view-switch button { padding-inline: 8px; }
+}
+@media (max-width: 767px) {
+  .search-facet-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .search-facet:last-child { grid-column: 1 / -1; }
+  .search-dialog-tools { max-height: 45dvh; }
+  .settings-footer > .muted { font-size: .75rem; }
+  .settings-credits { font-size: .72rem; }
+  .course-detail dl.course-detail-fields { grid-template-columns: 100px minmax(0, 1fr); }
+  .change-entry { padding: 12px; }
+  .theme-notice { bottom: 86px; right: 12px; }
+}
+@media (max-width: 359px) {
+  .planning-header { padding-inline: 8px; gap: 2px; }
+  .date-heading { gap: 5px; }
+  .date-number { width: 36px; height: 36px; font-size: 1.4rem; }
+  .date-text h1 { font-size: .95rem; }
+  .date-text > span { font-size: .65rem; }
+  .mobile-clock { gap: 2px; font-size: .85rem; }
+  .mobile-clock .icon-button, .planning-header .week-navigation .icon-button { width: 36px; }
+}
