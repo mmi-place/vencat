@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { wallpaperBackdrop as vWallpaperBackdrop } from '../scripts/wallpaperBackdrop';
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import CourseView from './CourseView.vue';
 import { campusDate, campusTime, minuteOf, frenchDate, layoutDay, calendarWeekDays, courseOccursOn, courseKey } from '../../shared/calendar';
@@ -33,9 +34,9 @@ watch([() => view.value === 'day' ? date.value + ':day' : week.value + ':week', 
 <div ref="scroll" class="calendar-scroll" :class="{ 'day-timeline': view === 'day' }" tabindex="0" :aria-label="view === 'day' ? 'Planning du jour, défilement vertical des heures' : 'Planning de la semaine, défilement vertical des heures'">
 <p v-if="!layout.flat().length" class="timeline-empty" role="status">{{ view === 'day' ? 'Aucun cours prévu ce jour.' : 'Aucun cours prévu cette semaine.' }}</p>
 <div class="timeline" :style="{ '--day-count': dates.length, '--visible-days': view === 'day' ? 1 : 5, '--hour-height': scale * 60 + 'px' }">
-  <div class="timeline-corner" aria-hidden="true"><span>h</span></div>
-  <button v-for="day in dates" :key="day" class="timeline-day" :class="{ today: day === nowDay }" :aria-label="'Voir le ' + frenchDate(day)" @click="date = day; view = 'day'"><span>{{ frenchDate(day, { weekday: 'short' }) }}</span><strong>{{ frenchDate(day, { day: 'numeric' }) }}</strong></button>
-  <div class="hour-axis" :style="{ height: 1440 * scale + 'px' }"><span v-for="tick in ticks" :key="tick" :class="{ afternoon: tick >= 780 }" :style="{ top: tick * scale + 'px' }">{{ String(tick / 60).padStart(2, '0') }}<span class="desktop-hour">:00</span></span></div>
+  <div v-wallpaper-backdrop class="timeline-corner" aria-hidden="true"><span>h</span></div>
+  <button v-for="day in dates" :key="day" v-wallpaper-backdrop class="timeline-day" :class="{ today: day === nowDay }" :aria-label="'Voir le ' + frenchDate(day)" @click="date = day; view = 'day'"><span>{{ frenchDate(day, { weekday: 'short' }) }}</span><strong>{{ frenchDate(day, { day: 'numeric' }) }}</strong></button>
+  <div v-wallpaper-backdrop class="hour-axis" :style="{ height: 1440 * scale + 'px' }"><span v-for="tick in ticks" :key="tick" :class="{ afternoon: tick >= 780 }" :style="{ top: tick * scale + 'px' }">{{ String(tick / 60).padStart(2, '0') }}<span class="desktop-hour">:00</span></span></div>
   <section v-for="(day, index) in dates" :key="day" class="timeline-column" :aria-label="frenchDate(day)" :style="{ height: 1440 * scale + 'px' }">
     <div class="noon-band" :style="{ top: 720 * scale + 'px', height: 60 * scale + 'px' }" aria-hidden="true"></div>
     <div v-for="tick in ticks" :key="tick" class="hour-rule" :class="{ 'noon-rule': tick === 720 }" :style="{ top: tick * scale + 'px' }"></div>
