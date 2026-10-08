@@ -15,6 +15,16 @@ Vencat est une application de consultation des emplois du temps CELCAT de l’IU
 - Consultation des semaines enregistrées hors connexion et installation comme application web sur mobile. L’interface se met à jour lors du rechargement et au retour dans l’application.
 - Historique local et partagé des changements, avec indicateurs non lus dans le menu mobile et une cloche rouge sur ordinateur. Il n’y a pas de notifications push sur l’appareil.
 
+## Accessibilité
+
+Dans **Réglages → Accessibilité** (menu mobile), chacun peut renforcer les contrastes, agrandir le texte, choisir un fond uni et réduire les animations. Ces choix sont enregistrés sur l’appareil. La préférence système de réduction des animations reste respectée.
+
+La navigation utilise les contrôles HTML natifs : Tab et Maj + Tab, Entrée ou Espace pour ouvrir un cours, Échap pour fermer une fenêtre avec retour du focus. Sur les cours, ↑/↓ parcourt la journée, ←/→ rejoint la journée voisine au plus près du même horaire, Début/Fin rejoint ses extrémités et Ctrl + Début/Fin celles du planning affiché.
+
+Les raccourcis **Alt + Maj + F** (recherche), **G** (groupe), **S** (réglages), **A** (accessibilité), **C** (changements), **T** (aujourd’hui), **P** (premier cours), **1/2/3** (Liste/Jour/Semaine) et **←/→** (période précédente/suivante) sont désactivables. Ils restent inactifs dans les champs de saisie et les modales. Les noms accessibles des cours indiquent aussi leur statut : à venir, en cours ou terminé.
+
+Les contrôles automatiques et les essais clavier ne remplacent pas une validation complète avec différents lecteurs d’écran.
+
 ## Développement local
 
 Utiliser **Node.js 22.12 ou une version plus récente de la branche 22.x**.

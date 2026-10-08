@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { courseNavigation as vCourseNavigation } from '../scripts/keyboardNavigation';
 import { wallpaperBackdrop as vWallpaperBackdrop } from '../scripts/wallpaperBackdrop';
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import CourseView from './CourseView.vue';
@@ -31,7 +32,7 @@ watch([() => view.value === 'day' ? date.value + ':day' : week.value + ':week', 
 }, { immediate: true });
 </script>
 <template>
-<div ref="scroll" class="calendar-scroll" :class="{ 'day-timeline': view === 'day' }" tabindex="0" :aria-label="view === 'day' ? 'Planning du jour, défilement vertical des heures' : 'Planning de la semaine, défilement vertical des heures'">
+<div ref="scroll" v-course-navigation class="calendar-scroll" role="region" aria-describedby="course-keyboard-help" :class="{ 'day-timeline': view === 'day' }" tabindex="0" :aria-label="view === 'day' ? 'Planning du jour, défilement vertical des heures' : 'Planning de la semaine, défilement vertical des heures'">
 <p v-if="!layout.flat().length" class="timeline-empty" role="status">{{ view === 'day' ? 'Aucun cours prévu ce jour.' : 'Aucun cours prévu cette semaine.' }}</p>
 <div class="timeline" :style="{ '--day-count': dates.length, '--visible-days': view === 'day' ? 1 : 5, '--hour-height': scale * 60 + 'px' }">
   <div v-wallpaper-backdrop class="timeline-corner" aria-hidden="true"><span>h</span></div>

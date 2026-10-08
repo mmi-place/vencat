@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick, useId } from 'vue';
 import { MagnifyingGlassIcon, CalendarDaysIcon, ChevronRightIcon, UserIcon, MapPinIcon, UserGroupIcon, TagIcon, BookOpenIcon } from '@heroicons/vue/24/outline';
 import AccessibleDialog from './AccessibleDialog.vue';
 import { savedCourses, selection, online, date } from '../scripts/calendarStore';
@@ -9,6 +9,7 @@ import { campusDate, campusTime, frenchDate, courseKey } from '../../shared/cale
 
 const props = defineProps<{ initial?: SearchCriterion }>();
 const emit = defineEmits<{ close: []; open: [course: CourseDTO] }>();
+const datesId = useId(), rangeErrorId = useId();
 const academic = searchWindow('year', date.value);
 const emptyCriteria = (): SearchFilters => ({ teacher: '', room: '', group: '', type: '', module: '' });
 const query = ref(''), criteria = ref<SearchFilters>(emptyCriteria()), input = ref<HTMLInputElement>();
@@ -71,21 +72,21 @@ onMounted(() => { nextTick(() => input.value?.focus()); perform(); poll = setInt
 onBeforeUnmount(() => { request?.abort(); if (delay) clearTimeout(delay); clearInterval(poll); document.removeEventListener('visibilitychange', refresh); window.removeEventListener('online', refresh); });
 </script>
 <template>
-<AccessibleDialog title="Recherche" wide kind="search" @close="emit('close')">
+<AccessibleDialog id="search-dialog" title="Recherche" wide kind="search" @close="emit('close')">
   <div class="search-dialog-layout">
     <form class="search-dialog-tools" role="search" @submit.prevent="perform">
-      <div class="search-dialog-bar"><label class="search-field"><MagnifyingGlassIcon aria-hidden="true" /><span class="sr-only">Rechercher un cours</span><input ref="input" v-model="query" type="search" placeholder="Matière, prof, salle, module…" autocomplete="off" /></label><button type="button" class="icon-button quiet" aria-label="Choisir les dates de recherche" :aria-expanded="calendarOpen" :aria-pressed="customDates" @click="calendarOpen = !calendarOpen"><CalendarDaysIcon /></button></div>
-      <fieldset v-if="calendarOpen" class="search-date-picker"><legend>Dates de recherche</legend><label>Du<input v-model="start" type="date" @change="customDates = true" /></label><label>Au<input v-model="end" type="date" @change="customDates = true" /></label><button type="button" class="text-action" @click="resetDates">Toute l’année scolaire</button></fieldset>
-      <p v-if="rangeError" role="alert" class="notice">{{ rangeError }}</p>
+      <div class="search-dialog-bar"><label class="search-field"><MagnifyingGlassIcon aria-hidden="true" /><span class="sr-only">Rechercher un cours</span><input ref="input" autofocus v-model="query" type="search" placeholder="Matière, prof, salle, module…" autocomplete="off" /></label><button type="button" class="icon-button quiet" aria-label="Choisir les dates de recherche" :aria-expanded="calendarOpen" :aria-controls="calendarOpen ? datesId : undefined" :aria-pressed="customDates" @click="calendarOpen = !calendarOpen"><CalendarDaysIcon aria-hidden="true" /></button></div>
+      <fieldset v-if="calendarOpen" :id="datesId" class="search-date-picker"><legend>Dates de recherche</legend><label>Du<input v-model="start" type="date" :aria-invalid="!!rangeError" :aria-describedby="rangeError ? rangeErrorId : undefined" @change="customDates = true" /></label><label>Au<input v-model="end" type="date" :aria-invalid="!!rangeError" :aria-describedby="rangeError ? rangeErrorId : undefined" @change="customDates = true" /></label><button type="button" class="text-action" @click="resetDates">Toute l’année scolaire</button></fieldset>
+      <p v-if="rangeError" :id="rangeErrorId" role="alert" class="notice">{{ rangeError }}</p>
       <p v-else-if="customDates" class="search-chosen-dates muted">{{ frenchDate(start, { day: 'numeric', month: 'short', year: 'numeric' }) }} – {{ frenchDate(end, { day: 'numeric', month: 'short', year: 'numeric' }) }}</p>
-      <div class="search-facet-bar" aria-label="Critères de recherche"><label v-for="field in fields" :key="field.id" class="search-facet" :class="{ chosen: criteria[field.id] }"><component :is="field.icon" aria-hidden="true" /><span class="sr-only">{{ field.label }}</span><select v-model="criteria[field.id]" :aria-label="field.label"><option value="">{{ field.short }}</option><option v-if="missingOption(field.id)" :value="criteria[field.id]">{{ criteria[field.id] }}</option><option v-for="option in options[field.id]" :key="option.value" :value="option.value">{{ option.label }} ({{ option.count }})</option></select></label></div>
+      <div class="search-facet-bar" role="group" aria-label="Critères de recherche"><label v-for="field in fields" :key="field.id" class="search-facet" :class="{ chosen: criteria[field.id] }"><component :is="field.icon" aria-hidden="true" /><span class="sr-only">{{ field.label }}</span><select v-model="criteria[field.id]" :aria-label="field.label"><option value="">{{ field.short }}</option><option v-if="missingOption(field.id)" :value="criteria[field.id]">{{ criteria[field.id] }}</option><option v-for="option in options[field.id]" :key="option.value" :value="option.value">{{ option.label }} ({{ option.count }})</option></select></label></div>
       <div class="search-result-summary"><p role="status" class="muted">{{ results.length }} résultat{{ results.length === 1 ? '' : 's' }}{{ !complete && results.length ? ' locaux' : '' }}{{ busy ? ' · Recherche…' : '' }}</p><button v-if="hasCriteria" type="button" class="text-action" @click="clear">Effacer</button></div>
     </form>
     <div class="compact-search-results" :aria-busy="busy">
       <p v-if="!online" class="muted search-message">Hors ligne : recherche dans les semaines enregistrées.</p>
       <p v-if="error" role="alert" class="notice">{{ error }} <button @click="perform">Réessayer</button></p>
       <div v-if="busy && !visible.length" class="search-skeleton" role="status"><span class="sr-only">Recherche des cours…</span><div v-for="n in 5" :key="n" class="search-skeleton-row"><span></span><span></span></div></div>
-      <ol v-if="visible.length" class="compact-result-list"><li v-for="course in visible" :key="courseKey(course)"><button class="compact-search-result" :aria-label="`${course.summary}, ${frenchDate(campusDate(course.start))}, ${campusTime(course.start)}, ${course.location}`" @click="emit('open', course)"><span class="result-kind">{{ course.type }}</span><strong class="result-title">{{ course.summary }}</strong><span class="result-room">{{ course.location || '—' }}</span><ChevronRightIcon aria-hidden="true" /><span class="result-date">{{ frenchDate(campusDate(course.start), { weekday: 'short', day: 'numeric', month: 'short' }) }} · {{ campusTime(course.start) }}–{{ campusTime(course.end) }}</span></button></li></ol>
+      <ol v-if="visible.length" class="compact-result-list"><li v-for="course in visible" :key="courseKey(course)"><button class="compact-search-result" aria-haspopup="dialog" :aria-label="`${course.summary}, ${frenchDate(campusDate(course.start))}, ${campusTime(course.start)}, ${course.location}`" @click="emit('open', course)"><span class="result-kind">{{ course.type }}</span><strong class="result-title">{{ course.summary }}</strong><span class="result-room">{{ course.location || '—' }}</span><ChevronRightIcon aria-hidden="true" /><span class="result-date">{{ frenchDate(campusDate(course.start), { weekday: 'short', day: 'numeric', month: 'short' }) }} · {{ campusTime(course.start) }}–{{ campusTime(course.end) }}</span></button></li></ol>
       <p v-if="!visible.length && !busy && !rangeError" class="muted search-message">Aucun cours ne correspond. Essayez une autre matière, un autre critère ou d’autres dates.</p>
       <button v-if="results.length > limit" class="more-results" @click="limit += 100">Afficher la suite</button>
     </div>

@@ -39,8 +39,8 @@ h3 { font-size: 1.05rem; font-weight: 800; }
 .date-heading { display: flex; align-items: center; gap: 10px; border: 0; background: transparent; padding: 0; text-align: left; min-width: 0; }
 .date-number { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%; background: #ffffff0d; font-size: 1.65rem; font-weight: 850; }
 .date-text { display: flex; flex-direction: column; min-width: 0; }
-.date-text h1 { font-size: 1.12rem; text-transform: capitalize; }
-.date-text > span { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+.date-text :is(h1, .date-weekday) { font-size: 1.12rem; text-transform: capitalize; }
+.date-text > span:not(.date-weekday) { color: var(--muted); font-size: .8rem; white-space: nowrap; }
 .mobile-clock { display: flex; align-items: center; gap: 8px; font-size: 1.05rem; font-weight: 750; font-variant-numeric: tabular-nums; }
 .mobile-clock .icon-button { border-radius: 50%; background: #ffffff0c; border-color: #ffffff12; }
 .desktop-view-controls { display: none; }
@@ -177,8 +177,8 @@ h3 { font-size: 1.05rem; font-weight: 800; }
   .desktop-actions { gap: 6px; }
   .group-button { font-size: .875rem; font-weight: 800; }
   .planning-header { min-height: 68px; padding: 4px 0; background: transparent; }
-  .date-text h1 { font-size: 1.15rem; }
-  .date-text > span { font-size: .85rem; }
+  .date-text :is(h1, .date-weekday) { font-size: 1.15rem; }
+  .date-text > span:not(.date-weekday) { font-size: .85rem; }
   .date-number { background: #ffffff07; }
   .mobile-clock, .mobile-dock, .floating-today { display: none; }
   .desktop-view-controls { display: flex; align-items: center; gap: 14px; }
@@ -215,7 +215,7 @@ h3 { font-size: 1.05rem; font-weight: 800; }
   .course-detail dl { grid-template-columns: 110px minmax(0, 1fr); }
 }
 @media (min-width: 1100px) { .week-course .course-time { font-size: .75rem; } .week-course .course-title { font-size: 1.05rem; } }
-@media (max-width: 359px) { .planning-header { padding-inline: 8px; } .date-heading { gap: 7px; } .date-text h1 { font-size: 1rem; } .date-number { width: 40px; height: 40px; } .mobile-clock { gap: 4px; font-size: .9rem; } .mobile-dock { left: 8px; right: 8px; gap: 5px; } .dock-left { gap: 5px; } .mobile-dock .group-button { max-width: 39vw; padding-inline: 8px; font-size: .75rem; } .week-course .course-time { font-size: .53rem; } }
+@media (max-width: 359px) { .planning-header { padding-inline: 8px; } .date-heading { gap: 7px; } .date-text :is(h1, .date-weekday) { font-size: 1rem; } .date-number { width: 40px; height: 40px; } .mobile-clock { gap: 4px; font-size: .9rem; } .mobile-dock { left: 8px; right: 8px; gap: 5px; } .dock-left { gap: 5px; } .mobile-dock .group-button { max-width: 39vw; padding-inline: 8px; font-size: .75rem; } .week-course .course-time { font-size: .53rem; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 @media print { .app-nav, .week-navigation, .mobile-clock, .mobile-dock, .floating-today, .desktop-view-controls { display: none; } .calendar-app { height: auto; } .calendar-scroll { overflow: visible; height: auto; padding: 0; } .planning, .timeline-stage { display: block; } }
 
@@ -540,8 +540,8 @@ input::placeholder { color: var(--muted); }
   .planning-header { padding-inline: 8px; gap: 2px; }
   .date-heading { gap: 5px; }
   .date-number { width: 36px; height: 36px; font-size: 1.4rem; }
-  .date-text h1 { font-size: .95rem; }
-  .date-text > span { font-size: .65rem; }
+  .date-text :is(h1, .date-weekday) { font-size: .95rem; }
+  .date-text > span:not(.date-weekday) { font-size: .65rem; }
   .mobile-clock { gap: 2px; font-size: .85rem; }
   .mobile-clock .icon-button, .planning-header .week-navigation .icon-button { width: 36px; }
 }
@@ -575,8 +575,76 @@ input::placeholder { color: var(--muted); }
 [data-theme=light] .hour-axis { background: transparent; }
 .hour-axis > span, .hour-axis > .afternoon { color: var(--calendar-muted); }
 .list-pause, .list-empty { color: var(--calendar-muted); }
-.planning-header .period-label, .date-text > span { color: var(--calendar-muted); }
+.planning-header .period-label, .date-text > span:not(.date-weekday) { color: var(--calendar-muted); }
 @media print {
   .timeline-day, .timeline-corner, .list-day-heading, .hour-axis { backdrop-filter: none; -webkit-backdrop-filter: none; }
   .timeline-day::before, .timeline-corner::before, .list-day-heading::before, .hour-axis::before { display: none; }
 }
+
+/* Accessible reading preferences supplement native keyboard and system settings. */
+[data-theme=light] .course.past-course { background: color-mix(in srgb, var(--course-color) 7%, #c3cad4); color: #263448; }
+[data-theme=light] .course.past-course:hover { background: color-mix(in srgb, var(--course-color) 10%, #b7c0cc); }
+[data-theme=light] .past-course .course-meta { color: #263448; }
+.course:focus-visible { outline: 3px solid var(--text); outline-offset: -3px; box-shadow: inset 0 0 0 5px var(--page); filter: none; }
+.course, .compact-search-result { scroll-margin-block: 80px 160px; }
+.list-calendar, .calendar-scroll { scroll-padding-block: 80px 160px; }
+.dialog-content { scroll-padding-block: 12px; }
+.dialog-content :focus { scroll-margin-block: 12px; }
+.dialog-heading h2:focus, main:focus { outline: none; }
+.keyboard-help { margin: 0; display: grid; gap: 8px 16px; grid-template-columns: minmax(100px, .8fr) minmax(0, 1.2fr); line-height: 1.5; font-size: .85rem; }
+.keyboard-help dt { font-weight: 800; }
+.keyboard-help dd { margin: 0; color: var(--muted); }
+.accessibility-settings h3:not(:first-child) { margin-top: 16px; }
+:root[data-large-text=true] { font-size: 18px; }
+:root[data-contrast=high] { --muted: #f1f5f9; --calendar-muted: #f1f5f9; --line: #98a7bf; --accent: #ddd6fe; }
+:root[data-theme=light][data-contrast=high] { --muted: #25344c; --calendar-muted: #25344c; --line: #52627a; --accent: #492271; }
+[data-contrast=high] .course { box-shadow: inset 0 0 0 1px currentColor; }
+[data-contrast=high] .course-meta, [data-contrast=high] .course-group { opacity: 1; }
+[data-contrast=high] .timeline-column, [data-contrast=high] .hour-rule { border-color: var(--line); }
+[data-reduce-motion=true] *, [data-reduce-motion=true] *::before, [data-reduce-motion=true] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+@media (forced-colors: active) {
+  #app::before, .timeline-day::before, .timeline-corner::before, .list-day-heading::before, .hour-axis::before { background: Canvas; opacity: 1; }
+  .course { border: 1px solid ButtonText; color: ButtonText; background: ButtonFace; }
+  .course-stripe { background: ButtonText; }
+  .course:focus-visible { outline: 3px solid Highlight; box-shadow: none; }
+  button[aria-pressed=true] { outline: 2px solid Highlight; }
+  .past-course { border-style: dashed; }
+}
+
+/* Loading uses the same day columns, time axis and card density as the planning. */
+.planning-skeleton { display: block; padding: 0; min-height: 0; overflow: hidden; }
+.planning-skeleton .skeleton-list { height: 100%; }
+.skeleton-pause { display: flex; align-items: center; justify-content: center; }
+.skeleton-pause span { width: 45%; height: 6px; background: var(--surface); border-radius: 3px; }
+.skeleton-course.skeleton-event { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-auto-rows: max-content; gap: 9px; margin: 8px 0; padding: 12px; align-content: start; border-radius: 16px; background: color-mix(in srgb, var(--surface-hover) 65%, var(--page)); }
+.skeleton-event > span, .skeleton-event > strong { margin: 0; width: 70%; height: 7px; background: color-mix(in srgb, var(--text) 14%, transparent); }
+.skeleton-event > .skeleton-event-meta { width: 60%; }
+.skeleton-event > .skeleton-event-time { width: 48px; justify-self: end; }
+.skeleton-event > .skeleton-event-title { grid-column: 1 / -1; width: 90%; height: 24px; }
+.skeleton-event > .skeleton-event-room { grid-column: 1 / -1; width: 58%; }
+.skeleton-grid { --skeleton-hour-height: 84px; height: 100%; overflow: hidden; padding-bottom: 0; }
+.skeleton-grid-head, .skeleton-grid-body { display: grid; grid-template-columns: 52px repeat(var(--skeleton-days), minmax(0, 1fr)); }
+.skeleton-grid-head { height: 56px; }
+.skeleton-date { display: flex; align-items: center; justify-content: center; flex-direction: column; border-bottom: 1px solid var(--line); background: var(--calendar-glass); }
+.skeleton-date span { font-size: .7rem; text-transform: uppercase; }
+.skeleton-date strong { font-size: 1.3rem; }
+.skeleton-axis-label { display: grid; place-items: center; font-size: .7rem; }
+.skeleton-hours { position: relative; }
+.skeleton-hours span { position: absolute; right: 8px; font-size: .75rem; color: var(--calendar-muted); }
+.skeleton-grid-column { height: calc(12 * var(--skeleton-hour-height)); position: relative; border-right: 1px solid var(--line); background: repeating-linear-gradient(to bottom, transparent 0 calc(var(--skeleton-hour-height) - 1px), color-mix(in srgb, var(--text) 8%, transparent) calc(var(--skeleton-hour-height) - 1px) var(--skeleton-hour-height)); }
+.skeleton-grid-column .skeleton-event { position: absolute; left: 2px; width: calc(100% - 4px); margin: 0; }
+@media (max-width: 767px) {
+  .skeleton-grid-head, .skeleton-grid-body { grid-template-columns: 32px repeat(var(--skeleton-days), minmax(0, 1fr)); }
+  .skeleton-grid-head { height: 48px; }
+  .skeleton-grid-column .skeleton-event { border-radius: 0; padding: 5px 3px; gap: 7px; display: flex; flex-direction: column; }
+  .daily-skeleton .skeleton-grid-column .skeleton-event { padding: 10px; display: grid; }
+  .skeleton-date span { font-size: .6rem; }
+  .skeleton-event > .skeleton-event-time { max-width: 100%; }
+}
+
+.daily-skeleton .skeleton-grid-head { display: none; }
+.date-weekday { font-weight: 850; line-height: 1.2; }
+@media (max-width:767px) { .skeleton-grid { --skeleton-hour-height: 96px; } }
