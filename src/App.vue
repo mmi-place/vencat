@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { accessibility } from './scripts/accessibility';
-import { defineAsyncComponent, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { RouterView } from 'vue-router';
 import { preferences } from './scripts/calendarStore';
 import { backgroundStyle } from './scripts/appearance';
 import { customBackgroundUrl } from './scripts/customBackground';
 import { effectiveTheme } from './scripts/theme';
 // A system request for more contrast applies the same reinforced styles as the in-app setting.
-// Test helpers exist only in development builds.
-const DevMocks = import.meta.env.DEV ? defineAsyncComponent(() => import('./components/DevMocks.vue')) : undefined;
 const contrastQuery = matchMedia('(prefers-contrast: more)');
 const systemContrast = ref(contrastQuery.matches);
 contrastQuery.addEventListener('change', event => { systemContrast.value = event.matches; });
@@ -22,4 +20,4 @@ watch([() => preferences.value.background, effectiveTheme, customBackgroundUrl, 
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f4f5f8' : '#020618');
 }, { immediate: true, deep: true });
 </script>
-<template><RouterView /><component :is="DevMocks" v-if="DevMocks" /></template>
+<template><RouterView /></template>
