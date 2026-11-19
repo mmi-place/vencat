@@ -713,3 +713,39 @@ input::placeholder { color: var(--muted); }
 :root[data-theme=light] .dock-right .icon-button[aria-pressed=true] { background: var(--selected); }
 /* Every day column spans the full week height, so a short or empty day keeps its sticky heading while scrolling. */
 .list-calendar:not(.daily-list) { align-items: stretch; }
+
+/* Search shown on the planning. */
+.planning-search { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; padding: 4px 6px 4px 12px; border: 1px solid var(--accent); border-radius: 14px; background: color-mix(in srgb, var(--accent) 14%, var(--page)); }
+.planning-search > svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--accent); }
+.planning-search > p:first-of-type { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; font-size: .85rem; }
+.planning-search strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.planning-search span { color: var(--muted); font-size: .8rem; }
+.planning-search .text-action { min-height: 44px; padding-inline: 8px; }
+.course.search-dimmed { opacity: .32; filter: grayscale(.7); }
+.course.search-dimmed:hover, .course.search-dimmed:focus-visible { opacity: .8; filter: none; }
+.course.search-match { box-shadow: inset 0 0 0 2px var(--course-color), 0 0 0 2px var(--accent); z-index: 2; }
+@media (forced-colors: active) { .course.search-match { outline: 3px solid Highlight; } .course.search-dimmed { opacity: .5; } }
+@media (prefers-reduced-motion: no-preference) { .course.search-dimmed { transition: opacity .2s; } }
+
+/* Search dialog: results grouped by day, filters folded on phones, full screen on phones. */
+.search-day + .search-day { margin-top: 14px; }
+.search-day-heading { position: sticky; top: 0; z-index: 1; padding: 6px 2px; font-size: .8rem; font-weight: 800; color: var(--muted); background: var(--panel); }
+.search-day-heading::first-letter { text-transform: uppercase; }
+.search-day-heading.today { color: var(--accent); }
+.search-filters-toggle { position: relative; }
+.filter-count { position: absolute; top: 4px; right: 4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--accent); color: var(--page); font-size: .65rem; font-weight: 900; line-height: 16px; text-align: center; }
+.search-past { margin-top: 2px; font-size: .85rem; }
+.search-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 0; margin: 0; list-style: none; }
+.search-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 4px 10px; border-radius: 18px; font-size: .8rem; background: var(--selected); color: var(--selected-text); border-color: var(--accent); }
+.search-chip svg { width: 14px; height: 14px; flex-shrink: 0; }
+.search-chip span { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.show-on-planning { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 12px; font-size: .85rem; font-weight: 800; background: var(--selected); color: var(--selected-text); border-color: var(--accent); }
+.show-on-planning svg { width: 17px; height: 17px; }
+@media (min-width: 768px) { .search-filters-toggle { display: none; } .search-chips { display: none; } }
+@media (max-width: 767px) {
+  .search-filters:not(.open) { display: none; }
+  .app-dialog.search-dialog { inset: calc(var(--dialog-center, 50dvh) - var(--dialog-viewport-height, 100dvh) / 2) 0 auto; transform: none; width: 100vw; max-width: 100vw; height: var(--dialog-viewport-height, 100dvh); max-height: none; border-radius: 0; padding-top: env(safe-area-inset-top); }
+  .search-dialog-tools { max-height: none; }
+  .planning-search { margin: 0 12px 8px; }
+}

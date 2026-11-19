@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeftIcon, ArrowRightIcon, ArrowPathIcon, Cog6ToothIcon, MagnifyingGlassIcon, Bars3Icon, CalendarDaysIcon, ViewColumnsIcon, ClockIcon, BellIcon, ListBulletIcon, PaintBrushIcon, PhotoIcon } from '@heroicons/vue/24/outline';
+import { ArrowLeftIcon, ArrowRightIcon, ArrowPathIcon, Cog6ToothIcon, MagnifyingGlassIcon, Bars3Icon, CalendarDaysIcon, ViewColumnsIcon, ClockIcon, BellIcon, ListBulletIcon, PaintBrushIcon, PhotoIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import CourseFocus from '../components/layout/CourseFocus.vue';
 import Settings, { type SettingsPage } from '../components/layout/Settings.vue';
 import AuthorCredits from '../components/AuthorCredits.vue';
@@ -12,6 +12,7 @@ import ChangesDialog from '../components/ChangesDialog.vue';
 import { todayPlanningDate, mondayOf } from '../../shared/calendar';
 import { type SearchCriterion } from '../../shared/search';
 import SearchDialog from '../components/SearchDialog.vue';
+import { planningSearch, isSearchMatch, type PlanningSearch } from '../scripts/searchStore';
 import { BellIcon as BellSolidIcon } from '@heroicons/vue/24/solid';
 import CalendarGrid from '../components/CalendarGrid.vue';
 import InstallPrompt from '../components/InstallPrompt.vue';
@@ -110,7 +111,30 @@ watch(() => route.fullPath, applyRoute, { immediate: true });
 watch([date, todayTarget], syncRoute);
 watch([selectedIds, week], async () => { searchOpen.value = false; await loadCalendar(); await refreshSharedChanges(); }, { immediate: true });
 watch(() => preferences.value.weekend, () => { date.value = visibleDay(date.value); });
-function move(direction: number) { date.value = daily.value ? visibleDay(addDay(date.value, direction), direction) : addDay(date.value, direction * 7); }
+function move(direction: number) {
+  if (planningSearch.value) return moveToResult(direction);
+  date.value = daily.value ? visibleDay(addDay(date.value, direction), direction) : addDay(date.value, direction * 7);
+}
+// Search shown on the planning: previous / next go straight to the days (or weeks) that contain results.
+const searchNotice = ref('');
+const resultDays = computed(() => (planningSearch.value?.days ?? []).filter(day => preferences.value.weekend || !isWeekend(day)));
+const periodStart = computed(() => daily.value ? date.value : week.value), periodEnd = computed(() => daily.value ? date.value : addDay(week.value, 6));
+const periodMatches = computed(() => weekCourses.value.filter(course => isSearchMatch(course) && campusDate(course.start) >= periodStart.value && campusDate(course.start) <= periodEnd.value).length);
+const previousResult = computed(() => [...resultDays.value].reverse().find(day => day < periodStart.value));
+const nextResult = computed(() => resultDays.value.find(day => day > periodEnd.value));
+function moveToResult(direction: number) {
+  const target = direction > 0 ? nextResult.value : previousResult.value;
+  if (target) { date.value = target; searchNotice.value = ''; }
+  else searchNotice.value = direction > 0 ? 'Aucun résultat plus tard.' : 'Aucun résultat plus tôt.';
+}
+function showSearch(search: PlanningSearch) {
+  planningSearch.value = search; searchOpen.value = false; searchNotice.value = '';
+  const days = resultDays.value;
+  const target = days.find(day => day >= periodStart.value) ?? days[days.length - 1];
+  if (target && (target < periodStart.value || target > periodEnd.value)) date.value = target;
+}
+function closePlanningSearch() { planningSearch.value = undefined; searchNotice.value = ''; }
+watch(selection, closePlanningSearch);
 async function goToday() {
   if (!selection.value) return;
   const current = ++navigationGeneration;
@@ -153,6 +177,7 @@ function keydown(event: KeyboardEvent) {
   if (event.key === 'ArrowRight') { event.preventDefault(); move(1); }
   if (event.key === 'ArrowLeft') { event.preventDefault(); move(-1); }
   if (event.key === '/') { event.preventDefault(); toggleSearch(); }
+  if (event.key === 'Escape' && planningSearch.value) { event.preventDefault(); closePlanningSearch(); }
 }
 
 function reconnect() { online.value = navigator.onLine; if (online.value && selection.value) loadCalendar(true).then(() => refreshSharedChanges()); }
@@ -182,6 +207,7 @@ onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.
       <div class="desktop-view-controls"><div v-arrow-navigation role="group" class="view-switch" aria-label="Vue du planning"><button :aria-pressed="view === 'list'" @click="view = 'list'">Liste</button><button :aria-pressed="view === 'day'" @click="view = 'day'">Jour</button><button :aria-pressed="view === 'week'" @click="view = 'week'">Semaine</button></div><div v-arrow-navigation role="group" class="view-switch" aria-label="Détail des cartes"><button :aria-pressed="preferences.density === 'compact'" @click="preferences.density = 'compact'">Compact</button><button :aria-pressed="preferences.density === 'full'" @click="preferences.density = 'full'">Complet</button></div></div>
     </header>
 
+    <div v-if="planningSearch" class="planning-search" role="region" aria-label="Résultats de recherche sur le planning"><MagnifyingGlassIcon aria-hidden="true" /><p><strong>{{ planningSearch.label }}</strong><span>{{ periodMatches }} ici · {{ planningSearch.count }} au total</span></p><button class="icon-button quiet" :disabled="!previousResult" :aria-label="'Résultat précédent' + (previousResult ? ', ' + frenchDate(previousResult) : '')" @click="moveToResult(-1)"><ArrowLeftIcon aria-hidden="true" /></button><button class="icon-button quiet" :disabled="!nextResult" :aria-label="'Résultat suivant' + (nextResult ? ', ' + frenchDate(nextResult) : '')" @click="moveToResult(1)"><ArrowRightIcon aria-hidden="true" /></button><button class="text-action" @click="toggleSearch">Modifier</button><button class="icon-button quiet" aria-label="Quitter la recherche sur le planning" @click="closePlanningSearch"><XMarkIcon aria-hidden="true" /></button><p class="sr-only" role="status">{{ searchNotice }}</p></div>
     <div v-if="!online || fallback" class="sync-status" role="status" aria-live="polite"><span v-if="!online">Hors ligne{{ lastFetched ? ' · copie du ' + new Date(lastFetched).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' }) : ' · aucune copie disponible' }}</span><span v-else-if="fallback">Planning de secours</span></div>
     <p v-if="error" role="alert" class="notice">{{ error }} <button :disabled="loading || !online" @click="loadCalendar(true)">Réessayer</button></p><p v-if="storageError" role="alert" class="notice">{{ storageError }}</p>
     <p v-if="missingGroups.length && !loading" class="notice">Cette semaine n’est pas enregistrée pour {{ groupLabel }}. {{ online ? 'Actualisez pour la charger.' : 'Reconnectez-vous pour la charger.' }}</p>
@@ -193,7 +219,7 @@ onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.
   </main>
   <footer v-if="!selection" class="app-footer"><AuthorCredits /></footer>
 </div>
-<SearchDialog v-if="searchOpen" :initial="searchInitial" @close="searchOpen = false" @open="focused = $event" />
+<SearchDialog v-if="searchOpen" :initial="searchInitial" @close="searchOpen = false" @open="focused = $event" @show="showSearch" />
 <CourseFocus v-if="focused" @close="focused = undefined" @search="searchFromCourse" />
 <Settings v-if="settingsOpen" :initial-page="settingsPage" :mobile="narrow" @close="settingsOpen = false" @changes="settingsOpen = false; openChanges()" @date="settingsOpen = false; dateOpen = true" />
 <AccessibleDialog id="group-dialog" v-if="pickerOpen" title="Changer de groupe" @close="pickerOpen = false"><GroupPicker :initial="selection" @select="selectGroup" /></AccessibleDialog>
