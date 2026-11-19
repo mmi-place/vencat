@@ -16,8 +16,10 @@ export const palettes = [
     colors: named([['#e11d48', 'Rouge'], ['#0284c7', 'Bleu'], ['#7c3aed', 'Violet'], ['#c026d3', 'Fuchsia'], ['#059669', 'Émeraude'], ['#d97706', 'Ambre'], ['#ea580c', 'Orange'], ['#475569', 'Gris']]) },
   { id: 'okabe', label: 'Daltonisme', description: 'Palette Okabe-Ito, distincte pour la plupart des daltonismes',
     colors: named([['#d55e00', 'Vermillon'], ['#0072b2', 'Bleu'], ['#cc79a7', 'Rose violacé'], ['#e69f00', 'Orange'], ['#009e73', 'Vert bleuté'], ['#56b4e9', 'Bleu ciel'], ['#f0e442', 'Jaune'], ['#7f7f7f', 'Gris']]) },
-  { id: 'mono', label: 'Monochrome', description: 'Des nuances de bleu',
+  { id: 'mono', label: 'Monochrome bleu', description: 'Des nuances de bleu',
     colors: named([['#1e3a5f', 'Bleu nuit'], ['#2c5282', 'Bleu marine'], ['#3b6aa8', 'Bleu'], ['#4a7fc1', 'Bleu moyen'], ['#6b95cc', 'Bleu clair'], ['#8eaed8', 'Bleu pâle'], ['#5a6b85', 'Gris bleu'], ['#334155', 'Ardoise']]) },
+  { id: 'mono-pink', label: 'Monochrome rose', description: 'Des nuances de rose',
+    colors: named([['#831843', 'Bordeaux'], ['#9d174d', 'Framboise'], ['#be185d', 'Rose profond'], ['#db2777', 'Rose vif'], ['#ec4899', 'Rose'], ['#f472b6', 'Rose clair'], ['#f9a8d4', 'Rose pâle'], ['#8a5a6e', 'Vieux rose']]) },
 ] as const satisfies readonly Palette[];
 export type PaletteId = typeof palettes[number]['id'];
 export const isPaletteId = (value: unknown): value is PaletteId => palettes.some(palette => palette.id === value);
