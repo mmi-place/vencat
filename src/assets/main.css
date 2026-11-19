@@ -749,3 +749,77 @@ input::placeholder { color: var(--muted); }
   .search-dialog-tools { max-height: none; }
   .planning-search { margin: 0 12px 8px; }
 }
+
+/* Change badges on courses: discreet beyond a week, then more and more visible at 7, 5, 3 and 1 days. */
+.change-label.badge-added { --badge: #15803d; --badge-soft: #4ade80; }
+.change-label.badge-moved { --badge: #1d4ed8; --badge-soft: #93c5fd; }
+.change-label.badge-changed { --badge: #b45309; --badge-soft: #fbbf24; }
+:root[data-theme=light] .change-label { --badge-soft: var(--badge); }
+.course .change-label { display: inline-flex; align-items: center; flex-shrink: 0; gap: 4px; font-size: .6rem; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; color: var(--badge-soft); line-height: 1.2; }
+.course .change-label.badge-level-1 { padding: 1px 5px; border: 1px solid currentColor; border-radius: 8px; }
+.course .change-label.badge-level-2 { padding: 1px 6px; border-radius: 8px; color: var(--badge-soft); background: color-mix(in srgb, var(--badge) 28%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--badge-soft) 60%, transparent); }
+.course .change-label.badge-level-3, .course .change-label.badge-level-4 { padding: 2px 7px; border-radius: 9px; color: #fff; background: var(--badge); font-size: .65rem; }
+.course .change-label.badge-level-4 { font-size: .7rem; box-shadow: 0 0 0 2px color-mix(in srgb, var(--badge) 35%, transparent); }
+.course .change-label.badge-level-4::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-reduce-motion=true]) .course .change-label.badge-level-4::before { animation: badge-pulse 1.6s ease-in-out infinite; }
+}
+@keyframes badge-pulse { 50% { opacity: .35; } }
+/* Narrow week cards: a dot whose size follows the level. */
+.grid-course .change-label { font-size: 0; padding: 0; border: 0; width: 6px; height: 6px; border-radius: 50%; background: var(--badge-soft); box-shadow: none; }
+.grid-course .change-label.badge-level-3, .grid-course .change-label.badge-level-4 { width: 9px; height: 9px; background: var(--badge); box-shadow: 0 0 0 2px color-mix(in srgb, var(--badge) 35%, transparent); }
+.grid-course .change-label::before { display: none; }
+@container (min-width: 110px) {
+  .grid-course .change-label { width: auto; height: auto; font-size: .58rem; background: none; color: var(--badge-soft); }
+  .grid-course .change-label.badge-level-1 { padding: 1px 5px; border: 1px solid currentColor; border-radius: 8px; }
+  .grid-course .change-label.badge-level-2 { padding: 1px 6px; border-radius: 8px; background: color-mix(in srgb, var(--badge) 28%, transparent); }
+  .grid-course .change-label.badge-level-3, .grid-course .change-label.badge-level-4 { padding: 1px 6px; border-radius: 8px; color: #fff; background: var(--badge); }
+  .grid-course .change-label.badge-level-4::before { display: block; }
+}
+.past-course .change-label { display: none; }
+@media (forced-colors: active) { .course .change-label { border: 1px solid CanvasText; color: CanvasText; background: Canvas; } }
+
+/* Changes as a notification centre: grouped by day, swipe sideways to delete. */
+.changes-hint { margin: -8px 0 12px; font-size: .78rem; }
+.notifications { display: grid; gap: 16px; }
+.notification-group ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.notification-day { margin-bottom: 8px; font-size: .78rem; font-weight: 800; color: var(--muted); }
+.notification-day::first-letter { text-transform: uppercase; }
+.notification { --kind: #64748b; position: relative; border-radius: 16px; overflow: hidden; }
+.notification-added { --kind: #16a34a; }
+.notification-moved { --kind: #2563eb; }
+.notification-changed { --kind: #d97706; }
+.notification-removed { --kind: #dc2626; }
+.notification-swipe { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 0 20px; background: #b91c1c; color: #fff; font-weight: 800; font-size: .85rem; }
+.notification-swipe svg { width: 20px; height: 20px; }
+.notification-card { position: relative; display: flex; gap: 12px; padding: 12px 12px 8px; background: var(--surface); border-radius: 16px; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.notification-card:not(.dragging) { transition: transform .18s ease, opacity .18s ease; }
+.notification-card:focus-visible { outline: 3px solid var(--text); outline-offset: -3px; }
+.notification.unread .notification-card { background: color-mix(in srgb, var(--selected) 55%, var(--surface)); }
+.notification-icon { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; color: #fff; background: var(--kind); }
+.notification-icon svg { width: 18px; height: 18px; }
+.notification-body { flex: 1; min-width: 0; }
+.notification-top { display: flex; align-items: center; gap: 6px; font-size: .75rem; }
+.notification-kind { font-weight: 800; color: color-mix(in srgb, var(--kind) 55%, var(--text)); }
+.unread-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--alert); }
+.notification-time { margin-left: auto; color: var(--muted); white-space: nowrap; }
+.notification-card h4 { margin-top: 3px; font-size: .95rem; line-height: 1.3; overflow-wrap: anywhere; }
+.notification-when { margin-top: 2px; font-size: .78rem; color: var(--muted); }
+.notification-when::first-letter { text-transform: uppercase; }
+.notification-diff { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: .82rem; }
+.notification-diff li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; overflow-wrap: anywhere; }
+.notification-diff .diff-field { min-width: 64px; color: var(--muted); font-size: .75rem; }
+.notification-diff del { color: var(--muted); }
+.notification-diff svg { width: 14px; height: 14px; color: var(--kind); }
+.notification-actions { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.notification-actions .text-action { display: inline-flex; align-items: center; gap: 5px; min-height: 40px; font-size: .8rem; }
+.notification-actions .text-action svg { width: 16px; height: 16px; }
+.notification-delete { margin-left: auto; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .notification-card:not(.dragging) { transition: none; } }
+:root[data-reduce-motion=true] .notification-card { transition: none; }
+:root[data-theme=light] .notification-card { box-shadow: 0 1px 2px #0f172a14; }
+@media (forced-colors: active) { .notification-card { border: 1px solid CanvasText; } .notification-icon { border: 1px solid CanvasText; } }
+@media (max-width: 767px) {
+  .app-dialog.panel-dialog { inset: calc(var(--dialog-center, 50dvh) - var(--dialog-viewport-height, 100dvh) / 2) 0 auto; transform: none; width: 100vw; max-width: 100vw; height: var(--dialog-viewport-height, 100dvh); max-height: none; border-radius: 0; padding-top: env(safe-area-inset-top); }
+  .panel-dialog .dialog-content { flex: 1; overflow-y: auto; }
+}

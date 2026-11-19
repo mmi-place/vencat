@@ -2,6 +2,7 @@ import { computed, ref, watch } from 'vue';
 import { hydrateCourse, repairCourseText, type CourseDTO } from '../../shared/courses';
 import { addDay, campusDate, mondayOf, normalizedText, validDay, isWeekend, todayPlanningDate, hourBounds, mergeHours, type HourRange } from '../../shared/calendar';
 import { compareSnapshots, type Snapshot, type CourseChange } from '../../shared/changes';
+import { changeBadge, type ChangeBadge } from '../../shared/changePresentation';
 import { groupById, type GroupOption } from '../../shared/selection';
 import { readPreference, writePreference, savedSnapshot, savedHistory, saveSnapshot } from './storage';
 import { resolveBackground, type Background, type Theme } from './appearance';
@@ -85,6 +86,20 @@ export function dismissChanges(ids: string[]) {
   dismissedChanges.value = [...new Set([...dismissedChanges.value, ...ids])].slice(-6000);
   return writePreference('vencat:changes-dismissed', dismissedChanges.value);
 }
+/** Undo of a dismissal (the notification comes back). */
+export function restoreChanges(ids: string[]) {
+  dismissedChanges.value = dismissedChanges.value.filter(id => !ids.includes(id));
+  return writePreference('vencat:changes-dismissed', dismissedChanges.value);
+}
+// Badge of each course still visible in the timetable, by course identity; the latest change wins.
+export const courseBadges = computed(() => {
+  const badges = new Map<string, ChangeBadge>();
+  for (const change of [...visibleChanges.value].sort((a, b) => a.detectedAt.localeCompare(b.detectedAt))) {
+    const badge = changeBadge(change);
+    if (badge && change.after) badges.set(`${change.after.uid}:${change.after.start}`, badge);
+  }
+  return badges;
+});
 
 const inFlight = new Map<string, Promise<Snapshot>>();
 export async function fetchSnapshot(id: string, start: string): Promise<Snapshot> {

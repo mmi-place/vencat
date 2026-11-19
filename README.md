@@ -14,7 +14,7 @@ Vencat est une application de consultation des emplois du temps CELCAT de l’IU
 - Samedi et dimanche masqués par défaut, même avec des cours (souvent des créneaux provisoires). Une option les affiche lorsqu’ils contiennent des cours. Un week-end masqué ou vide ouvre le lundi suivant.
 - Grille Jour et Semaine limitée aux heures du premier et du dernier cours de l’année scolaire du groupe, élargie si un cours affiché en sort.
 - Consultation des semaines enregistrées hors connexion et installation comme application web sur mobile. L’interface se met à jour lors du rechargement et au retour dans l’application.
-- Historique local et partagé des changements, avec indicateurs non lus dans le menu mobile et une cloche rouge sur ordinateur. Il n’y a pas de notifications push sur l’appareil.
+- Historique local et partagé des changements, présenté comme un centre de notifications groupé par jour : glisser une notification sur le côté (ou Suppr) la supprime, avec possibilité d’annuler ; « Voir le cours » ouvre le jour concerné. Indicateurs non lus dans le menu mobile et cloche rouge sur ordinateur. Sur les cartes, une pastille Nouveau, Déplacé ou Modifié devient de plus en plus visible à 7, 5, 3 puis 1 jour du cours. Il n’y a pas de notifications push sur l’appareil.
 
 ## Accessibilité
 
