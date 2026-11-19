@@ -79,17 +79,17 @@ h3 { font-size: 1.05rem; font-weight: 800; }
 .course-room, .course-teachers, .course-group { grid-column: 1 / -1; display: flex; align-items: center; gap: 4px; font-size: .75rem; line-height: 1.25; min-width: 0; }
 .course-room > span, .course-teachers > span, .course-group > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .change-label { font-size: .6rem; white-space: nowrap; }
-.week-course .course-content { display: flex; flex-direction: column; padding: 5px 3px; gap: 3px; }
-.week-course .course-title { font-size: .7rem; line-height: 1.18; -webkit-line-clamp: 3; }
-.week-course .course-time { font-size: .6rem; letter-spacing: -.02em; order: -1; gap: 1px; }
-.week-course .course-meta { font-size: .55rem; }
-.week-course .course-module { display: none; }
-.week-course .course-room, .week-course .course-teachers, .week-course .course-group { font-size: .6rem; gap: 2px; }
-.week-course svg { width: 9px; height: 9px; }
-.week-course .course-time svg { display: none; }
-.week-course .change-label { font-size: 0; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
-.week-course.short-course .course-title { -webkit-line-clamp: 1; }
-.week-course.short-course .course-content { gap: 1px; padding-block: 3px; }
+.grid-course .course-content { display: flex; flex-direction: column; padding: 5px 3px; gap: 3px; }
+.grid-course .course-title { font-size: .7rem; line-height: 1.18; -webkit-line-clamp: 3; }
+.grid-course .course-time { font-size: .6rem; letter-spacing: -.02em; order: -1; gap: 1px; }
+.grid-course .course-meta { font-size: .55rem; }
+.grid-course .course-module { display: none; }
+.grid-course .course-room, .grid-course .course-teachers, .grid-course .course-group { font-size: .6rem; gap: 2px; }
+.grid-course svg { width: 9px; height: 9px; }
+.grid-course .course-time svg { display: none; }
+.grid-course .change-label { font-size: 0; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.grid-course.short-course .course-title { -webkit-line-clamp: 1; }
+.grid-course.short-course .course-content { gap: 1px; padding-block: 3px; }
 .short-course .course-content { gap: 2px; }
 .floating-today { position: absolute; bottom: calc(88px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 9; display: flex; align-items: center; gap: 7px; background: #223f51f5; border-color: #446175; border-radius: 24px; font-size: .9rem; font-weight: 800; box-shadow: 0 4px 16px #0005; }
 .mobile-dock { position: absolute; bottom: max(16px, env(safe-area-inset-bottom)); left: 12px; right: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; z-index: 10; pointer-events: none; }
@@ -191,31 +191,18 @@ h3 { font-size: 1.05rem; font-weight: 800; }
   .timeline-day strong { font-size: 1.3rem; }
   .desktop-hour { display: inline; }
   .hour-axis > span { font-size: .75rem; right: 9px; }
-  .course { border-radius: 16px; background: var(--course-color); color: var(--course-ink); }
-  .course:hover { background: var(--course-color); filter: brightness(1.08); }
-  .course-stripe { width: 5px; margin: 10px 0 10px 9px; border-radius: 5px; background: color-mix(in srgb, var(--course-color) 75%, white); }
-  .course-content, .week-course .course-content { display: grid; grid-template-columns: minmax(0, 1fr) auto; padding: 9px 10px; gap: 4px 6px; }
-  .week-course .course-title { font-size: .95rem; -webkit-line-clamp: 2; }
-  .week-course .course-meta { font-size: .7rem; }
-  .week-course .course-time { font-size: .65rem; order: initial; }
-  .week-course .course-module { display: inline; }
-  .week-course .course-room, .week-course .course-teachers, .week-course .course-group { font-size: .75rem; }
-  .week-course svg { width: 12px; height: 12px; }
-  .week-course .course-time svg { display: block; }
-  .week-course.short-course .course-content { padding-block: 5px; gap: 1px; }
-  .week-course.short-course .course-title { font-size: .85rem; line-height: 1.1; }
-  .week-course.short-course .course-meta, .week-course.short-course .course-time, .week-course.short-course .course-room, .week-course.short-course .course-teachers, .week-course.short-course .course-group { font-size: .65rem; line-height: 1.1; }
-  .week-course.short-course svg { width: 10px; height: 10px; }
-  .week-course.short-course .course-room { display: flex; }
-  .week-course .change-label { font-size: .6rem; width: auto; height: auto; border-radius: 0; background: none; }
+  /* Rounded, solid cards stay in the list; day and week grids keep the compact rectangles on every screen. */
+  .list-course { border-radius: 16px; background: var(--course-color); color: var(--course-ink); }
+  .list-course:hover { background: var(--course-color); filter: brightness(1.08); }
+  .list-course .course-stripe { width: 5px; margin: 10px 0 10px 9px; border-radius: 5px; background: color-mix(in srgb, var(--course-color) 75%, white); }
+  .list-course .course-content { display: grid; grid-template-columns: minmax(0, 1fr) auto; padding: 9px 10px; gap: 4px 6px; }
   .search-panel { border-radius: 12px; margin-bottom: 8px; padding: 10px; }
   .color-settings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dialog-header { padding: 16px 22px; }
   .dialog-content { padding: 22px; }
   .course-detail dl { grid-template-columns: 110px minmax(0, 1fr); }
 }
-@media (min-width: 1100px) { .week-course .course-time { font-size: .75rem; } .week-course .course-title { font-size: 1.05rem; } }
-@media (max-width: 359px) { .planning-header { padding-inline: 8px; } .date-heading { gap: 7px; } .date-text :is(h1, .date-weekday) { font-size: 1rem; } .date-number { width: 40px; height: 40px; } .mobile-clock { gap: 4px; font-size: .9rem; } .mobile-dock { left: 8px; right: 8px; gap: 5px; } .dock-left { gap: 5px; } .mobile-dock .group-button { max-width: 39vw; padding-inline: 8px; font-size: .75rem; } .week-course .course-time { font-size: .53rem; } }
+@media (max-width: 359px) { .planning-header { padding-inline: 8px; } .date-heading { gap: 7px; } .date-text :is(h1, .date-weekday) { font-size: 1rem; } .date-number { width: 40px; height: 40px; } .mobile-clock { gap: 4px; font-size: .9rem; } .mobile-dock { left: 8px; right: 8px; gap: 5px; } .dock-left { gap: 5px; } .mobile-dock .group-button { max-width: 39vw; padding-inline: 8px; font-size: .75rem; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 @media print { .app-nav, .week-navigation, .mobile-clock, .mobile-dock, .floating-today, .desktop-view-controls { display: none; } .calendar-app { height: auto; } .calendar-scroll { overflow: visible; height: auto; padding: 0; } .planning, .timeline-stage { display: block; } }
 
@@ -256,7 +243,7 @@ input::placeholder { color: var(--muted); }
 .background-option[aria-pressed=true] { background: var(--selected); border-color: var(--accent); }
 .course-content { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .course-time { grid-column: 2; justify-self: end; justify-content: flex-end; text-align: right; }
-.week-course .course-time { align-self: flex-end; text-align: right; }
+.grid-course .course-time { align-self: flex-end; text-align: right; }
 .full-course .course-teachers { justify-content: flex-end; text-align: right; }
 /* List restores the rounded cards, pauses and desktop day columns of 26fcea4. */
 .list-calendar { height: 100%; overflow: auto; display: grid; grid-template-columns: repeat(var(--list-days), minmax(125px, 1fr)); align-items: start; gap: 12px; padding: 0 16px 140px; }
@@ -648,3 +635,41 @@ input::placeholder { color: var(--muted); }
 .daily-skeleton .skeleton-grid-head { display: none; }
 .date-weekday { font-weight: 850; line-height: 1.2; }
 @media (max-width:767px) { .skeleton-grid { --skeleton-hour-height: 96px; } }
+
+/* Day and week cards: compact rectangles on every screen, their content follows the card width. */
+.grid-course { container-type: inline-size; }
+@container (min-width: 110px) {
+  .grid-course .course-content { padding: 6px 7px; gap: 3px; }
+  .grid-course .course-title { font-size: .8rem; line-height: 1.2; }
+  .grid-course .course-time { font-size: .7rem; letter-spacing: 0; gap: 3px; align-self: flex-start; text-align: left; }
+  .grid-course .course-meta { font-size: .65rem; }
+  .grid-course .course-room, .grid-course .course-teachers, .grid-course .course-group { font-size: .7rem; gap: 3px; }
+  .grid-course svg { width: 11px; height: 11px; }
+  .grid-course .course-time svg { display: block; }
+  .grid-course .change-label { font-size: .6rem; width: auto; height: auto; border-radius: 0; background: none; }
+}
+@container (min-width: 190px) {
+  .grid-course .course-content { display: grid; grid-template-columns: minmax(0, 1fr) auto; padding: 7px 10px; gap: 3px 8px; }
+  .grid-course .course-meta { grid-column: 1; grid-row: 1; }
+  .grid-course .course-time { order: initial; grid-column: 2; grid-row: 1; justify-self: end; align-self: center; }
+  .grid-course .course-title { font-size: .92rem; }
+  .grid-course .course-module { display: inline; }
+  .grid-course .course-room, .grid-course .course-teachers, .grid-course .course-group { font-size: .75rem; }
+}
+@container (min-width: 360px) {
+  .grid-course .course-content { padding: 9px 12px; gap: 4px 10px; }
+  .grid-course .course-title { font-size: 1.02rem; }
+  .grid-course .course-meta, .grid-course .course-time { font-size: .75rem; }
+  .grid-course .course-room, .grid-course .course-teachers, .grid-course .course-group { font-size: .8rem; }
+  .grid-course svg { width: 13px; height: 13px; }
+}
+.timeline-empty { text-align: center; }
+.timeline-empty p { margin: 0; font-size: .9rem; }
+.timeline-empty .next-course, .list-day .next-course { pointer-events: auto; }
+.next-course { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; margin: 8px 0 0; color: var(--calendar-muted, var(--muted)); font-size: .85rem; text-align: center; }
+.next-course .text-action { min-height: 44px; padding-inline: 6px; font-weight: 750; }
+.mobile-overlays > .compact-install { gap: 6px; padding: 6px 6px 6px 14px; }
+.compact-install-row { display: flex; align-items: center; gap: 8px; width: 100%; }
+.compact-install-row strong { flex: 1; min-width: 0; font-size: .85rem; line-height: 1.25; }
+.compact-install-action { min-height: 44px; padding: 6px 12px; font-size: .85rem; flex-shrink: 0; }
+.compact-install .install-help { margin: 0 0 6px; font-size: .85rem; }
