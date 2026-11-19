@@ -18,11 +18,11 @@ Vencat est une application de consultation des emplois du temps CELCAT de l’IU
 
 ## Accessibilité
 
-Dans **Réglages → Accessibilité** (menu mobile), chacun peut renforcer les contrastes, agrandir le texte, choisir un fond uni et réduire les animations. Ces choix sont enregistrés sur l’appareil. La préférence système de réduction des animations reste respectée.
+Dans **Réglages → Accessibilité**, chacun peut renforcer les contrastes, agrandir le texte, choisir un fond uni et réduire les animations. Ces choix sont enregistrés sur l’appareil. Les préférences système de réduction des animations et de contraste renforcé (`prefers-contrast: more`) sont toujours respectées.
 
-La navigation utilise les contrôles HTML natifs : Tab et Maj + Tab, Entrée ou Espace pour ouvrir un cours, Échap pour fermer une fenêtre avec retour du focus. Sur les cours, ↑/↓ parcourt la journée, ←/→ rejoint la journée voisine au plus près du même horaire, Début/Fin rejoint ses extrémités et Ctrl + Début/Fin celles du planning affiché.
+La navigation utilise les contrôles HTML natifs : Tab et Maj + Tab, Entrée ou Espace pour ouvrir un cours, Échap pour fermer une fenêtre avec retour du focus. Le planning ne compte qu’un seul arrêt de Tab : on arrive sur le cours en cours ou le prochain. Sur les cours, ↑/↓ parcourt la journée, ←/→ rejoint la journée voisine au plus près du même horaire, Début/Fin rejoint ses extrémités et Ctrl + Début/Fin celles du planning affiché. Dans le détail d’un cours, ←/→ et les boutons Précédent/Suivant passent au cours voisin.
 
-Les raccourcis **Alt + Maj + F** (recherche), **G** (groupe), **S** (réglages), **A** (accessibilité), **C** (changements), **T** (aujourd’hui), **P** (premier cours), **1/2/3** (Liste/Jour/Semaine) et **←/→** (période précédente/suivante) sont désactivables. Ils restent inactifs dans les champs de saisie et les modales. Les noms accessibles des cours indiquent aussi leur statut : à venir, en cours ou terminé.
+Hors des cours et des champs, ←/→ et Page préc./Page suiv. changent de jour ou de semaine. Les touches simples **/** (recherche), **?** (aide), **T** (aujourd’hui), **L/J/S** (Liste/Jour/Semaine), **P** (cours en cours ou prochain), **G** (groupe) et **C** (changements) sont désactivables ; maintenir **Alt** affiche ces touches sur les boutons. Les combinaisons **Alt + Maj** (F, G, S, A, C, T, P, 1/2/3, ←/→) restent disponibles. Les raccourcis sont inactifs dans les champs de saisie et les fenêtres. Le titre de l’onglet indique le groupe affiché.
 
 Les contrôles automatiques et les essais clavier ne remplacent pas une validation complète avec différents lecteurs d’écran.
 

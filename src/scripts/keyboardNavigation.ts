@@ -39,4 +39,27 @@ const directive = (listener: (event: KeyboardEvent) => void): ObjectDirective<HT
   unmounted(element) { element.removeEventListener('keydown', listener); },
 });
 export const arrowNavigation = directive(choices);
-export const courseNavigation = directive(courses);
+
+// The planning is a single Tab stop: only one course is focusable with Tab (the last one used,
+// else the ongoing course, else the next one), the arrows move between courses.
+function roving(container: HTMLElement, chosen?: HTMLElement) {
+  const list = [...container.querySelectorAll<HTMLElement>('.course')];
+  // Without courses, the scrolling area itself stays reachable.
+  container.tabIndex = list.length ? -1 : 0;
+  if (!list.length) return;
+  const active = chosen && list.includes(chosen) ? chosen
+    : list.find(course => course.dataset.roving === 'true')
+    ?? list.find(course => course.classList.contains('ongoing-course'))
+    ?? list.find(course => !course.classList.contains('past-course'))
+    ?? list[0]!;
+  for (const course of list) { course.tabIndex = course === active ? 0 : -1; course.dataset.roving = String(course === active); }
+}
+const rovingFocus = (event: FocusEvent) => {
+  const course = (event.target as HTMLElement).closest<HTMLElement>('.course');
+  if (course) roving(event.currentTarget as HTMLElement, course);
+};
+export const courseNavigation: ObjectDirective<HTMLElement> = {
+  mounted(element) { element.addEventListener('keydown', courses); element.addEventListener('focusin', rovingFocus); roving(element); },
+  updated(element) { roving(element); },
+  unmounted(element) { element.removeEventListener('keydown', courses); element.removeEventListener('focusin', rovingFocus); },
+};
