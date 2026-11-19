@@ -1,4 +1,5 @@
-import { Router, type Request } from 'express';
+import { Router } from 'express';
+import { rateLimited } from './identity.js';
 import { createHash } from 'node:crypto';
 import { configured, redis } from './storage.js';
 import { courseKey, campusDate, validDay, mondayOf, addDay, hourBounds } from '../shared/calendar.js';
@@ -72,20 +73,13 @@ export async function warmSearchCaches(id: string, anchor: string) {
   const seed = await searchDataset(id, 'year', anchor);
   for (const scope of ['semester', 'quarter', 'month', 'fortnight', 'week'] as const) await searchDataset(id, scope, anchor, seed);
 }
-// Requests that may rebuild annual data share one budget per address and ten-minute window.
-async function rateLimited(req: Request) {
-  const ip = String(req.headers['x-vercel-forwarded-for'] ?? req.ip ?? 'unknown');
-  const key = `vencat:search-rate:${createHash('sha256').update(ip).digest('hex')}:${Math.floor(Date.now() / 600000)}`;
-  const count = await redis<number>('INCR', key); if (count === 1) await redis('EXPIRE', key, 600);
-  return count > 180;
-}
 export const searchRouter = Router();
 // Earliest start and latest end of the school year, reusing the cached annual dataset.
 searchRouter.get('/hours/:groupId', async (req, res, next) => {
   const id = String(req.params.groupId);
   if (!groupById(id)) { res.setHeader('Cache-Control', 'no-store'); return res.status(400).json({ error: 'Groupe invalide.' }); }
   try {
-    if (configured() && await rateLimited(req)) { res.setHeader('Cache-Control', 'no-store'); return res.status(429).json({ error: 'Trop de demandes. Réessayez dans quelques minutes.' }); }
+    if (await rateLimited(req)) { res.setHeader('Cache-Control', 'no-store'); return res.status(429).json({ error: 'Trop de demandes. Réessayez dans quelques minutes.' }); }
     const dataset = await searchDataset(id, 'year', campusDate(new Date()));
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800');
     res.json({ groupId: id, start: dataset.start, end: dataset.end, fetchedAt: dataset.fetchedAt, hours: hourBounds(dataset.courses) ?? null });

@@ -11,6 +11,8 @@ import type { Snapshot } from '../shared/changes.js';
 import { searchRouter } from './search.js';
 import { monitoringRouter } from './monitoring.js';
 import { configured, redis } from './storage.js';
+import { issueToken, tokenRequestLimited } from './identity.js';
+import { groupById } from '../shared/selection.js';
 
 const app = express();
 
@@ -174,7 +176,8 @@ app.get(
     if (req.query.format !== undefined && req.query.format !== 'course' && req.query.format !== 'snapshot')
       return next(new ClientError("Invalid response format."));
 
-    if (!/^[A-Za-z0-9_-]{1,100}$/.test(groupId))
+    // Only the groups known to Vencat: unknown identifiers never reach CELCAT or the shared cache.
+    if (!/^[A-Za-z0-9_-]{1,100}$/.test(groupId) || !groupById(groupId))
       return next(new ClientError("Invalid group ID."));
 
     const validDate = (value: unknown): value is string =>
@@ -207,6 +210,20 @@ app.get(
     }
   },
 );
+
+// ---------------------------------------------------------------------------
+// Anonymous device token (see identity.ts)
+// ---------------------------------------------------------------------------
+app.post(["/api/token", "/token"], async (req: Request, res: Response, next: NextFunction) => {
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    if (await tokenRequestLimited(req)) return res.status(429).json({ error: "Trop de demandes. Réessayez dans quelques minutes." });
+    const issued = issueToken();
+    // Without a configured secret, devices simply keep the per-address budget.
+    if (!issued) return res.status(204).end();
+    return res.status(201).json(issued);
+  } catch (error) { next(error); }
+});
 
 // ---------------------------------------------------------------------------
 // Ping

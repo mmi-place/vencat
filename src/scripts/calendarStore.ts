@@ -1,4 +1,5 @@
 import { computed, ref, watch } from 'vue';
+import { budgetedFetch } from './deviceToken';
 import { hydrateCourse, repairCourseText, type CourseDTO } from '../../shared/courses';
 import { addDay, campusDate, mondayOf, normalizedText, validDay, isWeekend, todayPlanningDate, hourBounds, mergeHours, type HourRange } from '../../shared/calendar';
 import { compareSnapshots, type Snapshot, type CourseChange } from '../../shared/changes';
@@ -168,7 +169,7 @@ export async function loadYearHours(id: string) {
   if (Date.now() - (hoursAttempts.get(id) ?? 0) < HOURS_RETRY) return;
   hoursAttempts.set(id, Date.now());
   try {
-    const response = await fetch(`/api/hours/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(60_000) });
+    const response = await budgetedFetch(`/api/hours/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(60_000) });
     if (!response.ok) return;
     const data = await response.json() as { groupId: string; start: string; hours: HourRange | null };
     if (data.groupId !== id || data.hours !== null && !validHours(data.hours)) return;

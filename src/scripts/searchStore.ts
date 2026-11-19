@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { budgetedFetch } from './deviceToken';
 import { hydrateCourse, repairCourseText, type CourseDTO } from '../../shared/courses';
 import { matchesCourse, type SearchFilters } from '../../shared/search';
 
@@ -20,7 +21,7 @@ export async function loadSearchDataset(id: string, anchor: string, range?: { st
   const work = (async () => {
     const params = new URLSearchParams({ q: '', date: anchor });
     if (range) { params.set('start', range.start); params.set('end', range.end); }
-    const response = await fetch(`/api/search/${encodeURIComponent(id)}?${params}`, { signal: AbortSignal.timeout(120_000), cache: 'no-cache' });
+    const response = await budgetedFetch(`/api/search/${encodeURIComponent(id)}?${params}`, { signal: AbortSignal.timeout(120_000), cache: 'no-cache' });
     if (!response.ok) throw new Error(response.status === 429 ? 'Trop de recherches. Réessayez dans quelques minutes.' : 'La recherche est indisponible. Les cours enregistrés restent accessibles.');
     const data = await response.json() as { groupId: string; start: string; end: string; courses: CourseDTO[] };
     if (data.groupId !== id || !Array.isArray(data.courses) || typeof data.start !== 'string' || typeof data.end !== 'string' || range && (data.start !== range.start || data.end !== range.end)) throw new Error('La réponse de recherche est incomplète.');

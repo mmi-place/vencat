@@ -42,6 +42,7 @@ test('annual server search validates input, fetches bounded chunks and reuses da
 
 test('health and invalid input', async () => {
   assert.equal(await (await fetch(`${base}/ping`)).text(), 'pong');
+  assert.equal((await fetch(`${base}/edt/G1-UNKNOWN0000?start=2026-01-05`)).status, 400);
   for (const query of ['', '?start=2026-02-30', '?start=2026-01-31&end=2026-01-01', '?start=2026-01-01&end=2026-12-31', '?start=2026-01-01&start=2026-01-02']) {
     const response = await fetch(`${base}/edt/test${query}`);
     assert.equal(response.status, 400);
@@ -175,7 +176,7 @@ test('upstream failures return uncached JSON', async () => {
     return new Response('unavailable', { status: 503 });
   };
   try {
-    const response = await fetch(`${base}/edt/test-unavailable?start=2026-01-31`);
+    const response = await fetch(`${base}/edt/G1-CC2LTGMX6000?start=2026-03-02`);
     assert.equal(response.status, 502);
     assert.equal(response.headers.get('cache-control'), 'no-store');
     assert.ok((await response.json() as { error: string }).error);

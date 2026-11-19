@@ -121,6 +121,7 @@ Le second appel crée un déploiement de prévisualisation. Pour un déploiement
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Identifiants Redis fournis par l’intégration Vercel Marketplace |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Autre paire complète acceptée pour Redis |
 | `CRON_SECRET` | Secret d’authentification de la tâche planifiée |
+| `TOKEN_SECRET` | Facultatif, 32 caractères aléatoires minimum : active les jetons anonymes par appareil |
 
 Les secrets restent côté serveur, dans les variables d’environnement Vercel ou dans `.env.local`, ignoré par Git. Aucune clé Redis n’est transmise au navigateur. Une paire Redis complète est nécessaire pour activer le stockage partagé.
 
@@ -135,6 +136,7 @@ Toutes les routes utilisent le même domaine que le frontend.
 | Route | Résultat |
 | --- | --- |
 | `GET /api/ping` | Réponse `pong` |
+| `POST /api/token` | Jeton anonyme d’appareil (`204` si `TOKEN_SECRET` n’est pas configuré) |
 | `GET /api/edt/:groupId?start=YYYY-MM-DD&end=YYYY-MM-DD` | Planning au format historique ; `end` vaut cinq jours après `start` si absent |
 | Même route avec `format=course` | Tableau de cours normalisés |
 | Même route avec `format=snapshot` | Cours et couverture, source et date de récupération ; format utilisé par l’application |
@@ -144,7 +146,11 @@ Toutes les routes utilisent le même domaine que le frontend.
 | `GET /api/history/config` | Disponibilité du stockage partagé |
 | `GET /api/monitor` | Tâche planifiée, protégée par `Authorization: Bearer <CRON_SECRET>` |
 
-La route planning accepte un écart maximal de 62 jours entre `start` et `end`. La recherche accepte `q=` pour parcourir les cours sans texte, ainsi que les critères facultatifs `type`, `module`, `teacher`, `room` et `group`. `start` et `end` permettent un intervalle personnalisé de 1 à 366 jours inclus. Les scopes internes `week`, `fortnight`, `month`, `quarter`, `semester` et `year` restent disponibles pour les appels API et le préchargement.
+Seuls les groupes connus de Vencat sont acceptés. La route planning accepte un écart maximal de 62 jours entre `start` et `end`. La recherche accepte `q=` pour parcourir les cours sans texte, ainsi que les critères facultatifs `type`, `module`, `teacher`, `room` et `group`. `start` et `end` permettent un intervalle personnalisé de 1 à 366 jours inclus. Les scopes internes `week`, `fortnight`, `month`, `quarter`, `semester` et `year` restent disponibles pour les appels API et le préchargement.
+
+## Limites de requêtes
+
+Avec Redis, la recherche et `/api/hours` (qui peuvent reconstruire l’année depuis CELCAT) ont un budget sur dix minutes. Chaque appareil peut obtenir un **jeton anonyme** signé par le serveur (`TOKEN_SECRET`) : un identifiant aléatoire, sans donnée personnelle ni empreinte du navigateur, conservé sur l’appareil 180 jours. Avec un jeton, le budget est de 180 requêtes par appareil, avec un garde-fou large de 1 500 par adresse ; sans jeton, l’ancien budget de 180 par adresse s’applique. Une adresse peut obtenir au plus 30 jetons par dix minutes. Le champ `kind` du jeton permettra d’ajouter d’autres identités, par exemple des comptes.
 
 ## Licence du backend
 
