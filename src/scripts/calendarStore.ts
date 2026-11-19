@@ -92,14 +92,16 @@ export function restoreChanges(ids: string[]) {
   return writePreference('vencat:changes-dismissed', dismissedChanges.value);
 }
 // Badge of each course still visible in the timetable, by course identity; the latest change wins.
-export const courseBadges = computed(() => {
-  const badges = new Map<string, ChangeBadge>();
+export const courseIdentity = (course: CourseDTO) => `${course.uid}:${course.start}`;
+/** Latest visible change of each course still in the timetable. */
+export const courseChanges = computed(() => {
+  const changes = new Map<string, CourseChange>();
   for (const change of [...visibleChanges.value].sort((a, b) => a.detectedAt.localeCompare(b.detectedAt))) {
-    const badge = changeBadge(change);
-    if (badge && change.after) badges.set(`${change.after.uid}:${change.after.start}`, badge);
+    if (change.after && changeBadge(change)) changes.set(courseIdentity(change.after), change);
   }
-  return badges;
+  return changes;
 });
+export const courseBadges = computed(() => new Map([...courseChanges.value].map(([key, change]) => [key, changeBadge(change)!] as [string, ChangeBadge])));
 
 const inFlight = new Map<string, Promise<Snapshot>>();
 export async function fetchSnapshot(id: string, start: string): Promise<Snapshot> {

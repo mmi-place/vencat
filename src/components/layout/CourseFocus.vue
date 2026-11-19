@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, shallowRef, watch } from 'vue';
-import { CalendarDaysIcon, ClockIcon, BookOpenIcon, TagIcon, MapPinIcon, UserIcon, UserGroupIcon, MagnifyingGlassIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/vue/24/outline';
+import { CalendarDaysIcon, ClockIcon, BookOpenIcon, TagIcon, MapPinIcon, UserIcon, UserGroupIcon, MagnifyingGlassIcon, ChevronLeftIcon, ChevronRightIcon, ArrowRightIcon } from '@heroicons/vue/24/outline';
 import AccessibleDialog from '../AccessibleDialog.vue';
-import { focused, selection, savedCourses, preferences } from '../../scripts/calendarStore';
+import { focused, selection, savedCourses, preferences, courseChanges, courseIdentity } from '../../scripts/calendarStore';
+import { changeBadge, changeDetails, changeHeadline } from '../../../shared/changePresentation';
 import { campusDate, campusTime, frenchDate, courseKey, isWeekend } from '../../../shared/calendar';
 import type { CourseDTO } from '../../../shared/courses';
 import { courseValues, type SearchCriterion, type SearchField } from '../../../shared/search';
@@ -18,6 +19,11 @@ watch(() => selection.value?.department, (department, _previous, onCleanup) => {
 }, { immediate: true });
 const description = computed(() => focused.value ? courseDescription(catalog.value, focused.value) : '');
 function find(field: SearchField, value: string) { emit('search', { field, value }); }
+// A changed course says what changed, at the top of its window: old value → new value.
+const change = computed(() => focused.value ? courseChanges.value.get(courseIdentity(focused.value)) : undefined);
+const changeKind = computed(() => change.value ? changeBadge(change.value) : undefined);
+const changeLines = computed(() => change.value && change.value.kind === 'changed' ? changeDetails(change.value) : []);
+const detectedOn = computed(() => change.value ? new Date(change.value.detectedAt).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '');
 // Previous / next course among the loaded weeks (buttons, or ← / → inside the window).
 const ordered = computed(() => savedCourses.value.filter(course => preferences.value.weekend || !isWeekend(campusDate(course.start))));
 const index = computed(() => focused.value ? ordered.value.findIndex(course => courseKey(course) === courseKey(focused.value!)) : -1);
@@ -41,6 +47,7 @@ const rows = computed(() => focused.value ? [
 ] : []);
 </script>
 <template><AccessibleDialog v-if="focused" id="course-dialog" :title="focused.summary" @close="emit('close')"><div class="course-detail">
+  <div v-if="change" class="course-change" :class="'course-change-' + changeKind"><p class="course-change-title"><strong>{{ changeHeadline(change) }}</strong><span>le {{ detectedOn }}</span></p><ul v-if="changeLines.length"><li v-for="line in changeLines" :key="line.field"><span class="course-change-field">{{ line.field }}</span><del>{{ line.before }}</del><ArrowRightIcon aria-hidden="true" /><span class="sr-only">devient</span><strong>{{ line.after }}</strong></li></ul><p v-else class="course-change-note">Ce cours a été ajouté au planning.</p></div>
   <p v-if="description" class="module-description">{{ description }}</p>
   <div class="course-when"><p><CalendarDaysIcon aria-hidden="true" />{{ frenchDate(campusDate(focused.start)) }}</p><p><ClockIcon aria-hidden="true" />{{ campusTime(focused.start) }}–{{ campusTime(focused.end) }}</p></div>
   <dl class="course-detail-fields"><template v-for="row in rows" :key="row.field"><dt><component :is="row.icon" aria-hidden="true" />{{ row.label }}</dt><dd><button v-for="value in row.values" :key="value" class="detail-search-action" :aria-label="`Rechercher les cours : ${value}`" @click="find(row.field, value)"><span>{{ value }}</span><MagnifyingGlassIcon aria-hidden="true" /></button><span v-if="!row.values.length" class="muted">Non renseigné</span></dd></template></dl>
