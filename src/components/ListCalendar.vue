@@ -6,7 +6,7 @@ import CourseView from './CourseView.vue';
 import { date, week, weekCourses, savedCourses, preferences, clock } from '../scripts/calendarStore';
 import { calendarWeekDays, campusDate, campusTime, courseOccursOn, courseKey, frenchDate, layoutDay } from '../../shared/calendar';
 const props = defineProps<{ daily: boolean }>();
-const dates = computed(() => props.daily ? [date.value] : calendarWeekDays(week.value, savedCourses.value));
+const dates = computed(() => props.daily ? [date.value] : calendarWeekDays(week.value, savedCourses.value, preferences.value.weekend));
 const days = computed(() => dates.value.map(day => {
   let previousEnd = 480;
   return { day, items: layoutDay(weekCourses.value.filter(course => courseOccursOn(course, day)), day).map(item => {

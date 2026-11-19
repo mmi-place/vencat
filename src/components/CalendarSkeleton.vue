@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { date, week, preferences, savedCourses } from '../scripts/calendarStore';
 import { calendarWeekDays, frenchDate } from '../../shared/calendar';
 const props = defineProps<{ daily?: boolean; list?: boolean }>();
-const days = computed(() => props.daily ? [date.value] : calendarWeekDays(week.value, savedCourses.value));
+const days = computed(() => props.daily ? [date.value] : calendarWeekDays(week.value, savedCourses.value, preferences.value.weekend));
 const slots = [[{ start: 9, hours: 1.5 }, { start: 11, hours: 1 }, { start: 14, hours: 3 }], [{ start: 8, hours: 2 }, { start: 10.5, hours: 1.5 }, { start: 15, hours: 2 }], [{ start: 9, hours: 1 }, { start: 10.5, hours: 1.5 }, { start: 13, hours: 3 }]];
 </script>
 <template><div class="calendar-skeleton planning-skeleton" :class="{ 'daily-skeleton': daily, 'list-skeleton': list, 'full-skeleton': preferences.density === 'full' }" aria-busy="true"><p class="sr-only" role="status">Chargement du planning…</p>

@@ -18,10 +18,10 @@ import InstallPrompt from '../components/InstallPrompt.vue';
 import { accessibility } from '../scripts/accessibility';
 import { arrowNavigation as vArrowNavigation } from '../scripts/keyboardNavigation';
 import AccessibleDialog from '../components/AccessibleDialog.vue';
-import { selection, date, view, week, preferences, selectedIds, loading, error, storageError, hasData, missingGroups, lastFetched, online, fallback, loadCalendar, weekCourses, clock, focused, history, unseenChanges, resolveTodayDate, snapshots } from '../scripts/calendarStore';
+import { selection, date, view, week, preferences, selectedIds, loading, error, storageError, hasData, missingGroups, lastFetched, online, fallback, loadCalendar, weekCourses, clock, focused, history, unseenChanges, resolveTodayDate, snapshots, showLinkedView } from '../scripts/calendarStore';
 import { readPreference, writePreference } from '../scripts/storage';
 import { groupById, groupByPath, type GroupOption } from '../../shared/selection';
-import { campusDate, campusTime, frenchDate, addDay, validDay } from '../../shared/calendar';
+import { campusDate, campusTime, frenchDate, addDay, validDay, isWeekend } from '../../shared/calendar';
 const route = useRoute(), router = useRouter();
 const settingsPage = ref<'home' | 'accessibility'>('home');
 const settingsOpen = ref(false), pickerOpen = ref(false), changesOpen = ref(false);
@@ -43,8 +43,14 @@ const daily = computed(() => view.value === 'day' || view.value === 'list' && na
 const todayTarget = computed(() => {
   const current = campusDate(clock.value);
   const courses = selection.value ? snapshots.value[selection.value.id + ':' + mondayOf(current)]?.courses : undefined;
-  return todayPlanningDate(current, courses);
+  return todayPlanningDate(current, courses, preferences.value.weekend);
 });
+// With weekends hidden, a Saturday or Sunday is replaced by the nearest weekday in the chosen direction.
+function visibleDay(day: string, direction = 1) {
+  let result = day;
+  while (!preferences.value.weekend && isWeekend(result)) result = addDay(result, direction);
+  return result;
+}
 const onToday = computed(() => daily.value ? date.value === todayTarget.value : week.value === mondayOf(todayTarget.value));
 const calendar = ref<InstanceType<typeof CalendarGrid>>();
 const groupLabel = computed(() => selection.value ? selection.value.promotion + ' · ' + selection.value.label : 'Choisir un groupe');
@@ -55,11 +61,23 @@ let touchStart: { x: number; y: number } | undefined, suppressClick = false;
 function startSwipe(event: TouchEvent) { const touch = event.touches[0]; if (touch && event.touches.length === 1) touchStart = { x: touch.clientX, y: touch.clientY }; }
 function finishSwipe(event: TouchEvent) { const touch = event.changedTouches[0]; if (!touch || !touchStart) return; const dx = touch.clientX - touchStart.x, dy = touch.clientY - touchStart.y; touchStart = undefined; if (daily.value && !searchOpen.value && innerWidth <= 767 && Math.abs(dx) > 80 && Math.abs(dy) < 45) { suppressClick = true; move(dx < 0 ? 1 : -1); setTimeout(() => suppressClick = false, 350); } }
 function interceptClick(event: MouseEvent) { if (suppressClick) { event.preventDefault(); event.stopPropagation(); suppressClick = false; } }
-function selectGroup(group: GroupOption) { pickerOpen.value = false; router.push({ path: group.path, query: selection.value ? { date: date.value, vue: view.value } : { vue: view.value } }); }
+// The URL only carries the group, plus the date when it is not today. The view lives in the preferences.
+const planningQuery = (): Record<string, string> => date.value === todayTarget.value ? {} : { date: date.value };
+function selectGroup(group: GroupOption) { pickerOpen.value = false; router.push({ path: group.path, query: selection.value ? planningQuery() : {} }); }
+// Installed apps reopen the URL saved at installation (iOS keeps its query): it must not force a date or a view.
+const standalone = matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+let launching = true, ownRoute = '';
+const linkView = (value: unknown) => ['day', 'jour'].includes(String(value)) ? 'day' as const : ['week', 'semaine', 'grid'].includes(String(value)) ? 'week' as const : ['list', 'liste'].includes(String(value)) ? 'list' as const : undefined;
 let navigationGeneration = 0;
 const resolvingDate = ref(false);
 async function applyRoute() {
+  // URLs written by the app itself only mirror its state: nothing to recompute.
+  // Consumed once, so a later real navigation (Back) to the same URL is applied.
+  if (route.fullPath === ownRoute) { ownRoute = ''; return; }
+  ownRoute = '';
   const current = ++navigationGeneration;
+  const query = launching && standalone ? {} : route.query;
+  launching = false;
   resolvingDate.value = false;
   routeError.value = '';
   let group = groupByPath(route.path);
@@ -67,28 +85,39 @@ async function applyRoute() {
     let remembered = readPreference<string>('vencat:group', '');
     if (!remembered) { try { remembered = localStorage.getItem('group_id') ?? ''; } catch { /* storage blocked */ } }
     group = groupById(remembered);
-    if (group) { router.replace({ path: group.path, query: route.query }); return; }
+    if (group) { router.replace({ path: group.path, query }); return; }
   } else if (!group) routeError.value = 'Ce lien ne correspond pas à un groupe. Choisissez votre filière, votre promotion et votre groupe.';
-  const explicitDate = typeof route.query.date === 'string' && validDay(route.query.date) ? route.query.date : undefined;
-  const nextView = ['day', 'jour'].includes(String(route.query.vue)) ? 'day' : ['week', 'semaine', 'grid'].includes(String(route.query.vue)) ? 'week' : 'list';
-  let targetDate = explicitDate ?? campusDate(new Date());
+  const explicitDate = typeof query.date === 'string' && validDay(query.date) ? query.date : undefined;
+  let targetDate = explicitDate ? visibleDay(explicitDate) : campusDate(new Date());
   if (!explicitDate && group) {
     resolvingDate.value = true;
     targetDate = await resolveTodayDate(group.id, targetDate);
     if (current !== navigationGeneration) return;
     resolvingDate.value = false;
   }
-  if (route.query.date && !explicitDate) routeError.value = 'La date du lien est invalide. Le planning affiche la période courante.';
+  if (query.date && !explicitDate) routeError.value = 'La date du lien est invalide. Le planning affiche la période courante.';
   selection.value = group;
   if (group) writePreference('vencat:group', group.id);
   date.value = targetDate;
-  view.value = nextView;
+  // A shared link may choose the view; otherwise the remembered one is kept.
+  const sharedView = linkView(query.vue);
+  if (sharedView) showLinkedView(sharedView);
   focused.value = undefined;
+  syncRoute();
+}
+// Replace (not push) keeps the browser history to real page changes.
+function syncRoute() {
+  if (!selection.value) return;
+  const target = router.resolve({ path: selection.value.path, query: planningQuery() }).fullPath;
+  if (target === route.fullPath) return;
+  ownRoute = target;
+  void router.replace(target);
 }
 watch(() => route.fullPath, applyRoute, { immediate: true });
-watch([date, view], () => { if (selection.value) router.push({ path: selection.value.path, query: { date: date.value, vue: view.value } }); });
+watch([date, todayTarget], syncRoute);
 watch([selectedIds, week], async () => { searchOpen.value = false; await loadCalendar(); await refreshSharedChanges(); }, { immediate: true });
-function move(direction: number) { date.value = addDay(date.value, direction * (daily.value ? 1 : 7)); }
+watch(() => preferences.value.weekend, () => { date.value = visibleDay(date.value); });
+function move(direction: number) { date.value = daily.value ? visibleDay(addDay(date.value, direction), direction) : addDay(date.value, direction * 7); }
 async function goToday() {
   if (!selection.value) return;
   const current = ++navigationGeneration;
@@ -96,15 +125,20 @@ async function goToday() {
   if (current === navigationGeneration) date.value = target;
 }
 
-async function refreshSharedChanges() {
+// The shared history changes at most once a day: ask at most every ten minutes, unless the panel is opened.
+const changesCheckedAt = new Map<string, number>();
+async function refreshSharedChanges(force = false) {
   if (!online.value || !selection.value) return;
-  const ids = [...selectedIds.value];
-  const results = await Promise.allSettled(ids.map(async id => { const response = await fetch(`/api/changes/${id}`); if (!response.ok) throw new Error(); return await response.json(); }));
-  if (ids.join() !== selectedIds.value.join()) return;
+  const selected = selectedIds.value.join();
+  const ids = selectedIds.value.filter(id => force || Date.now() - (changesCheckedAt.get(id) ?? 0) > 10 * 60_000);
+  if (!ids.length) return;
+  ids.forEach(id => changesCheckedAt.set(id, Date.now()));
+  const results = await Promise.allSettled(ids.map(async id => { const response = await fetch(`/api/changes/${id}`); if (!response.ok) { changesCheckedAt.delete(id); throw new Error(); } return await response.json(); }));
+  if (selected !== selectedIds.value.join()) return;
   const data = results.flatMap(item => item.status === 'fulfilled' && Array.isArray(item.value) ? item.value : []);
   history.value = [...new Map([...data, ...history.value].map(item => [item.id, item])).values()].sort((a, b) => b.detectedAt.localeCompare(a.detectedAt));
 }
-async function openChanges() { changesOpen.value = true; await refreshSharedChanges(); }
+async function openChanges() { changesOpen.value = true; await refreshSharedChanges(true); }
 function closeChanges() { changesOpen.value = false; }
 function keydown(event: KeyboardEvent) {
   if (event.defaultPrevented || !accessibility.value.shortcuts || event.repeat || searchOpen.value || modesOpen.value || dateOpen.value || settingsOpen.value || pickerOpen.value || changesOpen.value || focused.value || (event.target as HTMLElement)?.closest('input, select, textarea, [contenteditable]')) return;
@@ -128,8 +162,8 @@ function keydown(event: KeyboardEvent) {
   if (event.key === '/') { event.preventDefault(); toggleSearch(); }
 }
 
-function reconnect() { online.value = navigator.onLine; if (online.value && selection.value) loadCalendar(true).then(refreshSharedChanges); }
-function foreground() { clock.value = new Date(); if (!document.hidden && preferences.value.refresh && selection.value) loadCalendar().then(refreshSharedChanges); }
+function reconnect() { online.value = navigator.onLine; if (online.value && selection.value) loadCalendar(true).then(() => refreshSharedChanges()); }
+function foreground() { clock.value = new Date(); if (!document.hidden && preferences.value.refresh && selection.value) loadCalendar().then(() => refreshSharedChanges()); }
 let refreshTimer: ReturnType<typeof setInterval>, clockTimer: ReturnType<typeof setInterval>;
 onMounted(() => { viewport.addEventListener('change', resized); clockTimer = setInterval(() => clock.value = new Date(), 30_000); window.addEventListener('keydown', keydown); window.addEventListener('online', reconnect); window.addEventListener('offline', reconnect); document.addEventListener('visibilitychange', foreground); refreshTimer = setInterval(foreground, 10 * 60_000); });
 onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.removeEventListener('keydown', keydown); window.removeEventListener('online', reconnect); window.removeEventListener('offline', reconnect); document.removeEventListener('visibilitychange', foreground); clearInterval(refreshTimer); clearInterval(clockTimer); clearTimeout(noticeTimer); });
@@ -171,7 +205,7 @@ onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.
 <Settings v-if="settingsOpen" :initial-page="settingsPage" :mobile="narrow" @close="settingsOpen = false" @changes="settingsOpen = false; openChanges()" @date="settingsOpen = false; dateOpen = true" />
 <AccessibleDialog id="group-dialog" v-if="pickerOpen" title="Changer de groupe" @close="pickerOpen = false"><GroupPicker :initial="selection" @select="selectGroup" /></AccessibleDialog>
 <AccessibleDialog id="views-dialog" v-if="modesOpen" title="Affichage" @close="modesOpen = false"><section class="settings-section"><h3>Vue du planning</h3><div v-arrow-navigation role="group" class="view-switch"><button :aria-pressed="view === 'list'" @click="view = 'list'">Liste</button><button :aria-pressed="view === 'day'" @click="view = 'day'">Jour</button><button :aria-pressed="view === 'week'" @click="view = 'week'">Semaine</button></div><p class="muted">Liste affiche une journée sur petit écran et la semaine sur grand écran.</p><h3>Informations des cartes</h3><div v-arrow-navigation role="group" class="view-switch"><button :aria-pressed="preferences.density === 'compact'" @click="preferences.density = 'compact'">Compact</button><button :aria-pressed="preferences.density === 'full'" @click="preferences.density = 'full'">Complet</button></div><p class="muted">Compact : titre, horaires, salle et type. Complet : enseignants et groupe en plus. Touchez un cours pour retrouver tous ses détails.</p><button @click="modesOpen = false">Revenir au planning</button></section></AccessibleDialog>
-<AccessibleDialog id="date-dialog" v-if="dateOpen" title="Choisir une date" @close="dateOpen = false"><label class="settings-label">Date du planning<input type="date" :value="date" @change="event => { const value = (event.target as HTMLInputElement).value; if (validDay(value)) { date = value; dateOpen = false; } }"></label><button class="date-today" @click="today(); dateOpen = false">Revenir à aujourd’hui</button></AccessibleDialog>
+<AccessibleDialog id="date-dialog" v-if="dateOpen" title="Choisir une date" @close="dateOpen = false"><label class="settings-label">Date du planning<input type="date" :value="date" @change="event => { const value = (event.target as HTMLInputElement).value; if (validDay(value)) { date = visibleDay(value); dateOpen = false; } }"></label><button class="date-today" @click="today(); dateOpen = false">Revenir à aujourd’hui</button></AccessibleDialog>
 <ChangesDialog v-if="changesOpen" @close="closeChanges" />
 <div v-if="themeNotice" class="theme-notice" role="status">{{ themeNotice }}</div>
 

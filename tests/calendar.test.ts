@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addDay, campusDate, campusTime, layoutDay, mondayOf, validDay, calendarWeekDays, todayPlanningDate } from '../shared/calendar.js';
+import { addDay, campusDate, campusTime, layoutDay, mondayOf, validDay, calendarWeekDays, todayPlanningDate, hourBounds, mergeHours, DEFAULT_HOURS, frenchDate } from '../shared/calendar.js';
 import { groupOptions, groupByPath, groupById } from '../shared/selection.js';
 import { compareSnapshots, type Snapshot } from '../shared/changes.js';
 import type { CourseDTO } from '../shared/courses.js';
@@ -64,4 +64,31 @@ test('opening and Today advance empty weekends to Monday, including empty Monday
   assert.equal(todayPlanningDate('2026-10-10'), '2026-10-10');
   assert.equal(todayPlanningDate('2026-10-25', []), '2026-10-26');
   assert.equal(todayPlanningDate('2026-01-31', []), '2026-02-02');
+});
+
+test('hidden weekends never extend the grid and always open on Monday', () => {
+  const weekdays = ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09'];
+  const saturday = course('sat', '2026-10-10T06:00:00Z', '2026-10-10T08:00:00Z');
+  assert.deepEqual(calendarWeekDays('2026-10-05', [saturday], false), weekdays);
+  assert.equal(todayPlanningDate('2026-10-10', [saturday], false), '2026-10-12');
+  assert.equal(todayPlanningDate('2026-10-11', undefined, false), '2026-10-12');
+  assert.equal(todayPlanningDate('2026-10-09', [], false), '2026-10-09');
+});
+
+test('hour bounds round to whole hours, keep midnight endings on their day and widen with merges', () => {
+  // 07:26–09:00 and 17:00–18:40 Paris time (UTC+2 in October).
+  const early = course('early', '2026-10-05T05:26:00Z', '2026-10-05T07:00:00Z');
+  const late = course('late', '2026-10-06T15:00:00Z', '2026-10-06T16:40:00Z');
+  assert.deepEqual(hourBounds([early, late]), { start: 420, end: 1140 });
+  assert.equal(hourBounds([]), undefined);
+  assert.deepEqual(hourBounds([course('midnight', '2026-10-05T20:00:00Z', '2026-10-05T22:00:00Z')]), { start: 1320, end: 1440 });
+  assert.deepEqual(hourBounds([course('overnight', '2026-10-05T20:00:00Z', '2026-10-06T06:00:00Z')]), { start: 0, end: 1440 });
+  assert.deepEqual(mergeHours({ start: 480, end: 1080 }, { start: 420, end: 1020 }, undefined), { start: 420, end: 1080 });
+  assert.deepEqual(mergeHours(), DEFAULT_HOURS);
+});
+
+test('cached formatters keep each option set separate', () => {
+  assert.equal(frenchDate('2026-10-05', { weekday: 'long' }), 'lundi');
+  assert.equal(frenchDate('2026-10-05', { day: 'numeric' }), '5');
+  assert.equal(frenchDate('2026-10-05', { weekday: 'long' }), 'lundi');
 });

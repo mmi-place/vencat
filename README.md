@@ -6,12 +6,13 @@ Vencat est une application de consultation des emplois du temps CELCAT de l’IU
 
 ## Fonctionnalités
 
-- Choix progressif de la filière, de la promotion et du groupe final, avec des liens comme `/mmi/2/b1`. À la première visite, aucun groupe n’est choisi par défaut.
-- Vue **Liste** par défaut : une journée sous 1 024 px, plusieurs journées côte à côte sur grand écran. Les vues **Jour** et **Semaine** utilisent une grille horaire. Le niveau **Compact / Complet** est indépendant de la vue.
+- Choix progressif de la filière, de la promotion et du groupe final, avec des liens comme `/mmi/2/b1` (et `?date=AAAA-MM-JJ` pour un autre jour qu’aujourd’hui). À la première visite, aucun groupe n’est choisi par défaut.
+- Vue **Liste** à la première visite, puis la dernière vue utilisée est rouverte (réglage « Vue à l’ouverture » pour imposer Liste, Jour ou Semaine). Une application installée ignore la date et la vue enregistrées dans son adresse d’installation. Liste : une journée sous 1 024 px, plusieurs journées côte à côte sur grand écran. Les vues **Jour** et **Semaine** utilisent une grille horaire. Le niveau **Compact / Complet** est indépendant de la vue.
 - Recherche sur l’année scolaire, avec résultats en liste compacte et critères matière, type, enseignant, salle et groupe. Une icône calendrier permet de choisir des dates ; la recherche laisse le planning principal intact.
 - Détail d’un cours avec description de la matière et informations cliquables pour lancer une recherche.
 - Thèmes sombre, clair ou selon l’appareil, et fonds avec aperçus. Les cours terminés sont grisés ; le cours en cours est plus clair. Le numéro dans le cercle de l’en-tête est rouge lorsque la date affichée est aujourd’hui.
-- Affichage des jours de week-end uniquement lorsqu’ils contiennent des cours. À l’ouverture d’un week-end vide, la navigation initiale avance au lundi suivant.
+- Samedi et dimanche masqués par défaut, même avec des cours (souvent des créneaux provisoires). Une option les affiche lorsqu’ils contiennent des cours. Un week-end masqué ou vide ouvre le lundi suivant.
+- Grille Jour et Semaine limitée aux heures du premier et du dernier cours de l’année scolaire du groupe, élargie si un cours affiché en sort.
 - Consultation des semaines enregistrées hors connexion et installation comme application web sur mobile. L’interface se met à jour lors du rechargement et au retour dans l’application.
 - Historique local et partagé des changements, avec indicateurs non lus dans le menu mobile et une cloche rouge sur ordinateur. Il n’y a pas de notifications push sur l’appareil.
 
@@ -78,7 +79,7 @@ Le navigateur vérifie ce numéro, télécharge le catalogue de la filière sél
 
 ## Caches et actualisation
 
-Le navigateur conserve les semaines consultées dans IndexedDB. À l’ouverture, une copie locale de moins d’une minute peut être réutilisée ; au-delà, le client demande le serveur. Lorsque l’actualisation automatique est activée, une nouvelle vérification a lieu toutes les dix minutes et au retour dans l’onglet.
+Le navigateur conserve les semaines consultées dans IndexedDB. À l’ouverture, une copie locale de moins de cinq minutes est réutilisée, y compris pour les semaines préchargées ; au-delà, le client demande le serveur. Lorsque l’actualisation automatique est activée, une nouvelle vérification a lieu toutes les dix minutes et au retour dans l’onglet.
 
 Le bouton d’actualisation relance la demande au serveur. Il ne contourne pas le cache serveur : une réponse encore valide peut donc être réutilisée. Le bouton « Aujourd’hui » sert à revenir à la date courante. Il est masqué sur mobile et désactivé sur ordinateur lorsque le jour affiché, ou la semaine affichée en vue hebdomadaire, correspond déjà à sa destination. Sinon il reste disponible, quelle que soit la vue. Un week-end sans cours ramène au lundi suivant. Le bouton de rechargement reste distinct et disponible.
 
@@ -138,7 +139,8 @@ Toutes les routes utilisent le même domaine que le frontend.
 | Même route avec `format=course` | Tableau de cours normalisés |
 | Même route avec `format=snapshot` | Cours et couverture, source et date de récupération ; format utilisé par l’application |
 | `GET /api/search/:groupId?q=texte&date=YYYY-MM-DD` | Recherche annuelle, versions et choix des menus |
-| `GET /api/changes/:groupId` | Historique partagé des changements |
+| `GET /api/changes/:groupId` | Historique partagé des changements (consulté au plus toutes les dix minutes, sauf ouverture du panneau) |
+| `GET /api/hours/:groupId` | Heures du premier début et de la dernière fin de l’année scolaire, mises en cache 24 h |
 | `GET /api/history/config` | Disponibilité du stockage partagé |
 | `GET /api/monitor` | Tâche planifiée, protégée par `Authorization: Bearer <CRON_SECRET>` |
 
