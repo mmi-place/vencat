@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeftIcon, ArrowRightIcon, ArrowPathIcon, Cog6ToothIcon, MagnifyingGlassIcon, Bars3Icon, CalendarDaysIcon, ViewColumnsIcon, ClockIcon, BellIcon, ListBulletIcon, SunIcon, MoonIcon, ComputerDesktopIcon } from '@heroicons/vue/24/outline';
+import { ArrowLeftIcon, ArrowRightIcon, ArrowPathIcon, Cog6ToothIcon, MagnifyingGlassIcon, Bars3Icon, CalendarDaysIcon, ViewColumnsIcon, ClockIcon, BellIcon, ListBulletIcon, PaintBrushIcon, PhotoIcon } from '@heroicons/vue/24/outline';
 import CourseFocus from '../components/layout/CourseFocus.vue';
-import Settings from '../components/layout/Settings.vue';
+import Settings, { type SettingsPage } from '../components/layout/Settings.vue';
 import AuthorCredits from '../components/AuthorCredits.vue';
 import GroupPicker from '../components/GroupPicker.vue';
 import ListCalendar from '../components/ListCalendar.vue';
@@ -23,19 +23,12 @@ import { readPreference, writePreference } from '../scripts/storage';
 import { groupById, groupByPath, type GroupOption } from '../../shared/selection';
 import { campusDate, campusTime, frenchDate, addDay, validDay, isWeekend } from '../../shared/calendar';
 const route = useRoute(), router = useRouter();
-const settingsPage = ref<'home' | 'accessibility'>('home');
+const settingsPage = ref<SettingsPage>('home');
+function openSettings(page: SettingsPage = 'home') { settingsPage.value = page; settingsOpen.value = true; }
 const settingsOpen = ref(false), pickerOpen = ref(false), changesOpen = ref(false);
 const routeError = ref('');
 const searchInitial = ref<SearchCriterion>();
 const modesOpen = ref(false), dateOpen = ref(false), searchOpen = ref(false);
-const themeNotice = ref('');
-let noticeTimer: ReturnType<typeof setTimeout>;
-function cycleTheme() {
-  const choices = ['dark', 'light', 'system'] as const;
-  preferences.value.theme = choices[(choices.indexOf(preferences.value.theme) + 1) % choices.length]!;
-  themeNotice.value = { dark: 'Thème sombre', light: 'Thème clair', system: 'Thème de l’appareil' }[preferences.value.theme];
-  clearTimeout(noticeTimer); noticeTimer = setTimeout(() => themeNotice.value = '', 2600);
-}
 const viewport = window.matchMedia('(max-width: 1023px)');
 const narrow = ref(viewport.matches);
 const resized = () => narrow.value = viewport.matches;
@@ -146,8 +139,8 @@ function keydown(event: KeyboardEvent) {
     const key = event.code;
     const actions: Record<string, () => void> = {
       KeyF: toggleSearch, KeyG: () => pickerOpen.value = true,
-      KeyS: () => { settingsPage.value = 'home'; settingsOpen.value = true; },
-      KeyA: () => { settingsPage.value = 'accessibility'; settingsOpen.value = true; },
+      KeyS: () => openSettings(),
+      KeyA: () => openSettings('accessibility'),
       KeyC: () => void openChanges(), KeyT: () => void today(),
       KeyP: () => document.querySelector<HTMLElement>('.timeline-stage .course')?.focus(),
       ArrowLeft: () => move(-1), ArrowRight: () => move(1),
@@ -166,7 +159,7 @@ function reconnect() { online.value = navigator.onLine; if (online.value && sele
 function foreground() { clock.value = new Date(); if (!document.hidden && preferences.value.refresh && selection.value) loadCalendar().then(() => refreshSharedChanges()); }
 let refreshTimer: ReturnType<typeof setInterval>, clockTimer: ReturnType<typeof setInterval>;
 onMounted(() => { viewport.addEventListener('change', resized); clockTimer = setInterval(() => clock.value = new Date(), 30_000); window.addEventListener('keydown', keydown); window.addEventListener('online', reconnect); window.addEventListener('offline', reconnect); document.addEventListener('visibilitychange', foreground); refreshTimer = setInterval(foreground, 10 * 60_000); });
-onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.removeEventListener('keydown', keydown); window.removeEventListener('online', reconnect); window.removeEventListener('offline', reconnect); document.removeEventListener('visibilitychange', foreground); clearInterval(refreshTimer); clearInterval(clockTimer); clearTimeout(noticeTimer); });
+onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.removeEventListener('keydown', keydown); window.removeEventListener('online', reconnect); window.removeEventListener('offline', reconnect); document.removeEventListener('visibilitychange', foreground); clearInterval(refreshTimer); clearInterval(clockTimer); });
 </script>
 
 <template>
@@ -174,7 +167,7 @@ onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.
 <div class="app-shell" :class="{ 'calendar-app': selection }">
   <nav class="app-nav" :class="{ 'onboarding-nav': !selection }" aria-label="Navigation principale">
     <div class="brand-row"><a class="brand" href="/" @click.prevent="router.push('/')"><img src="../assets/logo.svg" width="26" height="26" alt=""><span>Vencat</span></a><button v-if="selection" class="icon-button quiet" :disabled="loading || !online" aria-label="Actualiser les cours" @click="loadCalendar(true)"><ArrowPathIcon aria-hidden="true" :class="{ refreshing: loading }" /></button></div>
-    <div v-if="selection" class="desktop-actions"><button class="group-button" aria-haspopup="dialog" :aria-expanded="pickerOpen" :aria-controls="pickerOpen ? 'group-dialog' : undefined" @click="pickerOpen = true">{{ groupLabel }}</button><button class="icon-button quiet" aria-haspopup="dialog" :aria-expanded="searchOpen" :aria-controls="searchOpen ? 'search-dialog' : undefined" aria-label="Rechercher un cours" @click="toggleSearch"><MagnifyingGlassIcon aria-hidden="true" /></button><button class="icon-button quiet theme-shortcut" aria-label="Changer de thème : sombre, clair, appareil" @click="cycleTheme"><SunIcon aria-hidden="true" v-if="preferences.theme === 'light'" /><ComputerDesktopIcon aria-hidden="true" v-else-if="preferences.theme === 'system'" /><MoonIcon aria-hidden="true" v-else /></button><button class="icon-button quiet" aria-label="Réglages" aria-haspopup="dialog" :aria-expanded="settingsOpen" :aria-controls="settingsOpen ? 'settings-dialog' : undefined" @click="settingsPage = 'home'; settingsOpen = true"><Cog6ToothIcon aria-hidden="true" /></button><button class="icon-button quiet" :class="{ 'unread-bell': unseenChanges.length }" :aria-label="unseenChanges.length ? 'Changements du planning non lus' : 'Changements du planning'" aria-haspopup="dialog" :aria-expanded="changesOpen" :aria-controls="changesOpen ? 'changes-dialog' : undefined" @click="openChanges"><BellSolidIcon aria-hidden="true" v-if="unseenChanges.length" /><BellIcon aria-hidden="true" v-else /></button></div>
+    <div v-if="selection" class="desktop-actions"><button class="group-button" aria-haspopup="dialog" :aria-expanded="pickerOpen" :aria-controls="pickerOpen ? 'group-dialog' : undefined" @click="pickerOpen = true">{{ groupLabel }}</button><button class="icon-button quiet" aria-haspopup="dialog" :aria-expanded="searchOpen" :aria-controls="searchOpen ? 'search-dialog' : undefined" aria-label="Rechercher un cours" @click="toggleSearch"><MagnifyingGlassIcon aria-hidden="true" /></button><button class="icon-button quiet" aria-label="Apparence : thème et couleurs des cours" aria-haspopup="dialog" :aria-expanded="settingsOpen && settingsPage === 'appearance'" @click="openSettings('appearance')"><PaintBrushIcon aria-hidden="true" /></button><button class="icon-button quiet" aria-label="Fond de l’application" aria-haspopup="dialog" :aria-expanded="settingsOpen && settingsPage === 'background'" @click="openSettings('background')"><PhotoIcon aria-hidden="true" /></button><button class="icon-button quiet" aria-label="Réglages" aria-haspopup="dialog" :aria-expanded="settingsOpen" :aria-controls="settingsOpen ? 'settings-dialog' : undefined" @click="openSettings()"><Cog6ToothIcon aria-hidden="true" /></button><button class="icon-button quiet" :class="{ 'unread-bell': unseenChanges.length }" :aria-label="unseenChanges.length ? 'Changements du planning non lus' : 'Changements du planning'" aria-haspopup="dialog" :aria-expanded="changesOpen" :aria-controls="changesOpen ? 'changes-dialog' : undefined" @click="openChanges"><BellSolidIcon aria-hidden="true" v-if="unseenChanges.length" /><BellIcon aria-hidden="true" v-else /></button></div>
   </nav>
   <p v-if="routeError" role="alert" class="notice">{{ routeError }}</p>
   <main v-if="resolvingDate && !selection" id="planning" tabindex="-1" class="onboarding"><p role="status">Chargement du planning…</p></main>
@@ -196,7 +189,7 @@ onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.
     <div v-if="hasData || weekCourses.length" class="timeline-stage" :aria-busy="loading" @touchstart.passive="startSwipe" @touchend.passive="finishSwipe" @click.capture="interceptClick"><ListCalendar v-if="view === 'list'" :daily="daily" /><CalendarGrid v-else ref="calendar" /></div>
     <div class="mobile-overlays"><button v-if="!onToday" class="floating-today" @click="today"><ClockIcon aria-hidden="true" />Aujourd’hui</button>
     <InstallPrompt class="mobile-install" /></div>
-    <nav class="mobile-dock" aria-label="Commandes du planning"><div class="dock-left"><button class="icon-button" :aria-label="unseenChanges.length ? 'Ouvrir le menu, ' + unseenChanges.length + ' changements non lus' : 'Ouvrir le menu'" aria-haspopup="dialog" :aria-expanded="settingsOpen" :aria-controls="settingsOpen ? 'settings-dialog' : undefined" @click="settingsPage = 'home'; settingsOpen = true"><Bars3Icon aria-hidden="true" /><span v-if="unseenChanges.length" class="changes-dot"></span></button><button class="group-button" aria-haspopup="dialog" :aria-expanded="pickerOpen" :aria-controls="pickerOpen ? 'group-dialog' : undefined" @click="pickerOpen = true">{{ groupLabel }}</button></div><div class="dock-right"><button class="icon-button" aria-haspopup="dialog" :aria-expanded="searchOpen" :aria-controls="searchOpen ? 'search-dialog' : undefined" aria-label="Rechercher un cours" @click="toggleSearch"><MagnifyingGlassIcon aria-hidden="true" /></button><button class="icon-button" aria-label="Choisir la vue et le détail des cartes" aria-haspopup="dialog" :aria-expanded="modesOpen" :aria-controls="modesOpen ? 'views-dialog' : undefined" @click="modesOpen = true"><ListBulletIcon aria-hidden="true" v-if="view === 'list'" /><CalendarDaysIcon aria-hidden="true" v-else-if="view === 'day'" /><ViewColumnsIcon aria-hidden="true" v-else /></button></div></nav>
+    <nav class="mobile-dock" aria-label="Commandes du planning"><div class="dock-left"><button class="icon-button" :aria-label="unseenChanges.length ? 'Ouvrir le menu, ' + unseenChanges.length + ' changements non lus' : 'Ouvrir le menu'" aria-haspopup="dialog" :aria-expanded="settingsOpen" :aria-controls="settingsOpen ? 'settings-dialog' : undefined" @click="openSettings()"><Bars3Icon aria-hidden="true" /><span v-if="unseenChanges.length" class="changes-dot"></span></button><button class="group-button" aria-haspopup="dialog" :aria-expanded="pickerOpen" :aria-controls="pickerOpen ? 'group-dialog' : undefined" @click="pickerOpen = true">{{ groupLabel }}</button></div><div class="dock-right"><button class="icon-button" aria-haspopup="dialog" :aria-expanded="searchOpen" :aria-controls="searchOpen ? 'search-dialog' : undefined" aria-label="Rechercher un cours" @click="toggleSearch"><MagnifyingGlassIcon aria-hidden="true" /></button><button class="icon-button" aria-label="Choisir la vue et le détail des cartes" aria-haspopup="dialog" :aria-expanded="modesOpen" :aria-controls="modesOpen ? 'views-dialog' : undefined" @click="modesOpen = true"><ListBulletIcon aria-hidden="true" v-if="view === 'list'" /><CalendarDaysIcon aria-hidden="true" v-else-if="view === 'day'" /><ViewColumnsIcon aria-hidden="true" v-else /></button></div></nav>
   </main>
   <footer v-if="!selection" class="app-footer"><AuthorCredits /></footer>
 </div>
@@ -207,6 +200,5 @@ onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.
 <AccessibleDialog id="views-dialog" v-if="modesOpen" title="Affichage" @close="modesOpen = false"><section class="settings-section"><h3>Vue du planning</h3><div v-arrow-navigation role="group" class="view-switch"><button :aria-pressed="view === 'list'" @click="view = 'list'">Liste</button><button :aria-pressed="view === 'day'" @click="view = 'day'">Jour</button><button :aria-pressed="view === 'week'" @click="view = 'week'">Semaine</button></div><p class="muted">Liste affiche une journée sur petit écran et la semaine sur grand écran.</p><h3>Informations des cartes</h3><div v-arrow-navigation role="group" class="view-switch"><button :aria-pressed="preferences.density === 'compact'" @click="preferences.density = 'compact'">Compact</button><button :aria-pressed="preferences.density === 'full'" @click="preferences.density = 'full'">Complet</button></div><p class="muted">Compact : titre, horaires, salle et type. Complet : enseignants et groupe en plus. Touchez un cours pour retrouver tous ses détails.</p><button @click="modesOpen = false">Revenir au planning</button></section></AccessibleDialog>
 <AccessibleDialog id="date-dialog" v-if="dateOpen" title="Choisir une date" @close="dateOpen = false"><label class="settings-label">Date du planning<input type="date" :value="date" @change="event => { const value = (event.target as HTMLInputElement).value; if (validDay(value)) { date = visibleDay(value); dateOpen = false; } }"></label><button class="date-today" @click="today(); dateOpen = false">Revenir à aujourd’hui</button></AccessibleDialog>
 <ChangesDialog v-if="changesOpen" @close="closeChanges" />
-<div v-if="themeNotice" class="theme-notice" role="status">{{ themeNotice }}</div>
 
 </template>

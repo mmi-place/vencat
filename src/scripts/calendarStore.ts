@@ -6,6 +6,7 @@ import { groupById, type GroupOption } from '../../shared/selection';
 import { readPreference, writePreference, savedSnapshot, savedHistory, saveSnapshot } from './storage';
 import { resolveBackground, type Background, type Theme } from './appearance';
 import { searchWindow } from '../../shared/search';
+import { isPaletteId, paletteColor, type PaletteId } from './palettes';
 
 export type CalendarView = 'list' | 'day' | 'week';
 export const calendarViews: readonly CalendarView[] = ['list', 'day', 'week'];
@@ -14,7 +15,7 @@ export const isCalendarView = (value: unknown): value is CalendarView => calenda
 export type StartView = 'last' | CalendarView;
 export interface Preferences {
   density: 'compact' | 'full'; colorMode: 'type' | 'module'; colors: Record<string, string>; background: Background; theme: Theme; refresh: boolean;
-  view: CalendarView; startView: StartView; weekend: boolean;
+  view: CalendarView; startView: StartView; weekend: boolean; palette: PaletteId;
 }
 // Older saved preferences lack the newest fields: each one falls back to its default.
 const initial = readPreference<Partial<Preferences>>('vencat:preferences', {});
@@ -27,6 +28,7 @@ export const preferences = ref<Preferences>({
   view: isCalendarView(initial?.view) ? initial.view : 'list',
   startView: initial?.startView === 'last' || isCalendarView(initial?.startView) ? initial.startView : 'last',
   weekend: initial?.weekend === true,
+  palette: isPaletteId(initial?.palette) ? initial.palette : 'vencat',
 });
 watch(preferences, value => writePreference('vencat:preferences', value), { deep: true });
 export const startupView = (): CalendarView => preferences.value.startView === 'last' ? preferences.value.view : preferences.value.startView;
@@ -191,12 +193,12 @@ export async function loadCalendar(force = false) {
     await Promise.allSettled(pairs.filter(({ id, day }) => stale(snapshots.value[`${id}:${day}`])).map(({ id, day }) => updateSnapshot(id, day)));
   }
 }
-export const typeColors: Record<string, string> = { CM: '#b72c48', TD: '#24789d', TP: '#622fb5', DS: '#a32996', 'Projet Tutoré': '#08774f', Réunion: '#865d22', Entreprise: '#995008', inconnu: '#334155' };
-const modulePalette = ['#622fb5', '#24789d', '#08774f', '#b72c48', '#865d22', '#a32996', '#334c83'];
+/** Colour of a type or module key: the personal choice first, then the chosen palette. */
+export function keyColor(key: string, mode = preferences.value.colorMode) {
+  return preferences.value.colors[`${mode}:${key}`] || paletteColor(preferences.value.palette, mode, key);
+}
 export function courseColor(course: CourseDTO) {
-  const key = preferences.value.colorMode === 'type' ? course.type : course.module;
-  let hash = 0; for (const char of key) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  return preferences.value.colors[`${preferences.value.colorMode}:${key}`] || (preferences.value.colorMode === 'type' ? typeColors[key] ?? typeColors.inconnu! : modulePalette[hash % modulePalette.length]!);
+  return keyColor(preferences.value.colorMode === 'type' ? course.type : course.module);
 }
 export function colorText(color: string) {
   const rgb = color.match(/[a-f0-9]{2}/gi)!.map(hex => { const v = parseInt(hex, 16) / 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; });
