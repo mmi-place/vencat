@@ -10,7 +10,7 @@ import QueueDialog from './QueueDialog.vue';
 import DelegatesDialog from './DelegatesDialog.vue';
 import ModerationDialog from './ModerationDialog.vue';
 import InfoDialogs from './InfoDialogs.vue';
-import { api, errorText, setMe, flushOutbox, notify, toast, readPendingLogin, wide, ui, form, openedWork, me, needsOnboarding, loadMe, launchLinks, loadQueue, loadWorks, loadCorrections, section } from '../../scripts/travaux';
+import { loadConfig, api, errorText, setMe, flushOutbox, notify, toast, readPendingLogin, wide, ui, form, openedWork, me, needsOnboarding, loadMe, launchLinks, loadQueue, loadWorks, loadCorrections, section } from '../../scripts/travaux';
 import { online } from '../../scripts/calendarStore';
 // Dialogs of the Travaux section, available from both sections.
 onMounted(async () => {
@@ -21,7 +21,7 @@ onMounted(async () => {
   if (launchLinks.work) { section.value = 'travaux'; openedWork.value = launchLinks.work; }
   if (needsOnboarding.value || (!me.value && readPendingLogin())) ui.value.login = true;
 });
-const resume = () => { if (!document.hidden && !me.value && !ui.value.login && readPendingLogin()) ui.value.login = true; };
+const resume = () => { if (!document.hidden) void loadConfig(); if (!document.hidden && !me.value && !ui.value.login && readPendingLogin()) ui.value.login = true; };
 document.addEventListener('visibilitychange', resume);
 onBeforeUnmount(() => document.removeEventListener('visibilitychange', resume));
 // Mail link: this device signs in after a confirmation (a link scanner that only opens it signs nobody in).
@@ -35,7 +35,7 @@ async function confirmMagic() {
 }
 watch(online, value => { if (value) { void loadWorks(); void loadQueue(); void loadCorrections(); } });
 let timer: ReturnType<typeof setInterval> | undefined;
-onMounted(() => { timer = setInterval(() => { if (!document.hidden) { void loadQueue(); if (section.value === 'travaux') void loadWorks(); } }, 5 * 60_000); });
+onMounted(() => { timer = setInterval(() => { if (!document.hidden) { void loadConfig(); void loadQueue(); if (section.value === 'travaux') void loadWorks(); } }, 5 * 60_000); });
 onBeforeUnmount(() => clearInterval(timer));
 </script>
 <template>

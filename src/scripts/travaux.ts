@@ -2,11 +2,11 @@ import { computed, ref, watch } from 'vue';
 import { readPreference, writePreference } from './storage';
 import { selection, online } from './calendarStore';
 import { api, errorText, isNetworkError, onUnauthorized, ApiError } from './travaux/api';
-import { me, setMe, userKey, loadMe, canContribute, onSignedOut } from './travaux/session';
+import { me, setMe, userKey, loadMe, canContribute, onSignedOut, planningOnly } from './travaux/session';
 import { marks, loadMarks, marksKey, cancelNoteTimers } from './travaux/marks';
 import { outbox, myOutbox, enqueue, dropOutbox, clearOutbox } from './travaux/outbox';
-import { works, loadWorks, showCached, replaceWork, clearWorksCaches, loadCorrections } from './travaux/works';
-import { ui, notify } from './travaux/ui';
+import { works, loadWorks, showCached, replaceWork, clearWorksCaches, loadCorrections, corrections } from './travaux/works';
+import { ui, notify, section, form, openedWork } from './travaux/ui';
 import type { WorkInput, WorkView } from '../../shared/travaux';
 
 // Travaux client store. The pieces live in ./travaux/*; this file wires them together:
@@ -32,6 +32,7 @@ import type { CorrectionView } from './travaux/works';
 export interface DeclarationView { id: string; name: string; title: string; electedOn?: string; note: string; group: string }
 export const queue = ref<{ works: WorkView[]; corrections: CorrectionView[]; declarations: DeclarationView[] }>({ works: [], corrections: [], declarations: [] });
 export async function loadQueue() {
+  if (planningOnly.value) return;
   if (!me.value?.groupId || !online.value) { if (!me.value) queue.value = { works: [], corrections: [], declarations: [] }; return; }
   try { const value = await api<typeof queue.value>('/travaux/queue'); queue.value = { works: value.works ?? [], corrections: value.corrections ?? [], declarations: value.declarations ?? [] }; } catch { /* the badge simply stays as it was */ }
 }
@@ -126,6 +127,11 @@ watch(() => me.value?.id, (id, previous) => {
   showCached(selection.value?.id);
   void loadMarks(); void loadQueue(); void loadWorks();
   if (id) void flushOutbox();
+});
+// « Planning only »: everything coming from users is hidden at once, the timetable stays.
+watch(planningOnly, value => {
+  if (value) { works.value = []; corrections.value = []; queue.value = { works: [], corrections: [], declarations: [] }; section.value = 'cours'; form.value = undefined; openedWork.value = undefined; for (const key of Object.keys(ui.value) as (keyof typeof ui.value)[]) ui.value[key] = false; }
+  else { void loadMe(); void loadWorks(); void loadCorrections(); }
 });
 watch(() => selection.value?.id, id => { showCached(id); void loadWorks(); void loadCorrections(); });
 export { ApiError, loadMe, outbox };

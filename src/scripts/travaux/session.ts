@@ -9,7 +9,10 @@ export const me = ref<Me | null>(readPreference<Me | null>(ME_KEY, null));
 export const meLoaded = ref(false);
 /** The account comes from the device copy: the server could not be reached. */
 export const sessionOffline = ref(false);
-export const config = ref({ mail: true, persistent: false, contact: '', teacherAccounts: false });
+export const config = ref({ mail: true, persistent: false, contact: '', teacherAccounts: false, planningOnly: false, message: '' });
+/** « Planning only » switched on by the administration: no user content, the timetable alone. */
+export const planningOnly = computed(() => config.value.planningOnly);
+export async function loadConfig() { try { config.value = { ...config.value, ...await api<Partial<typeof config.value>>('/travaux/config') }; } catch { /* keeps the last known mode */ } }
 export function setMe(value: Me | null) {
   me.value = value;
   if (value) writePreference(ME_KEY, value); else { try { localStorage.removeItem(ME_KEY); } catch { /* storage blocked */ } }
@@ -19,6 +22,8 @@ let signedOut: ((userId: string) => void) | undefined;
 export function onSignedOut(handler: (userId: string) => void) { signedOut = handler; }
 export async function loadMe() {
   const previous = me.value?.id;
+  await loadConfig();
+  if (config.value.planningOnly) { meLoaded.value = true; return; }
   try {
     const value = (await api<{ me: Me | null }>('/auth/me')).me;
     if (previous && value?.id !== previous) signedOut?.(previous);
@@ -26,7 +31,6 @@ export async function loadMe() {
   }
   catch (error) { sessionOffline.value = isNetworkError(error) && !!me.value; }
   meLoaded.value = true;
-  api<typeof config.value>('/travaux/config').then(value => { config.value = value; }).catch(() => undefined);
 }
 export const needsOnboarding = computed(() => !!me.value && (!me.value.cguAccepted || (!me.value.groupId && me.value.role !== 'teacher')));
 export const canContribute = computed(() => !!me.value && !needsOnboarding.value && !me.value.banned && !me.value.readOnlyUntil);

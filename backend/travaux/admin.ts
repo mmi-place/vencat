@@ -1,6 +1,7 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
 import { randomBytes, randomInt } from 'node:crypto';
 import { store } from './store.js';
+import { settings as globalSettings, saveSettings } from './settings.js';
 import { sendMail, layout } from './mail.js';
 import { HttpError, hash, id, now, sameOrigin, overLimit, addressKey, deviceLabel, adminEmails, activeDelegations, displayName, type User, type Session, type Delegation } from './auth.js';
 import { moderationData, moderationAction, settle, workView, users, history, audit, schoolYearEnd, type Work } from './routes.js';
@@ -81,6 +82,15 @@ router.get('/admin/overview', route(async (req, res) => {
     stats: { accounts: people.length, active: new Set(sessions.filter(item => Date.parse(item.lastSeen) > week).map(item => item.userId)).size, works: works.length, states, newWorks: works.filter(work => Date.parse(work.createdAt) > week).length, groups: new Set(people.map(person => person.groupId).filter(Boolean)).size },
     ...await moderationData(true, []),
   });
+}));
+router.get('/admin/settings', route(async (req, res) => { await requireAdmin(req); res.json(await globalSettings()); }));
+router.post('/admin/settings', route(async (req, res) => {
+  const session = await requireAdmin(req);
+  const planningOnly = req.body?.planningOnly === true;
+  const message = cleanText(req.body?.message, 300);
+  await saveSettings({ planningOnly, message: message || undefined, since: new Date().toISOString(), by: session.email });
+  await audit('admin:' + session.email, planningOnly ? 'mode planning seul : activé' : 'mode planning seul : désactivé', 'global', message);
+  res.json(await globalSettings());
 }));
 router.get('/admin/works', route(async (req, res) => {
   await requireAdmin(req);

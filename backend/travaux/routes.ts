@@ -1,5 +1,6 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
 import { store, persistentStore } from './store.js';
+import { planningOnlyGuard, settings as globalSettings, DEFAULT_MESSAGE } from './settings.js';
 import { sendMail, loginMail, mailConfigured } from './mail.js';
 import {
   HttpError, id, now, authenticate, requireUser, requireContributor, createSession, clearSessionCookie, sameOrigin, overLimit, addressKey,
@@ -35,6 +36,7 @@ export interface Correction { id: string; groupId: string; course: CourseLink & 
 const db = () => store();
 const router = express.Router();
 router.use(['/auth', '/account', '/travaux'], sameOrigin);
+router.use(['/auth', '/account', '/travaux'], planningOnlyGuard);
 router.use(['/auth', '/account', '/travaux'], (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 const route = (handler: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) => { handler(req, res).catch(next); };
 // Proxies chained (tunnel, then the development proxy) append their values: "https,http". Only the first one is the client's.
@@ -149,7 +151,7 @@ function describeChanges(work: Work, changes: Partial<WorkInput>) {
 // ---------------------------------------------------------------------------
 // Configuration and sign-in
 // ---------------------------------------------------------------------------
-router.get('/travaux/config', route(async (_req, res) => res.json({ mail: mailConfigured() || process.env.NODE_ENV !== 'production', persistent: persistentStore(), contact: process.env.CONTACT_EMAIL || '', teacherAccounts: process.env.TEACHER_ACCOUNTS === 'true' })));
+router.get('/travaux/config', route(async (_req, res) => { const global = await globalSettings(); res.json({ planningOnly: global.planningOnly, message: global.planningOnly ? global.message || DEFAULT_MESSAGE : '', mail: mailConfigured() || process.env.NODE_ENV !== 'production', persistent: persistentStore(), contact: process.env.CONTACT_EMAIL || '', teacherAccounts: process.env.TEACHER_ACCOUNTS === 'true' }); }));
 
 router.get('/auth/me', route(async (req, res) => {
   const { user } = await authenticate(req);

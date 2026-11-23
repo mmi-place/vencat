@@ -672,3 +672,7 @@
 .course.course-highlight { filter: brightness(1.25) saturate(1.2); }
 .declaration-card { display: grid; gap: 10px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 60%, transparent); }
 .declaration-card p { line-height: 1.45; }
+.planning-only-banner { margin: 8px 12px 0; padding: 10px 14px; border-radius: 12px; font-size: .88rem; font-weight: 700; background: color-mix(in srgb, #d68a1c 16%, var(--surface)); border: 1px solid color-mix(in srgb, #d68a1c 40%, transparent); }
+@media (min-width: 1024px) { .planning-only-banner { margin: 0 0 10px; } }
+.kill-switch.on { border-color: var(--alert); background: color-mix(in srgb, var(--alert) 10%, var(--panel)); }
+.kill-state { font-weight: 900; color: var(--alert); }

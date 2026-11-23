@@ -27,8 +27,18 @@ const data = ref<Overview>();
 const works = ref<(WorkView & { group: string; promotion?: string })[]>([]);
 const corrections = ref<Correction[]>([]);
 const query = ref(''), workQuery = ref(''), workState = ref(''), reason = ref('');
+// « Planning only »: switches off every user content at once, when it gets out of control.
+const global = ref<{ planningOnly: boolean; message?: string; since?: string; by?: string }>({ planningOnly: false });
+const globalMessage = ref('');
+async function loadGlobal() { try { global.value = await api('/admin/settings'); globalMessage.value = global.value.message ?? ''; } catch { /* shown on next load */ } }
+async function setPlanningOnly(value: boolean) {
+  if (value && !confirm('Passer Vencat en mode planning seul ? Les Travaux, les comptes, les votes et les corrections seront coupés pour tout le monde, l’emploi du temps restera.')) return;
+  busy.value = true;
+  try { global.value = await api('/admin/settings', { body: { planningOnly: value, message: globalMessage.value } }); status.value = value ? 'Mode planning seul activé : les appareils le prennent en compte sous quelques minutes.' : 'Contenu des utilisateurs rétabli.'; }
+  catch (error) { status.value = errorText(error); } finally { busy.value = false; }
+}
 
-async function check() { try { session.value = await api('/admin/me'); await load(); } catch { session.value = undefined; } checked.value = true; }
+async function check() { try { session.value = await api('/admin/me'); await load(); await loadGlobal(); } catch { session.value = undefined; } checked.value = true; }
 onMounted(() => { document.title = 'Administration · Vencat'; void check(); });
 async function start() {
   busy.value = true; status.value = '';
@@ -135,6 +145,12 @@ const day = (iso: string) => new Date(iso).toLocaleString('fr-FR', { timeZone: '
       <p v-if="status" class="form-status" role="status">{{ status }}</p>
       <template v-if="data && tab === 'overview'">
         <div class="admin-stats"><div class="stat"><strong>{{ data.stats.accounts }}</strong><span>comptes</span></div><div class="stat"><strong>{{ data.stats.active }}</strong><span>actifs sur 7 jours</span></div><div class="stat"><strong>{{ data.stats.works }}</strong><span>travaux partagés</span></div><div class="stat"><strong>{{ data.stats.newWorks }}</strong><span>ajoutés cette semaine</span></div><div class="stat"><strong>{{ data.stats.states.contested ?? 0 }}</strong><span>contestés</span></div><div class="stat"><strong>{{ todo }}</strong><span>à traiter</span></div></div>
+        <section class="admin-card kill-switch" :class="{ on: global.planningOnly }"><h2>Mode planning seul</h2>
+          <p class="muted">À utiliser quand le contenu des utilisateurs devient incontrôlable : coupe les Travaux, les comptes, les votes, les délégué(e)s et les corrections d’emploi du temps pour tout le monde. L’emploi du temps CELCAT reste disponible. Rien n’est effacé : tout revient en désactivant le mode.</p>
+          <p v-if="global.planningOnly" class="kill-state">Activé<template v-if="global.since"> le {{ day(global.since) }}</template><template v-if="global.by"> par {{ global.by }}</template></p>
+          <label class="settings-label">Message affiché aux élèves (facultatif)<input v-model="globalMessage" maxlength="300" placeholder="Les Travaux sont temporairement désactivés. L’emploi du temps reste disponible."></label>
+          <div class="admin-actions"><button v-if="!global.planningOnly" class="danger-action" :disabled="busy" @click="setPlanningOnly(true)">Activer le mode planning seul</button><template v-else><button class="primary-action" :disabled="busy" @click="setPlanningOnly(false)">Rétablir le contenu des utilisateurs</button><button :disabled="busy" @click="setPlanningOnly(true)">Mettre à jour le message</button></template></div>
+        </section>
         <section class="admin-card"><h2>À traiter</h2><p v-if="!todo" class="muted">Rien en attente.</p><button v-else class="primary-action" @click="tab = 'moderation'">Ouvrir la modération ({{ todo }})</button></section>
         <section class="admin-card"><h2>États des travaux</h2><div class="admin-bars"><div v-for="(count, state) in data.stats.states" :key="state" class="admin-bar"><span>{{ WORK_STATE_LABELS[state as keyof typeof WORK_STATE_LABELS] ?? state }}</span><i :style="{ width: (count / Math.max(1, data.stats.works) * 100) + '%' }"></i><b>{{ count }}</b></div></div></section>
       </template>

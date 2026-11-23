@@ -32,6 +32,7 @@ Une bascule **Cours | Travaux** (touche **W**) affiche les devoirs, rendus, éva
 - **Ajout perso** : un travail « juste pour moi » n’est visible que par son auteur, sans vote, modifiable et supprimable directement, absent de l’ICS.
 - **Hors ligne** : le compte reste affiché, les travaux sont gardés par compte, et les votes, cases, notes et nouveaux travaux (en brouillon) partent au retour du réseau, une seule fois. La déconnexion ou une session expirée efface ces copies de l’appareil.
 - **Administration** (`/admin`) : vue d’ensemble, modération (signalements, délégués, noms, alertes), comptes (groupe, lecture seule, bannissement, suppression, nomination de délégué), travaux, corrections d’emploi du temps, délégués et journal.
+- **Mode « planning seul »** (levier d’urgence dans `/admin`, onglet Vue d’ensemble) : quand le contenu des élèves devient incontrôlable, coupe d’un coup les Travaux, les comptes, les connexions, les corrections et les délégués. L’emploi du temps CELCAT reste disponible, un bandeau (message personnalisable) prévient les élèves, les abonnements webcal renvoient un calendrier vide et les appareils l’apprennent en 5 min au plus. Les données ne sont pas supprimées : désactiver le levier remet tout en place. L’activation est inscrite au journal.
 
 | Variable | Rôle |
 | --- | --- |
@@ -56,7 +57,7 @@ Sans SMTP configuré, le développement affiche les mails dans la console et pr�
 | `/api/account/*` | Intégration, appareils, groupe, nom, cases et notes, suppression |
 | `GET /api/travaux/group/:groupId`, `/work/:id`, `/queue` ; `POST /api/travaux/works`, `/work/:id/vote`, `/work/:id/proposal`, `/proposal/:id/vote`, `/work/:id/report`, `/work/:id/moderate` | Travaux |
 | `/api/travaux/delegates/*`, `/api/travaux/moderation*`, `/api/travaux/corrections*` | Délégués, modération, corrections |
-| `POST /api/admin/start`, `/verify`, `/logout`, `/action`, `/work/:id`, `/correction/:id` ; `GET /api/admin/me`, `/overview`, `/works`, `/corrections` | Administration (cookie `vencat_admin`, chemin `/api/admin`) |
+| `POST /api/admin/start`, `/verify`, `/logout`, `/action`, `/work/:id`, `/correction/:id` ; `GET /api/admin/me`, `/overview`, `/works`, `/corrections` ; `GET`/`POST /api/admin/settings` (mode planning seul) | Administration (cookie `vencat_admin`, chemin `/api/admin`) |
 
 Les routes qui modifient des données exigent l’en-tête `X-Requested-With: vencat` et refusent les autres origines.
 

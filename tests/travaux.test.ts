@@ -313,3 +313,25 @@ test('delegates are declared by the elected students and confirmed by the admini
   assert.equal((await student.browser('/travaux/delegates/mine', { method: 'DELETE' })).status, 200);
   delete process.env.ADMIN_EMAILS; delete process.env.MAIL_LOG_ONLY;
 });
+
+test('planning only: the administration switches off every user content, then restores it', async () => {
+  resetLimits();
+  process.env.ADMIN_EMAILS = 'chef.admin@gmail.com'; process.env.MAIL_LOG_ONLY = '@gmail\\.com$';
+  const admin = client();
+  const start = await admin('/admin/start', { body: { email: 'chef.admin@gmail.com' } });
+  await admin('/admin/verify', { body: { requestId: start.body.requestId, code: start.body.devCode } });
+  const student = await signIn('pendant.coupure@ens.uvsq.fr');
+  assert.equal((await admin('/admin/settings', { body: { planningOnly: true, message: 'Maintenance des Travaux' } })).body.planningOnly, true);
+  const config = await client()('/travaux/config');
+  assert.equal(config.body.planningOnly, true); assert.equal(config.body.message, 'Maintenance des Travaux');
+  const blocked = await client()(`/travaux/group/${B1}`);
+  assert.equal(blocked.status, 503); assert.equal(blocked.body.error, 'Maintenance des Travaux');
+  assert.equal((await student.browser('/travaux/works', { body: { type: 'rendu', title: 'Pendant la coupure', day: '2026-12-05', scope: { kind: 'group', key: B1 }, details: { where: '', format: '', mode: '', info: '' }, links: [] } })).status, 503);
+  assert.equal((await client()('/auth/start', { body: { email: 'x.y@ens.uvsq.fr' } })).status, 503);
+  const ics = await fetch(`${base}/travaux/ics/${B1}.ics`);
+  assert.equal(ics.status, 200); assert.doesNotMatch(await ics.text(), /VEVENT/);
+  assert.equal((await admin('/admin/overview')).status, 200, 'the administration keeps working');
+  assert.equal((await admin('/admin/settings', { body: { planningOnly: false } })).body.planningOnly, false);
+  assert.equal((await client()(`/travaux/group/${B1}`)).status, 200);
+  delete process.env.ADMIN_EMAILS; delete process.env.MAIL_LOG_ONLY;
+});
