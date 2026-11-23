@@ -156,7 +156,7 @@ h3 { font-size: 1.05rem; font-weight: 800; }
   .calendar-app { padding: 0 24px 18px; }
   .app-nav { display: flex; align-items: center; justify-content: space-between; padding: 12px 0 6px; flex-shrink: 0; }
   .desktop-actions { gap: 6px; }
-  .group-button { font-size: .875rem; font-weight: 800; }
+  .group-button { font-size: .875rem; font-weight: 800; white-space: nowrap; flex-shrink: 0; }
   .planning-header { min-height: 68px; padding: 4px 0; background: transparent; }
   .date-text :is(h1, .date-weekday) { font-size: 1.15rem; }
   .date-text > span:not(.date-weekday) { font-size: .85rem; }

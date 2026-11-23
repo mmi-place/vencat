@@ -662,3 +662,14 @@
 @media (min-width: 1024px) { .planning-only-banner { margin: 0 0 10px; } }
 .kill-switch.on { border-color: var(--alert); background: color-mix(in srgb, var(--alert) 10%, var(--panel)); }
 .kill-state { font-weight: 900; color: var(--alert); }
+
+/* Tablets: the Cours | Travaux tabs make room for the group and the actions of the bar. */
+@media (min-width: 768px) and (max-width: 1099px) {
+  .section-tabs button { padding: 8px 14px; gap: 6px; }
+}
+@media (min-width: 768px) and (max-width: 1099px) {
+  /* Appearance and background stay in the settings; the sign-in button keeps its icon. */
+  .desktop-actions .wide-only { display: none; }
+  .account-button.signed-out .account-label { display: none; }
+  .account-button.signed-out { padding-inline: 10px; }
+}

@@ -9,5 +9,5 @@ const hue = computed(() => me.value ? [...me.value.id].reduce((sum, char) => sum
 </script>
 <template>
 <button v-if="me" class="account-button" :aria-label="`Mon compte, ${me.firstName} ${me.lastName}${queueCount ? ', ' + queueCount + ' propositions à valider' : ''}`" aria-haspopup="dialog" :aria-expanded="ui.account" @click="ui.account = true"><span class="avatar" :style="{ '--hue': hue }" aria-hidden="true">{{ initials }}</span><span v-if="!compact" class="account-name">{{ me.firstName }}</span><span v-if="queueCount" class="count-badge account-badge" aria-hidden="true">{{ queueCount }}</span></button>
-<button v-else-if="meLoaded" class="account-button signed-out" aria-haspopup="dialog" :aria-expanded="ui.login" :aria-label="compact ? 'Se connecter' : undefined" @click="ui.login = true"><UserCircleIcon aria-hidden="true" /><span v-if="!compact">Se connecter</span></button>
+<button v-else-if="meLoaded" class="account-button signed-out" aria-haspopup="dialog" :aria-expanded="ui.login"  aria-label="Se connecter" @click="ui.login = true"><UserCircleIcon aria-hidden="true" /><span v-if="!compact" class="account-label">Se connecter</span></button>
 </template>
