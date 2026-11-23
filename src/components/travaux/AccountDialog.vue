@@ -19,7 +19,7 @@ const hue = computed(() => me.value ? [...me.value.id].reduce((sum, char) => sum
 const mine = computed(() => works.value.filter(work => work.mine));
 const validated = computed(() => mine.value.filter(work => work.state === 'validated').length);
 const reliabilityPercent = computed(() => Math.max(4, Math.min(100, ((me.value?.reliability ?? 0) + 2) / 12 * 100)));
-const roleLabel = computed(() => ({ student: 'Étudiant', delegate: 'Délégué', admin: 'Admin', teacher: 'Enseignant' })[me.value?.role ?? 'student']);
+const roleLabel = computed(() => ({ student: 'Étudiant(e)', delegate: 'Délégué(e)', admin: 'Admin', teacher: 'Enseignant' })[me.value?.role ?? 'student']);
 const nav = computed(() => [
   { id: 'profile' as const, label: 'Profil', icon: UserIcon },
   { id: 'devices' as const, label: 'Appareils', icon: DevicePhoneMobileIcon, count: devices.value.length },
@@ -117,8 +117,8 @@ const title = computed(() => !wide.value && page.value ? titles[page.value] : 'M
     </template>
     <template v-else-if="page === 'group'">
       <h3 v-if="wide">Groupe et délégués</h3>
-      <form class="work-form" @submit.prevent="changeGroup"><label class="settings-label">Mon groupe<select v-model="groupId" :disabled="!me.groupChangeAllowed"><option v-for="option in groupOptions" :key="option.id" :value="option.id">{{ option.promotion }} · {{ option.label }}</option></select></label><p class="field-hint">{{ me.groupChangeAllowed ? 'Possible une fois par semestre.' : 'Déjà changé ce semestre : demande à un délégué.' }}</p><button type="submit" :disabled="busy || groupId === me.groupId">Changer de groupe</button></form>
-      <div class="list-card"><button class="row" @click="ui.delegates = true"><span class="row-icon"><UserGroupIcon aria-hidden="true" /></span><span class="row-text"><strong>Délégués du groupe</strong><small>Voir, soutenir une demande, signaler un abus</small></span><ChevronRightIcon class="row-chevron" aria-hidden="true" /></button></div>
+      <form class="work-form" @submit.prevent="changeGroup"><label class="settings-label">Mon groupe<select v-model="groupId" :disabled="!me.groupChangeAllowed"><option v-for="option in groupOptions" :key="option.id" :value="option.id">{{ option.promotion }} · {{ option.label }}</option></select></label><p class="field-hint">{{ me.groupChangeAllowed ? 'Possible une fois par semestre.' : 'Déjà changé ce semestre : demande à un(e) délégué(e) du groupe.' }}</p><button type="submit" :disabled="busy || groupId === me.groupId">Changer de groupe</button></form>
+      <div class="list-card"><button class="row" @click="ui.delegates = true"><span class="row-icon"><UserGroupIcon aria-hidden="true" /></span><span class="row-text"><strong>Délégués du groupe</strong><small>Délégué(e)s élu(e)s, déclarations, signalements</small></span><ChevronRightIcon class="row-chevron" aria-hidden="true" /></button></div>
     </template>
     <template v-else-if="page === 'agenda'"><h3 v-if="wide">Ajouter à mon agenda</h3><p class="lead">Les travaux de ton groupe dans ton agenda, avec un rappel la veille. Ça remplace les notifications.</p><SubscribeButtons open /></template>
     <template v-else-if="page === 'privacy'">

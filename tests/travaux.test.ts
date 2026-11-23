@@ -287,8 +287,16 @@ test('calendar links: group subscription by id or path, single course and work e
 test('delegates are declared by the elected students and confirmed by the administration', async () => {
   resetLimits();
   const student = await signIn('delegue.elu@ens.uvsq.fr');
-  assert.equal((await student.browser('/travaux/delegates/request', { body: { title: 'suppléant', note: 'élu le 2 octobre' } })).status, 201);
-  assert.equal((await student.browser('/travaux/delegates/request', { body: {} })).status, 409);
+  assert.equal((await student.browser('/travaux/delegates/request', { body: { title: 'suppléant', note: 'élu le 2 octobre' } })).status, 400, 'date and certification required');
+  assert.equal((await student.browser('/travaux/delegates/request', { body: { title: 'suppléant', note: 'élu le 2 octobre', electedOn: '2026-10-02', certified: true } })).status, 201);
+  assert.equal((await student.browser('/travaux/delegates/request', { body: { electedOn: '2026-10-02', certified: true } })).status, 409);
+  // The group gives its opinion from the queue: yes, don't know, no.
+  const classmate = await signIn('camarade.delegue@ens.uvsq.fr');
+  const queued = (await classmate.browser('/travaux/queue')).body.declarations.find((item: { note: string }) => item.note === 'élu le 2 octobre');
+  assert.ok(queued, 'declaration in the classmate queue');
+  assert.equal((await classmate.browser(`/travaux/delegates/${queued.id}/answer`, { body: { value: 'yes' } })).body.answers.yes, 1);
+  assert.equal((await classmate.browser('/travaux/queue')).body.declarations.some((item: { id: string }) => item.id === queued.id), false);
+  assert.equal((await student.browser(`/travaux/delegates/${queued.id}/answer`, { body: { value: 'yes' } })).status, 400, 'not on one’s own declaration');
   const before = await client()(`/travaux/delegates/${B1}`);
   assert.equal(before.body.active.some((item: { name: string }) => /Delegue/i.test(item.name)), false, 'not listed before confirmation');
   process.env.ADMIN_EMAILS = 'chef.admin@gmail.com'; process.env.MAIL_LOG_ONLY = '@gmail\\.com$';
@@ -297,7 +305,7 @@ test('delegates are declared by the elected students and confirmed by the admini
   await admin('/admin/verify', { body: { requestId: start.body.requestId, code: start.body.devCode } });
   const queue = await admin('/admin/overview');
   const declaration = queue.body.delegates.find((item: { title: string; note: string }) => item.note === 'élu le 2 octobre');
-  assert.equal(declaration.title, 'suppléant');
+  assert.equal(declaration.title, 'suppléant'); assert.equal(declaration.answers.yes, 1);
   assert.equal((await admin('/admin/action', { body: { kind: 'delegate', id: declaration.id, action: 'accept' } })).status, 200);
   const after = await client()(`/travaux/delegates/${B1}`);
   const listed = after.body.active.find((item: { title: string }) => item.title === 'suppléant');

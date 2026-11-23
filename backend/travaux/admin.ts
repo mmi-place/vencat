@@ -116,14 +116,14 @@ router.post('/admin/action', route(async (req, res) => {
     if (!delegation) throw new HttpError(404, 'Mandat introuvable.');
     delegation.status = 'ended'; delegation.decidedAt = now();
     await db().put('delegations', delegation.id, delegation);
-    await audit(actor, 'délégué:fin de mandat', delegation.id, reason);
+    await audit(actor, 'délégué(e) : fin de mandat', delegation.id, reason);
   } else if (body.kind === 'delegate-appoint') {
     const user = await db().get<User>('users', String(body.id));
     if (!user?.groupId) throw new HttpError(404, 'Compte introuvable ou sans groupe.');
-    if ((await activeDelegations(user.id)).length) throw new HttpError(409, 'Déjà délégué.');
+    if ((await activeDelegations(user.id)).length) throw new HttpError(409, 'Déjà délégué(e).');
     const delegation: Delegation = { id: id(), userId: user.id, groupId: user.groupId, status: 'active', title: body.title === 'suppléant' ? 'suppléant' : 'titulaire', createdAt: now(), decidedAt: now(), until: schoolYearEnd() };
     await db().put('delegations', delegation.id, delegation);
-    await audit(actor, 'délégué:nomination', user.id, reason);
+    await audit(actor, 'délégué(e) : nomination', user.id, reason);
   } else if (body.kind === 'user-delete') {
     const user = await db().get<User>('users', String(body.id));
     if (!user) throw new HttpError(404, 'Compte introuvable.');

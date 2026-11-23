@@ -29,12 +29,13 @@ export const unseenWorks = computed(() => { const now = new Date().toISOString()
 export function markWorkSeen(id: string) { if (!seenWorks.value.includes(id)) { seenWorks.value = [...seenWorks.value, id].slice(-500); writePreference('vencat:travaux-seen', seenWorks.value); } }
 export function markTravauxVisited() { lastVisit.value = new Date().toISOString(); writePreference('vencat:travaux-visit', lastVisit.value); }
 import type { CorrectionView } from './travaux/works';
-export const queue = ref<{ works: WorkView[]; corrections: CorrectionView[] }>({ works: [], corrections: [] });
+export interface DeclarationView { id: string; name: string; title: string; electedOn?: string; note: string; group: string }
+export const queue = ref<{ works: WorkView[]; corrections: CorrectionView[]; declarations: DeclarationView[] }>({ works: [], corrections: [], declarations: [] });
 export async function loadQueue() {
-  if (!me.value?.groupId || !online.value) { if (!me.value) queue.value = { works: [], corrections: [] }; return; }
-  try { queue.value = await api('/travaux/queue'); } catch { /* the badge simply stays as it was */ }
+  if (!me.value?.groupId || !online.value) { if (!me.value) queue.value = { works: [], corrections: [], declarations: [] }; return; }
+  try { const value = await api<typeof queue.value>('/travaux/queue'); queue.value = { works: value.works ?? [], corrections: value.corrections ?? [], declarations: value.declarations ?? [] }; } catch { /* the badge simply stays as it was */ }
 }
-export const queueCount = computed(() => queue.value.works.length + queue.value.corrections.length);
+export const queueCount = computed(() => queue.value.works.length + queue.value.corrections.length + queue.value.declarations.length);
 /** Red badge on the Travaux switch: new works plus proposals waiting for my validation. */
 export const travauxBadge = computed(() => unseenWorks.value.length + queueCount.value);
 

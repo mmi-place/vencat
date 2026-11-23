@@ -670,3 +670,5 @@
 @media (prefers-reduced-motion: reduce) { .course.course-highlight { animation: none; } }
 .timeline-stage:has(.course-highlight) .course:not(.course-highlight) { opacity: .45; transition: opacity .3s; }
 .course.course-highlight { filter: brightness(1.25) saturate(1.2); }
+.declaration-card { display: grid; gap: 10px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 60%, transparent); }
+.declaration-card p { line-height: 1.45; }

@@ -12,7 +12,9 @@ export interface User {
 }
 export interface Session { id: string; userId: string; createdAt: string; lastSeen: string; device: string }
 /** Real class representatives (elected at the IUT) declare themselves; the administration checks and confirms. No vote in Vencat. */
-export interface Delegation { id: string; userId: string; groupId: string; status: 'requested' | 'active' | 'refused' | 'ended'; title?: 'titulaire' | 'suppléant'; note?: string; supporters?: string[]; createdAt: string; alertedAt?: string; decidedAt?: string; until?: string }
+export interface Delegation { id: string; userId: string; groupId: string; status: 'requested' | 'active' | 'refused' | 'ended'; title?: 'titulaire' | 'suppléant'; note?: string; electedOn?: string;
+  /** Opinion of the group's students on the declaration (help for the administration, not a vote). */
+  answers?: Record<string, 'yes' | 'unknown' | 'no'>; supporters?: string[]; createdAt: string; alertedAt?: string; decidedAt?: string; until?: string }
 
 export const id = () => randomBytes(16).toString('hex');
 export const hash = (value: string) => createHash('sha256').update(value).digest('hex');

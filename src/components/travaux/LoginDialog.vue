@@ -106,7 +106,7 @@ const subtitle = computed(() => me.value ? 'Deux réglages et c’est prêt.' : 
   <fieldset v-if="me.role !== 'teacher'" class="work-form"><legend>Ton groupe</legend>
     <label class="settings-label">Promotion<select v-model="promotion" @change="groupId = ''"><option v-for="item in promotions" :key="item" :value="item">{{ item }}</option></select></label>
     <div class="group-choices" role="group" aria-label="Groupe"><button v-for="group in promoGroups" :key="group.id" type="button" :aria-pressed="groupId === group.id" @click="groupId = group.id">{{ group.label }}</button></div>
-    <p class="field-hint">Modifiable une fois par semestre, ou par un délégué.</p>
+    <p class="field-hint">Modifiable une fois par semestre, ou par un(e) délégué(e) du groupe.</p>
   </fieldset>
   <ul class="promise-list"><li>Seuls ton mail, ton nom et ton groupe sont enregistrés.</li><li>Tes votes restent anonymes entre élèves.</li><li>Tu peux supprimer ton compte à tout moment.</li></ul>
   <label class="check-label"><input v-model="cgu" type="checkbox" required><span>J’accepte les <button type="button" class="text-button" @click="ui.cgu = true">conditions d’utilisation</button>. Vencat est un projet étudiant non officiel.</span></label>

@@ -311,7 +311,7 @@ router.post('/account/group', route(async (req, res) => {
   const { user } = await requireUser(req);
   if (!groupExists(req.body?.groupId)) throw new HttpError(400, 'Groupe inconnu.');
   const semester = semesterOf(now());
-  if (user.groupId && user.groupSemester === semester && user.groupId !== req.body.groupId) throw new HttpError(403, 'Tu as déjà changé de groupe ce semestre. Demande à un délégué.');
+  if (user.groupId && user.groupSemester === semester && user.groupId !== req.body.groupId) throw new HttpError(403, 'Tu as déjà changé de groupe ce semestre. Demande à un(e) délégué(e) du groupe.');
   if (user.groupId !== req.body.groupId) { user.groupId = req.body.groupId; user.groupSemester = semester; await db().put('users', user.id, user); }
   res.json({ me: await meOf(user) });
 }));
@@ -525,9 +525,9 @@ router.post('/travaux/work/:id/moderate', route(async (req, res) => {
   const { user } = await requireContributor(req);
   const work = await loadWork(String(req.params.id));
   if (work.personal) throw new HttpError(404, 'Travail introuvable.');
-  if (!(await powers(user, work.scope)).moderator) throw new HttpError(403, 'Réservé aux délégués et à l’admin.');
+  if (!(await powers(user, work.scope)).moderator) throw new HttpError(403, 'Réservé aux délégué(e)s et à l’administration.');
   const action = req.body?.action, reason = cleanText(req.body?.reason, LIMITS.reason);
-  if (action === 'validate') { work.forced = 'validated'; await history(work.id, user.id, 'validé par un délégué'); }
+  if (action === 'validate') { work.forced = 'validated'; await history(work.id, user.id, 'validé par un(e) délégué(e)'); }
   else if (action === 'remove') {
     work.forced = 'removed'; work.state = 'removed'; work.removedReason = reason || 'Retiré par la modération';
     if (req.body?.false === true) { await adjustReliability(work.authorId, -2); await problem(work.authorId, 'travail retiré car faux', work.title); }
@@ -555,7 +555,7 @@ router.post('/travaux/work/:id/confirm', route(async (req, res) => {
 /** What waits for my opinion in my group: proposals I have not voted on. */
 router.get('/travaux/queue', route(async (req, res) => {
   const { user } = await requireUser(req);
-  if (!user.groupId) return res.json({ works: [], corrections: [] });
+  if (!user.groupId) return res.json({ works: [], corrections: [], declarations: [] });
   const people = await users();
   const works = (await worksForGroup(user.groupId)).filter(work => work.state !== 'removed' && !work.personal);
   const pending: WorkView[] = [];
@@ -567,10 +567,11 @@ router.get('/travaux/queue', route(async (req, res) => {
     const needsProposal = view.proposal && !view.proposal.mine && view.proposal.myVote === undefined;
     if ((needsWork || needsProposal) && Date.parse(view.due) > Date.now() - 86400000) pending.push(view);
   }
+  const declarations = (await db().list<Delegation>('delegations')).filter(item => item.groupId === user.groupId && item.status === 'requested' && item.userId !== user.id && !item.answers?.[user.id]).map(item => ({ id: item.id, name: displayName(people.get(item.userId)), title: item.title ?? 'titulaire', electedOn: item.electedOn, note: item.note ?? '', group: `${groupById(item.groupId)?.promotion} ${groupById(item.groupId)?.label}` }));
   const corrections = (await db().list<Correction>('corrections')).filter(item => item.groupId === user.groupId && item.status === 'open' && item.authorId !== user.id);
   const open = [];
   for (const item of corrections) { const votes = await votesOf(item.id); if (!votes[user.id]) open.push(await correctionView(item, user, people)); }
-  res.json({ works: pending.sort((a, b) => a.due.localeCompare(b.due)), corrections: open });
+  res.json({ works: pending.sort((a, b) => a.due.localeCompare(b.due)), corrections: open, declarations });
 }));
 
 /** Group of a subscription link: its id (G1-…), any case, with or without .ics, or its path (mmi-2-b1). */
@@ -597,6 +598,7 @@ router.get('/travaux/ics/:file', route(async (req, res) => {
 // checks and confirms. The mandate ends with the school year (31 August).
 // ---------------------------------------------------------------------------
 const TITLES = ['titulaire', 'suppléant'] as const;
+export const answerCounts = (delegation: Delegation) => { const values = Object.values(delegation.answers ?? {}); return { yes: values.filter(value => value === 'yes').length, unknown: values.filter(value => value === 'unknown').length, no: values.filter(value => value === 'no').length }; };
 export const schoolYearEnd = (from = new Date()) => { const year = from.getUTCMonth() >= 8 ? from.getUTCFullYear() + 1 : from.getUTCFullYear(); return `${year}-08-31T21:59:59.000Z`; };
 router.get('/travaux/delegates/:groupId', route(async (req, res) => {
   const groupId = String(req.params.groupId);
@@ -608,7 +610,8 @@ router.get('/travaux/delegates/:groupId', route(async (req, res) => {
   res.json({
     active: active.map(item => ({ id: item.id, userId: item.userId, name: displayName(people.get(item.userId)), title: item.title ?? 'titulaire', until: item.until, me: item.userId === user?.id })),
     pending: all.filter(item => item.status === 'requested').length,
-    mine: mine && { status: mine.status, title: mine.title ?? 'titulaire', createdAt: mine.createdAt },
+    mine: mine && { status: mine.status, title: mine.title ?? 'titulaire', createdAt: mine.createdAt, answers: answerCounts(mine) },
+    declarations: all.filter(item => item.status === 'requested' && item.userId !== user?.id).map(item => ({ id: item.id, name: displayName(people.get(item.userId)), title: item.title ?? 'titulaire', electedOn: item.electedOn, myAnswer: user ? item.answers?.[user.id] : undefined })),
   });
 }));
 router.post('/travaux/delegates/request', route(async (req, res) => {
@@ -616,14 +619,31 @@ router.post('/travaux/delegates/request', route(async (req, res) => {
   if (!user.groupId) throw new HttpError(400, 'Choisis d’abord ton groupe.');
   const title = TITLES.includes(req.body?.title) ? req.body.title as Delegation['title'] : 'titulaire';
   const note = cleanText(req.body?.note, LIMITS.reason);
+  const electedOn = typeof req.body?.electedOn === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.body.electedOn) && req.body.electedOn <= now().slice(0, 10) ? req.body.electedOn : undefined;
+  if (!electedOn) throw new HttpError(400, 'Indique la date de l’élection.');
+  if (req.body?.certified !== true) throw new HttpError(400, 'Coche la case pour certifier ton élection.');
   const existing = (await db().list<Delegation>('delegations')).find(item => item.userId === user.id && (item.status === 'requested' || (item.status === 'active' && (!item.until || item.until > now()))));
-  if (existing) throw new HttpError(409, existing.status === 'active' ? 'Tu es déjà enregistré comme délégué.' : 'Ta déclaration est déjà en cours de vérification.');
-  const delegation: Delegation = { id: id(), userId: user.id, groupId: user.groupId, status: 'requested', title, note, createdAt: now() };
+  if (existing) throw new HttpError(409, existing.status === 'active' ? 'Tu es déjà enregistré(e) comme délégué(e).' : 'Ta déclaration est déjà en cours de vérification.');
+  const delegation: Delegation = { id: id(), userId: user.id, groupId: user.groupId, status: 'requested', title, note, electedOn, answers: {}, createdAt: now() };
+  await audit(user.id, 'délégué(e) : déclaration certifiée sur l’honneur', delegation.id, `${title}, élu(e) le ${electedOn}`);
   await db().put('delegations', delegation.id, delegation);
   // The administration is told at once: it checks with the list of elected representatives.
   const group = groupById(user.groupId);
-  for (const admin of adminEmails()) void sendMail({ to: admin, subject: 'Vencat : déclaration de délégué à vérifier', text: `${displayName(user)} (${user.email}) se déclare délégué ${title} de ${group?.promotion} ${group?.label}.${note ? `\nPrécision : ${note}` : ''}\nÀ confirmer ou refuser dans l’administration (/admin › Modération).` }).catch(() => undefined);
+  for (const admin of adminEmails()) void sendMail({ to: admin, subject: 'Vencat : déclaration de délégué à vérifier', text: `${displayName(user)} (${user.email}) se déclare délégué(e) ${title} de ${group?.promotion} ${group?.label}, élu(e) le ${electedOn}.${note ? `\nPrécision : ${note}` : ''}\nLes élèves du groupe donnent leur avis dans Vencat. À confirmer ou refuser dans l’administration (/admin › Modération).` }).catch(() => undefined);
   res.status(201).json({ ok: true });
+}));
+/** A student of the group says whether the declaration is right: yes, don't know, no. */
+router.post('/travaux/delegates/:id/answer', route(async (req, res) => {
+  const { user } = await requireContributor(req);
+  const delegation = await db().get<Delegation>('delegations', String(req.params.id));
+  if (!delegation || delegation.status !== 'requested') throw new HttpError(404, 'Cette déclaration a déjà été traitée.');
+  if (user.groupId !== delegation.groupId) throw new HttpError(403, 'Seuls les élèves du groupe peuvent donner leur avis.');
+  if (delegation.userId === user.id) throw new HttpError(400, 'Tu ne peux pas répondre à ta propre déclaration.');
+  const value = req.body?.value;
+  if (value !== 'yes' && value !== 'unknown' && value !== 'no') throw new HttpError(400, 'Réponse invalide.');
+  delegation.answers = { ...(delegation.answers ?? {}), [user.id]: value };
+  await db().put('delegations', delegation.id, delegation);
+  res.json({ ok: true, answers: answerCounts(delegation) });
 }));
 router.delete('/travaux/delegates/mine', route(async (req, res) => {
   const { user } = await requireUser(req);
@@ -637,7 +657,7 @@ router.delete('/travaux/delegates/mine', route(async (req, res) => {
 router.get('/travaux/moderation', route(async (req, res) => {
   const { user } = await requireUser(req);
   const { role, delegateGroups } = await roleOf(user);
-  if (role !== 'admin' && role !== 'delegate') throw new HttpError(403, 'Réservé aux délégués et à l’admin.');
+  if (role !== 'admin' && role !== 'delegate') throw new HttpError(403, 'Réservé aux délégué(e)s et à l’administration.');
   res.json(await moderationData(role === 'admin', delegateGroups));
 }));
 /** Moderation queue: everything for the administration, reports of their groups for delegates. */
@@ -650,7 +670,7 @@ export async function moderationData(admin: boolean, delegateGroups: string[]) {
   const actor = (id: string) => id.startsWith('admin:') ? (admin ? id.slice(6) : 'Administration') : displayName(people.get(id));
   return {
     reports: reports.map(item => ({ id: item.id, kind: item.target.kind, targetId: item.target.id, title: item.target.kind === 'work' ? works.get(item.target.id)?.title ?? 'Travail' : item.target.kind === 'delegate' ? displayName(people.get(item.target.id)) : item.target.id, reason: item.reason, by: displayName(people.get(item.by)), at: item.at })),
-    delegates: admin ? (await db().list<Delegation>('delegations')).filter(item => item.status === 'requested').map(item => ({ id: item.id, name: displayName(people.get(item.userId)), email: people.get(item.userId)?.email ?? undefined, group: `${groupById(item.groupId)?.promotion} ${groupById(item.groupId)?.label}`, title: item.title ?? 'titulaire', note: item.note ?? '', at: item.createdAt })) : [],
+    delegates: admin ? (await db().list<Delegation>('delegations')).filter(item => item.status === 'requested').map(item => ({ id: item.id, name: displayName(people.get(item.userId)), email: people.get(item.userId)?.email ?? undefined, group: `${groupById(item.groupId)?.promotion} ${groupById(item.groupId)?.label}`, title: item.title ?? 'titulaire', note: item.note ?? '', electedOn: item.electedOn, answers: answerCounts(item), at: item.createdAt })) : [],
     activeDelegates: admin ? (await activeDelegations()).map(item => ({ id: item.id, name: displayName(people.get(item.userId)), group: `${groupById(item.groupId)?.promotion} ${groupById(item.groupId)?.label}`, title: item.title ?? 'titulaire', until: item.until })) : [],
     names: admin ? (await db().list<NameRequest>('names')).filter(item => item.status === 'open').map(item => ({ id: item.id, before: displayName(people.get(item.userId)), after: [item.firstName, item.lastName].filter(Boolean).join(' '), email: people.get(item.userId)?.email, at: item.at })) : [],
     alerts: admin ? (await db().list<Alert>('alerts')).filter(item => item.status === 'open').map(item => ({ id: item.id, userId: item.userId, name: displayName(people.get(item.userId)), at: item.at, problems: problems.filter(entry => entry.userId === item.userId && Date.parse(entry.at) > Date.now() - 7 * 86400000).map(entry => `${entry.kind} : ${entry.detail}`) })) : [],
@@ -663,7 +683,7 @@ const explanation = (name: string, what: string, contact: string) => `Bonjour ${
 router.post('/travaux/moderation/action', route(async (req, res) => {
   const { user } = await requireUser(req);
   const { role, delegateGroups } = await roleOf(user);
-  if (role !== 'admin' && role !== 'delegate') throw new HttpError(403, 'Réservé aux délégués et à l’admin.');
+  if (role !== 'admin' && role !== 'delegate') throw new HttpError(403, 'Réservé aux délégué(e)s et à l’administration.');
   await moderationAction(user.id, role === 'admin', delegateGroups, req.body ?? {});
   res.json({ ok: true });
 }));
