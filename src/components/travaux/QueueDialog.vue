@@ -11,7 +11,9 @@ import { frenchDate, campusDate, campusTime } from '../../../shared/calendar';
 type Item = { key: string; path: string; work?: WorkView; proposal?: boolean; correction?: CorrectionView };
 const items = computed<Item[]>(() => [
   ...queue.value.works.map(work => {
-    const proposal = !!work.proposal && work.proposal.myVote === undefined && !work.proposal.mine && work.myVote !== undefined;
+    // The work itself first if it still needs my vote; otherwise its open proposal.
+    const workNeedsVote = work.state !== 'validated' && work.myVote === undefined && !work.mine;
+    const proposal = !workNeedsVote && !!work.proposal && work.proposal.myVote === undefined && !work.proposal.mine;
     return { key: work.id, work, proposal, path: proposal ? `/travaux/proposal/${work.proposal!.id}/vote` : `/travaux/work/${work.id}/vote` };
   }),
   ...queue.value.corrections.map(correction => ({ key: correction.id, correction, path: `/travaux/correction/${correction.id}/vote` })),
@@ -19,7 +21,7 @@ const items = computed<Item[]>(() => [
 const handled = ref<string[]>([]);
 const remaining = computed(() => items.value.filter(item => !handled.value.includes(item.key)));
 const current = computed(() => remaining.value[0]);
-const total = items.value.length;
+const total = computed(() => remaining.value.length + handled.value.length);
 const status = ref(''), busy = ref(false), reasons = ref(false);
 
 async function answer(value: 1 | -1, reason?: string) {
@@ -56,7 +58,7 @@ const correctionText = (item: CorrectionView) => item.field === 'cancelled' ? 'C
 <div class="swipe-area">
   <div v-if="!current" class="empty-state"><strong>Tout est à jour</strong><span>Merci, la promo compte sur toi.</span><button class="primary-action" @click="ui.queue = false">Fermer</button></div>
   <template v-else>
-    <div class="swipe-progress" aria-hidden="true"><i :style="{ width: ((total - remaining.length) / total * 100) + '%' }"></i></div>
+    <div class="swipe-progress" aria-hidden="true"><i :style="{ width: ((total - remaining.length) / Math.max(1, total) * 100) + '%' }"></i></div>
     <div class="swipe-stack">
       <div v-if="remaining[1]" class="swipe-card behind" aria-hidden="true"></div>
       <article :key="current.key" class="swipe-card" :class="current.work ? 'type-' + current.work.type : 'type-correction'" :style="cardStyle" @pointerdown="down" @pointermove="move" @pointerup="up" @pointercancel="up">

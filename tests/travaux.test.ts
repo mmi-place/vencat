@@ -39,6 +39,13 @@ test('scopes, links, deadlines and addresses', () => {
   assert.ok('error' in checkLink('javascript:alert(1)'));
   assert.equal(parisInstant('2026-11-23'), '2026-11-23T22:59:00.000Z');
   assert.equal(parisInstant('2026-06-10', '14:00'), '2026-06-10T12:00:00.000Z');
+  // Month and year ends, daylight saving days.
+  assert.equal(parisInstant('2026-01-31'), '2026-01-31T22:59:00.000Z');
+  assert.equal(parisInstant('2026-06-30'), '2026-06-30T21:59:00.000Z');
+  assert.equal(parisInstant('2026-12-31'), '2026-12-31T22:59:00.000Z');
+  assert.equal(parisInstant('2026-01-31', '00:30'), '2026-01-30T23:30:00.000Z');
+  assert.equal(parisInstant('2026-03-29', '12:00'), '2026-03-29T10:00:00.000Z');
+  assert.equal(parisInstant('2026-10-25', '12:00'), '2026-10-25T11:00:00.000Z');
   assert.equal(countdown('2026-11-26', '2026-11-23').label, 'J-3');
   assert.equal(countdown('2026-11-24', '2026-11-23').label, 'demain');
   assert.ok(countdown('2026-11-20', '2026-11-23').late);
@@ -228,4 +235,38 @@ test('a work linked to a promotion lecture reaches the whole promotion', async (
   assert.equal(work.status, 201, JSON.stringify(work.body));
   assert.deepEqual(work.body.scope, { kind: 'promo', key: 'MMI-2' });
   assert.ok((await client()(`/travaux/group/${A1}`)).body.some((item: { id: string }) => item.id === work.body.id));
+});
+
+test('review fixes: no reliability farming, no personal flip, idempotent creation, link and closing rules', async () => {
+  resetLimits();
+  const author = await signIn('fix.author@ens.uvsq.fr');
+  const voters = [await signIn('fix.v1@ens.uvsq.fr'), await signIn('fix.v2@ens.uvsq.fr'), await signIn('fix.v3@ens.uvsq.fr')];
+  const body = { type: 'rendu', title: 'Rendu de contrôle', day: '2026-12-05', scope: { kind: 'group', key: B1 }, details: { where: '', format: '', mode: '', info: '' }, links: [], clientId: 'client-fix-0001' };
+  const work = await author.browser('/travaux/works', { body });
+  assert.equal(work.status, 201);
+  const again = await author.browser('/travaux/works', { body });
+  assert.equal(again.status, 200); assert.equal(again.body.id, work.body.id, 'same clientId, same work');
+  for (const voter of voters) await voter.browser(`/travaux/work/${work.body.id}/vote`, { body: { value: 1 } });
+  const reliability = async () => (await store().get<User>('users', (await author.browser('/auth/me')).body.me.id))!.reliability;
+  const before = await reliability();
+  for (let round = 0; round < 3; round++) { await voters[2]!.browser(`/travaux/work/${work.body.id}/vote`, { body: { value: 0 } }); await voters[2]!.browser(`/travaux/work/${work.body.id}/vote`, { body: { value: 1 } }); }
+  assert.equal(await reliability(), before, 'validated again without new reward');
+  // A shared work cannot become personal through a proposal, and the reverse.
+  const flip = await voters[0]!.browser(`/travaux/work/${work.body.id}/proposal`, { body: { kind: 'edit', changes: { title: 'Rendu de contrôle (modifié)', personal: true } } });
+  assert.equal(flip.status, 201); assert.notEqual(flip.body.personal, true);
+  const own = await author.browser('/travaux/works', { body: { ...body, clientId: undefined, title: 'Perso', personal: true } });
+  const out = await author.browser(`/travaux/work/${own.body.id}/proposal`, { body: { kind: 'edit', changes: { personal: false, scope: { kind: 'promo', key: 'MMI-1' }, title: 'Perso public' } } });
+  assert.equal(out.body.personal, true); assert.equal(out.body.scope.key, B1);
+  // The mail link: GET only opens the app, POST signs in the device that opens it.
+  const login = await client()('/auth/start', { body: { email: 'fix.link@ens.uvsq.fr' } });
+  const link = sentMails.filter(mail => mail.to === 'fix.link@ens.uvsq.fr').pop()!.text.match(/\?lien=([a-f0-9]+)&t=([\w-]+)/)!;
+  const redirect = await client()(`/auth/magic?r=${link[1]}&t=${link[2]}`);
+  assert.equal(redirect.status, 302);
+  assert.equal((await client()('/auth/poll', { body: { requestId: login.body.requestId, poll: login.body.poll } })).body.status, 'waiting');
+  const opener = client();
+  assert.equal((await opener('/auth/magic', { body: { r: link[1], t: link[2] } })).status, 200);
+  assert.ok((await opener('/auth/me')).body.me);
+  assert.equal((await client()('/auth/poll', { body: { requestId: login.body.requestId, poll: login.body.poll } })).body.status, 'waiting', 'the requester is not signed in by the link');
+  // Closing a correction needs a member of the group.
+  assert.equal((await client()('/travaux/correction/whatever/close', { body: { reason: 'celcat' } })).status, 401);
 });

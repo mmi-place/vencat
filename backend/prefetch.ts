@@ -24,6 +24,7 @@ export async function prefetchMonth(groupId: string) {
 /** Long-running server (local or VPS): the next run is planned in-process. */
 export function startPrefetchScheduler(log: (message: string) => void = console.log) {
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const groupTimers: ReturnType<typeof setTimeout>[] = [];
   const plan = () => {
     // Next 02:00 or 14:00 in Paris, found minute by minute (handles daylight saving time).
     const now = Date.now();
@@ -34,13 +35,14 @@ export function startPrefetchScheduler(log: (message: string) => void = console.
   };
   const run = () => {
     const groups = prefetchGroups();
-    groups.forEach((groupId, index) => setTimeout(() => {
+    groupTimers.length = 0;
+    groups.forEach((groupId, index) => groupTimers.push(setTimeout(() => {
       prefetchMonth(groupId).then(result => log(`[préchargement] ${index + 1}/${groups.length} ${groupId} · ${result.courses} cours · ${result.ms} ms`)).catch(error => log(`[préchargement] ${groupId} échec : ${error instanceof Error ? error.message : error}`));
-    }, index * PREFETCH_SPACING_MS));
+    }, index * PREFETCH_SPACING_MS)));
     plan();
   };
   plan();
-  return () => clearTimeout(timer);
+  return () => { clearTimeout(timer); groupTimers.forEach(clearTimeout); };
 }
 
 // Serverless (Vercel): the cron starts the run; each call refreshes one group, waits a minute, then calls the next one.

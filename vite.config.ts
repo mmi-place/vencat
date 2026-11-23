@@ -19,7 +19,13 @@ export default defineConfig({
 			workbox: {
 				navigateFallbackDenylist: [/^\/api(?:\/|$)/], importScripts: ['/retire-device-alerts.js'],
 				globPatterns: ['**/*.{js,css,html,svg,woff2}'],
-				runtimeCaching: [{ urlPattern: /\/(?:(?:background|noel)\.jpg|backgrounds\/[^/]+\.jpg)$/, handler: 'CacheFirst', options: { cacheName: 'vencat-background', expiration: { maxEntries: 8, maxAgeSeconds: 30 * 86400 } } }],
+				// API answers depend on the signed-in account: the app keeps them itself, per account. The worker only caches public files.
+				cleanupOutdatedCaches: true,
+				runtimeCaching: [
+					{ urlPattern: /\/(?:(?:background|noel)\.jpg|backgrounds\/[^/]+\.jpg)$/, handler: 'CacheFirst', options: { cacheName: 'vencat-background', expiration: { maxEntries: 8, maxAgeSeconds: 30 * 86400 } } },
+					{ urlPattern: /\/catalogues\/[^/]+\.json$/, handler: 'StaleWhileRevalidate', options: { cacheName: 'vencat-catalogues', expiration: { maxEntries: 10, maxAgeSeconds: 60 * 86400 } } },
+					{ urlPattern: /\/icons\/[^/]+\.png$/, handler: 'CacheFirst', options: { cacheName: 'vencat-icons', expiration: { maxEntries: 10, maxAgeSeconds: 90 * 86400 } } },
+				],
 			},
 			registerType: 'autoUpdate',
 			// The manifest is also served by the development server, so an install from a dev or tunnel URL keeps its icon.

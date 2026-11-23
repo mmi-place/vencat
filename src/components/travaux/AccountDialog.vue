@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { UserIcon, DevicePhoneMobileIcon, ComputerDesktopIcon, UserGroupIcon, CalendarIcon, ShieldCheckIcon, ScaleIcon, ArrowRightOnRectangleIcon, QrCodeIcon, ChevronRightIcon, CheckBadgeIcon } from '@heroicons/vue/24/outline';
 import AccessibleDialog from '../AccessibleDialog.vue';
 import SubscribeButtons from './SubscribeButtons.vue';
-import { api, errorText, me, ui, logout, qrRequest, works, queueCount, wide } from '../../scripts/travaux';
+import { api, errorText, me, setMe, ui, logout, qrRequest, works, queueCount, wide } from '../../scripts/travaux';
 import { groupById, groupOptions } from '../../../shared/selection';
 import type { Me } from '../../../shared/travaux';
 
@@ -34,8 +34,8 @@ watch(page, () => { status.value = ''; if (page.value !== 'scan') stopScan(); })
 async function act(action: () => Promise<unknown>, done: string) { busy.value = true; status.value = ''; try { await action(); status.value = done; } catch (error) { status.value = errorText(error); } finally { busy.value = false; } }
 const revoke = (id: string) => act(async () => { await api(`/account/devices/${id}`, { method: 'DELETE' }); await loadDevices(); }, 'Appareil déconnecté.');
 const askName = () => act(() => api('/account/name', { body: { firstName: firstName.value, lastName: lastName.value } }), 'Demande envoyée : l’admin la validera.');
-const changeGroup = () => act(async () => { me.value = (await api<{ me: Me }>('/account/group', { body: { groupId: groupId.value } })).me; }, 'Groupe modifié.');
-const remove = () => act(async () => { await api('/account', { method: 'DELETE' }); me.value = null; ui.value.account = false; }, 'Compte supprimé.');
+const changeGroup = () => act(async () => { setMe((await api<{ me: Me }>('/account/group', { body: { groupId: groupId.value } })).me); }, 'Groupe modifié.');
+const remove = () => act(async () => { await api('/account', { method: 'DELETE' }); await logout(); ui.value.account = false; }, 'Compte supprimé.');
 async function signOut() { await logout(); ui.value.account = false; }
 const deviceIcon = (label: string) => /iPhone|Android|iPad/.test(label) ? DevicePhoneMobileIcon : ComputerDesktopIcon;
 const when = (iso: string) => { const minutes = (Date.now() - Date.parse(iso)) / 60000; return minutes < 60 ? 'actif à l’instant' : minutes < 1440 ? `actif il y a ${Math.round(minutes / 60)} h` : 'vu le ' + new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }); };

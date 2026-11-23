@@ -8,7 +8,7 @@ import { campusDate, campusTime, frenchDate, minuteOf } from '../../../shared/ca
 import type { CourseDTO } from '../../../shared/courses';
 import { groupById } from '../../../shared/selection';
 import { fetchCourses } from '../../scripts/api';
-import { api, errorText, form, me, works, replaceWork, openedWork, vote, courseLink, today, loadQueue } from '../../scripts/travaux';
+import { api, errorText, form, me, works, replaceWork, openedWork, vote, courseLink, today, loadQueue, createWork } from '../../scripts/travaux';
 import { selection, savedCourses } from '../../scripts/calendarStore';
 
 const request = form.value!;
@@ -25,11 +25,13 @@ const title = request.mode === 'edit' ? 'Proposer une modification' : request.mo
 
 // Courses of that day for the chosen scope, to link the work.
 const dayCourses = ref<CourseDTO[]>([]);
+let coursesRequest = 0;
 watch(() => [input.value.day, group.value?.id] as const, async ([day, id]) => {
   if (!id) return;
+  const current = ++coursesRequest;
   const local = savedCourses.value.filter(course => campusDate(course.start) === day);
   dayCourses.value = local;
-  if (!local.length) { try { dayCourses.value = (await fetchCourses(id, new Date(day + 'T00:00:00Z'), new Date(day + 'T23:00:00Z'))).map(course => ({ ...course, start: course.start.toISOString(), end: course.end.toISOString() })); } catch { /* optional */ } }
+  if (!local.length) { try { const fetched = (await fetchCourses(id, new Date(day + 'T00:00:00Z'), new Date(day + 'T23:00:00Z'))).map(course => ({ ...course, start: course.start.toISOString(), end: course.end.toISOString() })); if (current === coursesRequest) dayCourses.value = fetched; } catch { /* optional */ } }
 }, { immediate: true });
 const courseKeyOf = (course?: { uid: string; start: string }) => course ? course.uid + '|' + course.start : '';
 const selectedCourse = computed({
@@ -39,7 +41,9 @@ const selectedCourse = computed({
 
 // A course shared by several groups (a promotion lecture) takes the work to all of them.
 const courseScope = computed(() => input.value.course && group.value ? audienceScope(input.value.course.audience, group.value) : undefined);
-function applyAudience() { if (courseScope.value) input.value.scope = widerScope(input.value.scope, courseScope.value); }
+// The scope chosen by the person is kept, so unlinking the course gives it back.
+let chosenScope = input.value.scope;
+function applyAudience() { input.value.scope = courseScope.value ? widerScope(chosenScope, courseScope.value) : chosenScope; }
 applyAudience();
 // Anti-duplicate: as soon as the type and date are chosen, close works are shown.
 const similar = computed(() => request.mode === 'edit' ? [] : similarWorks(input.value, works.value.filter(work => work.id !== source?.id)));
@@ -60,8 +64,8 @@ async function submit() {
       const view = await api<WorkView>(`/travaux/work/${source.id}/proposal`, { body: { kind: 'edit', changes: body } });
       replaceWork(view); openedWork.value = view.id;
     } else {
-      const view = await api<WorkView>('/travaux/works', { body });
-      replaceWork(view); openedWork.value = view.id;
+      const view = await createWork(body);
+      openedWork.value = view.id;
     }
     void loadQueue();
     form.value = undefined;
@@ -77,7 +81,7 @@ const scopeKind = (kind: ScopeKind) => choices.value.find(choice => choice.scope
   <fieldset v-if="request.mode !== 'ds'"><legend>Type</legend><div class="choice-row type-choice"><button v-for="type in WORK_TYPES" :key="type" type="button" :class="'type-' + type" :aria-pressed="input.type === type" @click="input.type = type"><WorkTypeIcon :type="type" />{{ WORK_TYPE_LABELS[type] }}</button></div></fieldset>
   <label class="settings-label">Titre<input v-model="input.title" required minlength="2" maxlength="120" placeholder="Ex. Rendu maquette Figma" autofocus></label>
   <div class="form-row"><label class="settings-label">Date<input v-model="input.day" type="date" required></label><label class="settings-label">Heure<input v-model="input.time" type="time" :placeholder="DEFAULT_DUE_TIME"><span class="field-hint">Vide : {{ DEFAULT_DUE_TIME }}</span></label></div>
-  <fieldset v-if="!input.personal"><legend>Pour qui</legend><div class="choice-row"><button v-for="choice in choices" :key="choice.scope.key" type="button" :aria-pressed="input.scope.key === choice.scope.key" @click="input.scope = choice.scope">{{ choice.label }}</button></div><p v-if="courseScope && courseScope.kind !== 'group'" class="field-hint">Le cours lié concerne {{ scopeLabel(courseScope) }} : le travail sera visible par tout ce public.</p><p v-else-if="scopeKind('wide')" class="field-hint">Par défaut ton sous-groupe. Groupe large ou promo si l’annonce concerne plus de monde.</p></fieldset>
+  <fieldset v-if="!input.personal"><legend>Pour qui</legend><div class="choice-row"><button v-for="choice in choices" :key="choice.scope.key" type="button" :aria-pressed="input.scope.key === choice.scope.key" @click="chosenScope = choice.scope; applyAudience()">{{ choice.label }}</button></div><p v-if="courseScope && courseScope.kind !== 'group'" class="field-hint">Le cours lié concerne {{ scopeLabel(courseScope) }} : le travail sera visible par tout ce public.</p><p v-else-if="scopeKind('wide')" class="field-hint">Par défaut ton sous-groupe. Groupe large ou promo si l’annonce concerne plus de monde.</p></fieldset>
   <fieldset v-if="request.mode !== 'ds'"><legend>Lier à un cours <span class="field-hint">(facultatif)</span></legend><div class="course-choices"><button type="button" :aria-pressed="!selectedCourse" @click="selectedCourse = ''">Aucun cours</button><button v-for="course in dayCourses" :key="courseKeyOf(course)" type="button" :aria-pressed="selectedCourse === courseKeyOf(course)" @click="selectedCourse = courseKeyOf(course)"><span class="time">{{ campusTime(course.start) }}</span><span>{{ course.type !== 'inconnu' ? course.type + ' · ' : '' }}{{ course.summary }}</span></button></div><p v-if="!dayCourses.length" class="field-hint">Aucun cours ce jour-là.</p></fieldset>
 
   <div v-if="similar.length && !input.personal" class="work-box warn" role="status"><strong>Ça existe peut-être déjà :</strong><ul class="similar"><li v-for="work in similar" :key="work.id"><span><b>{{ work.title }}</b>, {{ frenchDate(work.day, { weekday: 'short', day: 'numeric' }) }}, proposé par {{ work.author }}</span><button type="button" :disabled="busy" @click="sameAsExisting(work)">C’est celui-là</button></li></ul></div>

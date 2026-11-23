@@ -67,7 +67,7 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-25613826'], (function (workbox) { 'use strict';
+define(['./workbox-06918fc1'], (function (workbox) { 'use strict';
 
   importScripts("/retire-device-alerts.js");
   self.skipWaiting();
@@ -82,7 +82,7 @@ define(['./workbox-25613826'], (function (workbox) { 'use strict';
     "revision": "d41d8cd98f00b204e9800998ecf8427e"
   }, {
     "url": "index.html",
-    "revision": "0.ak289vlefdg"
+    "revision": "0.aopl1ldq72"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
@@ -94,6 +94,20 @@ define(['./workbox-25613826'], (function (workbox) { 'use strict';
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 8,
       maxAgeSeconds: 2592000
+    })]
+  }), 'GET');
+  workbox.registerRoute(/\/catalogues\/[^/]+\.json$/, new workbox.StaleWhileRevalidate({
+    "cacheName": "vencat-catalogues",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 10,
+      maxAgeSeconds: 5184000
+    })]
+  }), 'GET');
+  workbox.registerRoute(/\/icons\/[^/]+\.png$/, new workbox.CacheFirst({
+    "cacheName": "vencat-icons",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 10,
+      maxAgeSeconds: 7776000
     })]
   }), 'GET');
 

@@ -66,14 +66,19 @@ export function scopeTag(scope: WorkScope): string {
 // Deadlines (Paris time). A deadline without a time is set to 23:59 on that day.
 // ---------------------------------------------------------------------------
 export const DEFAULT_DUE_TIME = '23:59';
+const parisParts = new Intl.DateTimeFormat('en-GB', { timeZone: TIMETABLE_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+/** Offset of Paris time from UTC at an instant, in ms (whole date, so month and year boundaries are right). */
+function parisOffset(at: number) {
+  const parts = Object.fromEntries(parisParts.formatToParts(new Date(at)).map(part => [part.type, Number(part.value)]));
+  return Date.UTC(parts.year!, parts.month! - 1, parts.day!, parts.hour!, parts.minute!) - Math.floor(at / 60000) * 60000;
+}
 /** UTC instant of a Paris wall-clock time. */
 export function parisInstant(day: string, time = DEFAULT_DUE_TIME): string {
   const [h, m] = time.split(':').map(Number);
-  const guess = Date.UTC(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10)), h!, m!);
-  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: TIMETABLE_TIME_ZONE, hour: '2-digit', minute: '2-digit', day: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(guess));
-  const get = (type: string) => Number(parts.find(part => part.type === type)?.value);
-  const shown = Date.UTC(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, get('day'), get('hour'), get('minute'));
-  return new Date(guess - (shown - guess)).toISOString();
+  const wall = Date.UTC(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10)), h!, m!);
+  // Second pass: the offset of the result itself (correct around daylight saving changes).
+  const first = wall - parisOffset(wall);
+  return new Date(wall - parisOffset(first)).toISOString();
 }
 export const validTime = (value: unknown): value is string => typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 
@@ -155,7 +160,9 @@ export interface WorkDetails { where: string; format: string; mode: '' | 'seul' 
 export interface DsInfo { chapters: string; allowed: string[]; duration: string; advice: string }
 export const DS_ALLOWED = ['Aucun document', 'Calculatrice', 'Notes', 'Documents imprimés', 'Ordinateur'] as const;
 /** personal: visible only by its author (no vote), otherwise shared with the scope. */
-export interface WorkInput { type: WorkType; title: string; day: string; time?: string; scope: WorkScope; course?: CourseLink; details: WorkDetails; links: string[]; ds?: DsInfo; personal?: boolean }
+export interface WorkInput { type: WorkType; title: string; day: string; time?: string; scope: WorkScope; course?: CourseLink; details: WorkDetails; links: string[]; ds?: DsInfo; personal?: boolean;
+  /** Chosen by the device: sending the same work twice (offline retry) creates it once. */
+  clientId?: string }
 export interface PublicLink { url: string; domain: string; active: boolean }
 export interface WorkProposalView { id: string; kind: 'edit' | 'delete'; author: string; reason?: string; changes: { field: string; label: string; before: string; after: string }[]; up: number; down: number; myVote?: 1 | -1; mine: boolean; createdAt: string }
 export interface WorkView {
@@ -163,6 +170,8 @@ export interface WorkView {
   course?: CourseLink; details: WorkDetails; links: PublicLink[]; ds?: DsInfo; author: string; authorId?: string; createdAt: string; updatedAt: string;
   state: WorkState; up: number; down: number; required: number; myVote?: 1 | -1; mine: boolean; reasons: string[]; proposal?: WorkProposalView;
   teacherConfirmed?: string; voters?: { name: string; value: 1 | -1; reason?: string }[]; personal?: boolean;
+  /** Created offline, not sent yet (client only). */
+  local?: boolean;
 }
 export interface HistoryEntry { at: string; by: string; action: string; detail?: string }
 export type Role = 'student' | 'delegate' | 'admin' | 'teacher';
@@ -203,6 +212,7 @@ export function parseWorkInput(body: unknown): WorkInput | { error: string } {
   if (value.ds) ds = { chapters: cleanText(value.ds.chapters, LIMITS.field), allowed: (Array.isArray(value.ds.allowed) ? value.ds.allowed : []).filter(item => (DS_ALLOWED as readonly string[]).includes(item)), duration: cleanText(value.ds.duration, 60), advice: cleanText(value.ds.advice, LIMITS.field) };
   return {
     type: value.type, title, day: value.day, time: value.time || undefined, scope: { kind: value.scope.kind, key: value.scope.key }, course, ds, links, personal: value.personal === true || undefined,
+    clientId: typeof value.clientId === 'string' && /^[a-z0-9-]{8,40}$/i.test(value.clientId) ? value.clientId : undefined,
     details: { where: cleanText(details.where, LIMITS.field), format: cleanText(details.format, LIMITS.field), mode: details.mode === 'seul' || details.mode === 'groupe' ? details.mode : '', info: cleanText(details.info, LIMITS.info) },
   };
 }

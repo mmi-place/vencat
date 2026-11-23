@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 import { PlusIcon, CheckBadgeIcon, ChevronRightIcon } from '@heroicons/vue/24/outline';
 import WorkDetail from './WorkDetail.vue';
 import WorkItem from './WorkItem.vue';
@@ -16,9 +16,20 @@ const add = () => requireAccount(() => { form.value = { mode: 'create', day: tra
 const listMode = computed(() => travauxView.value === 'liste');
 const firstWork = computed(() => lateWorks.value[0] ?? visibleWorks.value.find(work => work.day >= today.value) ?? visibleWorks.value[0]);
 watch([listMode, firstWork, openedWork], () => { if (listMode.value && !openedWork.value && firstWork.value) openedWork.value = firstWork.value.id; }, { immediate: true });
+// Échap closes the work shown in the panel (wherever the focus is) and gives the focus back to the agenda.
+function closeDetail(event: KeyboardEvent) {
+  if (event.key !== 'Escape' || !openedWork.value || listMode.value || document.querySelector('dialog[open]') || (event.target as HTMLElement).closest?.('input, textarea, select')) return;
+  event.preventDefault();
+  openedWork.value = undefined;
+  requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-agenda-day="${travauxDay.value}"] .agenda-date`)?.focus());
+}
+onMounted(() => window.addEventListener('keydown', closeDetail));
+onBeforeUnmount(() => window.removeEventListener('keydown', closeDetail));
+// Opening a work moves the focus to its title, so screen readers announce it.
+watch(openedWork, id => { if (id) requestAnimationFrame(() => document.querySelector<HTMLElement>('.day-panel .panel-header h2')?.focus({ preventScroll: true })); });
 function openCourse(course: CourseDTO) { section.value = 'cours'; focused.value = course; }
 </script>
-<template><aside class="day-panel" aria-label="Journée sélectionnée">
+<template><section class="day-panel" aria-label="Journée ou travail sélectionné">
   <WorkDetail v-if="openedWork" :key="openedWork" inline :back="!listMode" />
   <p v-else-if="listMode" class="empty-state"><strong>Aucun travail</strong><span>Rien à afficher avec ces filtres.</span></p>
   <template v-else-if="!listMode">
@@ -34,4 +45,4 @@ function openCourse(course: CourseDTO) { section.value = 'cours'; focused.value 
     <button v-else-if="!me" class="panel-cta" @click="ui.login = true"><CheckBadgeIcon aria-hidden="true" /><span><strong>Se connecter</strong><small>Pour proposer, voter et cocher « fait » partout</small></span><ChevronRightIcon aria-hidden="true" /></button>
     <InfoCard />
   </template>
-</aside></template>
+</section></template>

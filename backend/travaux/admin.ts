@@ -97,7 +97,9 @@ router.post('/admin/work/:id', route(async (req, res) => {
   const action = String(req.body?.action ?? ''), reason = cleanText(req.body?.reason, LIMITS.reason), actor = 'admin:' + session.email;
   const states: Record<string, WorkState | undefined> = { validate: 'validated', remove: 'removed', restore: undefined };
   if (!(action in states)) throw new HttpError(400, 'Action inconnue.');
-  work.forced = states[action] as Work['forced']; work.state = states[action] ?? 'pending'; work.updatedAt = now();
+  work.forced = states[action] as Work['forced']; work.updatedAt = now();
+  // The state follows from settle() (validate) or is set here (remove, restore), so reliability is handled once, in one place.
+  if (action !== 'validate') work.state = states[action] ?? 'pending';
   if (action === 'remove') work.removedReason = reason || 'Retiré par l’administration';
   await db().put('works', work.id, work);
   await history(work.id, actor, { validate: 'validé par l’administration', remove: 'retiré par l’administration', restore: 'rétabli par l’administration' }[action]!, reason);

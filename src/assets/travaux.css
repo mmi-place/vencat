@@ -107,6 +107,8 @@
 .strip-weekday { font-size: .7rem; font-weight: 800; text-transform: uppercase; color: var(--muted); letter-spacing: .04em; }
 .strip-number { font-size: 1.15rem; font-weight: 900; }
 .week-strip-days button.today .strip-number { color: var(--alert); }
+.week-strip-days button.today[aria-pressed=true] .strip-number { color: #ffb4be; }
+[data-theme=light] .week-strip-days button.today[aria-pressed=true] .strip-number { color: #a3112a; }
 .week-strip-days button.past { opacity: .6; }
 .week-strip-days button[aria-pressed=true] { background: var(--selected); border-color: var(--accent); opacity: 1; }
 .dots { display: flex; justify-content: center; gap: 3px; min-height: 7px; }
@@ -277,7 +279,7 @@
 .danger-action { color: var(--alert); border-color: color-mix(in srgb, var(--alert) 45%, transparent); background: transparent; }
 .form-status { font-size: .9rem; color: var(--accent); font-weight: 700; }
 .form-error { font-size: .9rem; color: var(--alert); font-weight: 700; }
-.toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 50; max-width: min(92vw, 460px); padding: 12px 18px; border-radius: 14px; background: var(--text); color: var(--page); box-shadow: var(--shadow); font-weight: 800; }
+.toast { transition: opacity .2s, transform .2s; position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 50; max-width: min(92vw, 460px); padding: 12px 18px; border-radius: 14px; background: var(--text); color: var(--page); box-shadow: var(--shadow); font-weight: 800; }
 
 /* ---------------------------------------------------------------- Work detail */
 .work-detail-root.inline { display: grid; }
@@ -466,7 +468,7 @@
 .agenda-date { align-self: flex-start; min-height: 26px; padding: 2px 8px; border: 0; border-radius: 13px; background: transparent; font-size: .85rem; font-weight: 800; color: var(--text); }
 .agenda-date:hover { background: var(--surface); }
 .agenda-cell.past .agenda-date { color: var(--muted); }
-.agenda-cell.today .agenda-date { background: var(--alert); color: #fff; }
+.agenda-cell.today .agenda-date { background: #b4152f; color: #fff; }
 .agenda-cell.first-of-month .agenda-date { text-transform: capitalize; }
 .agenda-add { position: absolute; top: 3px; right: 3px; width: 28px; height: 28px; min-height: 28px; padding: 6px; opacity: 0; border-radius: 8px; }
 .agenda-cell:hover .agenda-add, .agenda-add:focus-visible, .agenda-cell.selected .agenda-add { opacity: 1; }
@@ -613,3 +615,8 @@
 }
 @media (max-width: 419px) { .mobile-dock .dock-tabs button svg { display: none; } .mobile-dock .dock-tabs button { padding: 6px 12px; } }
 .add-to-calendar { margin-top: -4px; }
+.toast:not(.visible) { opacity: 0; pointer-events: none; transform: translate(-50%, 10px); }
+.toast:empty { padding: 0; }
+.offline-bar { margin: 0 14px 8px; padding: 8px 12px; border-radius: 12px; font-size: .84rem; font-weight: 700; background: color-mix(in srgb, #d68a1c 16%, var(--surface)); color: var(--text); }
+.travaux-panel.wide .offline-bar { margin: 0 0 10px; }
+.state-mark.state-local { border-color: #d68a1c; color: #f59e0b; }

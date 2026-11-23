@@ -30,6 +30,7 @@ Une bascule **Cours | Travaux** (touche **W**) affiche les devoirs, rendus, éva
 - **Délégués** (mandat d’un an, validés par l’admin, alerte à 8 soutiens), **modération** (signalements, noms, alertes de fiabilité, lecture seule, bannissement, journal), **corrections d’emploi du temps** certifiées sur l’honneur, affichées par-dessus CELCAT et fermées quand CELCAT change le cours.
 - **Abonnement agenda** : `GET /api/travaux/ics/<groupe>.ics`, rappel la veille ; un bouton qui propose d’abord l’agenda le plus probable pour l’appareil.
 - **Ajout perso** : un travail « juste pour moi » n’est visible que par son auteur, sans vote, modifiable et supprimable directement, absent de l’ICS.
+- **Hors ligne** : le compte reste affiché, les travaux sont gardés par compte, et les votes, cases, notes et nouveaux travaux (en brouillon) partent au retour du réseau, une seule fois. La déconnexion ou une session expirée efface ces copies de l’appareil.
 - **Administration** (`/admin`) : vue d’ensemble, modération (signalements, délégués, noms, alertes), comptes (groupe, lecture seule, bannissement, suppression, nomination de délégué), travaux, corrections d’emploi du temps, délégués et journal.
 
 | Variable | Rôle |
@@ -98,6 +99,9 @@ La consultation fonctionne avec les services universitaires configurés par déf
 | `src/views` | Planning, navigation et orchestration de l’interface |
 | `src/components` | Cartes, grilles, listes et modales |
 | `src/scripts` | État du planning, IndexedDB, préférences, catalogues et mise à jour PWA |
+| `src/scripts/travaux/` | Travaux côté appareil : `api` (appels, session expirée), `session` (compte gardé hors ligne), `marks` (cases et notes), `outbox` (actions hors ligne par compte), `works` (travaux, brouillons, corrections), `ui` (sections, fenêtres, messages) ; `src/scripts/travaux.ts` les relie |
+| `src/components/travaux/` | Interface des Travaux |
+| `backend/travaux/` | Comptes, travaux, administration, stockage et mails |
 | `shared` | Contrats des cours, groupes, dates, recherche et réparation des textes |
 | `backend` | Lecture de CELCAT, normalisation, caches Redis, recherche et suivi des changements |
 | `api` | Points d’entrée des fonctions Vercel |

@@ -16,7 +16,9 @@ const groups = [
     ['← / → dans le détail', 'Cours précédent / suivant'],
   ] },
   { title: 'Travaux', keys: [
-    ['Flèches dans le planning', 'Jour voisin du mois'], ['← / → dans une fiche', 'Travail précédent / suivant'],
+    ['N', 'Nouveau travail'], ['← / → dans l’agenda', 'Jour précédent / suivant'], ['↑ / ↓ dans l’agenda', 'Même jour, semaine précédente / suivante'],
+    ['Début / Fin dans l’agenda', 'Lundi / vendredi de la semaine'], ['Échap dans le panneau', 'Fermer la fiche et revenir au jour'], ['← / → dans une fiche', 'Travail précédent / suivant'],
+    ['← / → dans « À valider »', 'Contester / confirmer'], ['↓ dans « À valider »', 'Passer'],
   ] },
   { title: 'Combinaisons toujours actives', keys: [
     ['Alt + Maj + F / G / S', 'Recherche / groupe / réglages'], ['Alt + Maj + A / C / T', 'Accessibilité / changements / aujourd’hui'],

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AccessibleDialog from '../AccessibleDialog.vue';
-import { api, errorText, me, meLoaded, qrRequest, ui } from '../../scripts/travaux';
+import { api, errorText, me, meLoaded, qrRequest, ui, notify } from '../../scripts/travaux';
 // On a connected device: sign-in requests of the same account, approved by choosing the number shown on the new device.
 interface Pending { id: string; device: string; createdAt: string; choices: number[] }
 const pending = ref<Pending>();
 const qr = ref<{ id: string; device: string; number: number }>();
-const status = ref(''), busy = ref(false);
+const busy = ref(false);
+const status = { set value(message: string) { if (message) notify(message); } };
 let timer: ReturnType<typeof setInterval> | undefined;
 // A request already answered (or dismissed) on this device never comes back, even if the answer failed to reach the server.
 const handled = new Set<string>();
@@ -49,5 +50,4 @@ watch([meLoaded, me, qrRequest], ([loaded, value, link]) => { if (!loaded || !li
   <p>Le QR code scanné demande à connecter <strong>{{ qr.device }}</strong> à ton compte. Vérifie que l’écran affiche le nombre <strong>{{ qr.number }}</strong>.</p>
   <div class="button-row end"><button class="danger-action" :disabled="busy" @click="answer()">Refuser</button><button class="primary-action" :disabled="busy" @click="answer(qr.number)">Connecter</button></div>
 </AccessibleDialog>
-<p v-if="status" class="toast" role="status" @click="status = ''">{{ status }}</p>
 </template>

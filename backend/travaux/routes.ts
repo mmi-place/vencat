@@ -19,6 +19,8 @@ import { groupById } from '../../shared/selection.js';
 export interface Work extends Omit<WorkInput, 'time'> {
   id: string; time?: string; authorId: string; authorNew: boolean; createdAt: string; updatedAt: string; state: WorkState;
   forced?: 'validated' | 'removed'; removedReason?: string; teacherConfirmed?: string; proposalId?: string;
+  /** Reliability was paid when it was first validated: never again (toggling votes cannot farm it). */
+  rewardedAt?: string;
 }
 interface VoteDoc extends Vote { targetId: string; userId: string }
 export interface Proposal { id: string; workId: string; kind: 'edit' | 'delete'; changes: Partial<WorkInput>; reason?: string; authorId: string; createdAt: string; status: 'open' | 'accepted' | 'rejected'; closedAt?: string }
@@ -86,7 +88,8 @@ async function settle(work: Work, by = 'system') {
   if (next === previous) return work;
   work.state = next;
   await db().put('works', work.id, work);
-  if (next === 'validated' && previous !== 'validated') {
+  if (next === 'validated' && previous !== 'validated' && !work.rewardedAt) {
+    work.rewardedAt = now(); await db().put('works', work.id, work);
     await adjustReliability(work.authorId, 1);
     for (const vote of Object.values(votes)) {
       if (vote.userId === work.authorId) continue;
@@ -94,7 +97,8 @@ async function settle(work: Work, by = 'system') {
       else { await adjustReliability(vote.userId, -1); await problem(vote.userId, 'refus contredit', work.title); }
     }
     await history(work.id, by, 'validé');
-  } else if (next === 'contested') await history(work.id, by, 'contesté');
+  } else if (next === 'validated' && previous !== 'validated') await history(work.id, by, 'validé de nouveau');
+  else if (next === 'contested') await history(work.id, by, 'contesté');
   return work;
 }
 
@@ -158,7 +162,7 @@ async function mailLogin(req: Request, login: Login) {
   const { code, magic } = newSecrets(login);
   login.mails++; login.attempts = 0;
   await db().put('logins', login.id, login);
-  const link = `${origin(req)}/api/auth/magic?r=${login.id}&t=${magic}`;
+  const link = `${origin(req)}/?lien=${login.id}&t=${magic}`;
   const mail = loginMail(login.email, code, link, login.device);
   try { await sendMail(mail); }
   catch (error) { console.error('[mail]', error instanceof Error ? error.message : error); throw new HttpError(502, 'Le mail n’a pas pu être envoyé. Réessaie dans quelques minutes.'); }
@@ -170,8 +174,6 @@ router.post('/auth/start', route(async (req, res) => {
   const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   if (!allowedEmail(email)) throw new HttpError(400, 'Utilise ton adresse étudiante, qui se termine par .uvsq.fr (par exemple prenom.nom@ens.uvsq.fr).');
   if (await overLimit('start-ip:' + addressKey(req), 30, 600)) throw new HttpError(429, 'Trop de demandes. Réessaie dans quelques minutes.');
-  // A new request replaces older ones of the same address: a connected device only ever sees one request.
-  for (const previous of (await db().list<Login>('logins')).filter(item => item.email === email && item.status === 'waiting')) await db().delete('logins', previous.id);
   const { login, poll } = newLogin(req, email);
   await db().put('logins', login.id, login);
   const index = await db().get<{ userId: string }>('emails', email);
@@ -208,8 +210,11 @@ async function finish(req: Request, res: Response, user: User, login: Login) {
 }
 router.post('/auth/verify', route(async (req, res) => {
   const login = await ownedLogin(req);
+  if (await overLimit('verify-ip:' + addressKey(req), 60, 600)) throw new HttpError(429, 'Trop d’essais. Réessaie dans quelques minutes.');
   if (login.attempts >= MAX_ATTEMPTS) throw new HttpError(429, 'Trop d’essais. Demande un nouveau code.');
   if (!checkCode(login, req.body?.code)) {
+    // Counted atomically as well: parallel guesses cannot all read « 0 attempts ».
+    if (await overLimit('verify-fail:' + login.id, MAX_ATTEMPTS, 3600)) { login.attempts = MAX_ATTEMPTS; await db().put('logins', login.id, login); throw new HttpError(429, 'Trop d’essais. Demande un nouveau code.'); }
     login.attempts++; await db().put('logins', login.id, login);
     throw new HttpError(400, login.attempts >= MAX_ATTEMPTS ? 'Trop d’essais. Demande un nouveau code.' : `Code incorrect. ${MAX_ATTEMPTS - login.attempts} essai(s) restant(s).`);
   }
@@ -231,18 +236,21 @@ router.post('/auth/poll', route(async (req, res) => {
   if (!user || user.deletedAt) throw new HttpError(404, 'Compte introuvable.');
   res.json({ status: 'approved', ...await finish(req, res, user, login) });
 }));
+// The mail link opens the app, which asks to confirm: a link scanner that only fetches it signs nobody in.
+// It signs in the device that opens it, and never approves the request of another device.
 router.get('/auth/magic', route(async (req, res) => {
-  const login = await db().get<Login>('logins', String(req.query.r ?? ''));
-  if (!login || loginExpired(login) || !login.email || !checkMagic(login, req.query.t)) return res.redirect(302, '/?connexion=expiree');
-  // The device that opens the link is signed in; the device that asked is approved too.
-  const user = await userForEmail(login.email);
-  login.status = 'approved'; login.approvedUserId = user.id;
-  await useCode(req, res, login);
-  res.redirect(302, '/?connexion=ok');
+  res.redirect(302, `/?lien=${encodeURIComponent(String(req.query.r ?? ''))}&t=${encodeURIComponent(String(req.query.t ?? ''))}`);
+}));
+router.post('/auth/magic', route(async (req, res) => {
+  if (await overLimit('magic-ip:' + addressKey(req), 30, 600)) throw new HttpError(429, 'Trop de demandes. Réessaie dans quelques minutes.');
+  const login = await db().get<Login>('logins', String(req.body?.r ?? ''));
+  if (!login || loginExpired(login) || !login.email || !checkMagic(login, req.body?.t)) throw new HttpError(410, 'Ce lien a expiré ou a déjà servi. Demande un nouveau code.');
+  res.json(await useCode(req, res, login));
 }));
 router.get('/auth/pending', route(async (req, res) => {
   const { user } = await requireUser(req);
-  const pending = (await db().list<Login>('logins')).filter(login => login.email === user.email && login.status === 'waiting' && !loginExpired(login));
+  // Only the newest request is shown: a connected device never gets a series of requests to approve.
+  const pending = (await db().list<Login>('logins')).filter(login => login.email === user.email && login.status === 'waiting' && !loginExpired(login)).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 1);
   res.json(pending.map(login => ({ id: login.id, device: login.device, createdAt: login.createdAt, choices: [login.number, ...login.decoys].sort(() => Math.random() - .5) })));
 }));
 router.get('/auth/qr-info', route(async (req, res) => {
@@ -381,6 +389,7 @@ router.post('/travaux/works', route(async (req, res) => {
   const { user } = await requireContributor(req);
   const input = parseWorkInput(req.body);
   if ('error' in input) throw new HttpError(400, input.error);
+  if (input.clientId) { const same = (await db().list<Work>('works')).find(work => work.authorId === user.id && work.clientId === input.clientId); if (same) return res.status(200).json(await workView(same, user, await users())); }
   // A work linked to a course reaches everyone attending it (a promotion lecture: the whole promotion).
   const authorGroup = groupById(user.groupId ?? '');
   if (!input.personal && input.course && authorGroup) input.scope = widerScope(input.scope, audienceScope(input.course.audience, authorGroup));
@@ -413,6 +422,7 @@ router.post('/travaux/work/:id/vote', route(async (req, res) => {
   const { user } = await requireContributor(req);
   const work = await loadWork(String(req.params.id));
   if (work.personal) throw new HttpError(400, 'Un travail perso ne se vote pas.');
+  if (work.state === 'removed') throw new HttpError(409, 'Ce travail a été retiré.');
   if (work.authorId === user.id) throw new HttpError(400, 'Ton propre vote ne compte pas.');
   const rights = await powers(user, work.scope);
   if (!rights.member && !rights.moderator) throw new HttpError(403, 'Seuls les élèves concernés peuvent voter.');
@@ -425,6 +435,7 @@ router.post('/travaux/work/:id/proposal', route(async (req, res) => {
   const work = await loadWork(String(req.params.id));
   const own = !!work.personal && work.authorId === user.id;
   if (work.personal && !own) throw new HttpError(404, 'Travail introuvable.');
+  if (work.state === 'removed') throw new HttpError(409, 'Ce travail a été retiré.');
   const rights = own ? { member: true, moderator: true } : await powers(user, work.scope);
   if (!rights.member && !rights.moderator) throw new HttpError(403, 'Seuls les élèves concernés peuvent proposer une modification.');
   if (work.proposalId && (await db().get<Proposal>('proposals', work.proposalId))?.status === 'open') throw new HttpError(409, 'Une proposition est déjà ouverte sur ce travail : vote d’abord sur celle-ci.');
@@ -433,8 +444,12 @@ router.post('/travaux/work/:id/proposal', route(async (req, res) => {
   if (kind === 'edit') {
     const merged = parseWorkInput({ ...work, time: work.time ?? '', ...req.body?.changes });
     if ('error' in merged) throw new HttpError(400, merged.error);
+    // A personal work stays personal and a shared one stays shared: only its content changes.
+    merged.personal = work.personal; merged.clientId = undefined;
+    if (merged.personal) merged.scope = work.scope;
     const group = groupById(user.groupId ?? '');
     if (!merged.personal && merged.course && group) merged.scope = widerScope(merged.scope, audienceScope(merged.course.audience, group));
+    if (!merged.personal && JSON.stringify(merged.scope) !== JSON.stringify(work.scope)) { const target = await powers(user, merged.scope); if (!target.member && !target.moderator) throw new HttpError(403, 'Tu ne peux pas déplacer ce travail vers un groupe dont tu ne fais pas partie.'); }
     changes = merged;
     if (!describeChanges(work, changes).length) throw new HttpError(400, 'Aucun changement à proposer.');
   }
@@ -485,6 +500,7 @@ router.post('/travaux/work/:id/report', route(async (req, res) => {
   const { user } = await requireContributor(req);
   const kind = ['work', 'delegate', 'correction'].includes(req.body?.kind) ? req.body.kind : 'work';
   const reason = cleanText(req.body?.reason, LIMITS.reason) || 'Signalement';
+  if (kind === 'work') { const target = await db().get<Work>('works', String(req.params.id)); if (!target || target.personal) throw new HttpError(404, 'Travail introuvable.'); }
   if (await overLimit('report:' + user.id, 20, 86400)) throw new HttpError(429, 'Trop de signalements aujourd’hui.');
   const report: Report = { id: id(), target: { kind, id: String(req.params.id) }, reason, by: user.id, at: now(), status: 'open' };
   await db().put('reports', report.id, report);
@@ -493,6 +509,7 @@ router.post('/travaux/work/:id/report', route(async (req, res) => {
 router.post('/travaux/work/:id/moderate', route(async (req, res) => {
   const { user } = await requireContributor(req);
   const work = await loadWork(String(req.params.id));
+  if (work.personal) throw new HttpError(404, 'Travail introuvable.');
   if (!(await powers(user, work.scope)).moderator) throw new HttpError(403, 'Réservé aux délégués et à l’admin.');
   const action = req.body?.action, reason = cleanText(req.body?.reason, LIMITS.reason);
   if (action === 'validate') { work.forced = 'validated'; await history(work.id, user.id, 'validé par un délégué'); }
@@ -509,9 +526,10 @@ router.post('/travaux/work/:id/moderate', route(async (req, res) => {
   res.json(await workView(work, user, await users()));
 }));
 router.post('/travaux/work/:id/confirm', route(async (req, res) => {
-  const { user } = await requireUser(req);
+  const { user } = await requireContributor(req);
   if (!user.staff) throw new HttpError(403, 'Réservé aux enseignants.');
   const work = await loadWork(String(req.params.id));
+  if (work.personal || work.state === 'removed') throw new HttpError(404, 'Travail introuvable.');
   work.teacherConfirmed = displayName(user); work.updatedAt = now();
   await db().put('works', work.id, work);
   await history(work.id, user.id, 'confirmé par l’enseignant');
@@ -611,7 +629,7 @@ export async function moderationData(admin: boolean, delegateGroups: string[]) {
   const people = await users();
   const works = new Map((await db().list<Work>('works')).map(work => [work.id, work]));
   const inMyGroups = (work?: Work) => admin || (!!work && scopeMembers(work.scope).some(group => delegateGroups.includes(group.id)));
-  const reports = (await db().list<Report>('reports')).filter(item => item.status === 'open' && (admin || (item.target.kind === 'work' && inMyGroups(works.get(item.target.id)))));
+  const reports = (await db().list<Report>('reports')).filter(item => item.status === 'open' && !(item.target.kind === 'work' && works.get(item.target.id)?.personal) && (admin || (item.target.kind === 'work' && inMyGroups(works.get(item.target.id)))));
   const problems = await db().list<Problem>('problems');
   const actor = (id: string) => id.startsWith('admin:') ? (admin ? id.slice(6) : 'Administration') : displayName(people.get(id));
   return {
@@ -749,7 +767,9 @@ router.post('/travaux/correction/:id/vote', route(async (req, res) => {
 }));
 /** CELCAT changed the course: the correction closes by itself. */
 router.post('/travaux/correction/:id/close', route(async (req, res) => {
+  const { user } = await requireUser(req);
   const item = await db().get<Correction>('corrections', String(req.params.id));
+  if (item && user.groupId !== item.groupId && !isAdmin(user)) throw new HttpError(403, 'Réservé aux élèves du groupe.');
   if (item && (item.status === 'open' || item.status === 'accepted') && req.body?.reason === 'celcat') { item.status = 'closed'; await db().put('corrections', item.id, item); }
   res.json({ ok: true });
 }));

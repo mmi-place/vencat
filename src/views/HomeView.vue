@@ -26,7 +26,7 @@ import AccountButton from '../components/travaux/AccountButton.vue';
 import WorkDots from '../components/travaux/WorkDots.vue';
 import TravauxPanel from '../components/travaux/TravauxPanel.vue';
 import TravauxRoot from '../components/travaux/TravauxRoot.vue';
-import { section, toggleSection, ui as travauxUi, form as travauxForm, openedWork } from '../scripts/travaux';
+import { section, toggleSection, ui as travauxUi, form as travauxForm, openedWork, requireAccount, travauxDay, wide as travauxWide } from '../scripts/travaux';
 import { selection, date, view, week, preferences, selectedIds, loading, error, storageError, hasData, missingGroups, lastFetched, online, fallback, loadCalendar, weekCourses, clock, focused, history, unseenChanges, resolveTodayDate, snapshots, showLinkedView } from '../scripts/calendarStore';
 import { readPreference, writePreference } from '../scripts/storage';
 import { groupById, groupByPath, type GroupOption } from '../../shared/selection';
@@ -174,7 +174,8 @@ async function refreshSharedChanges(force = false) {
 async function openChanges() { changesOpen.value = true; await refreshSharedChanges(true); }
 function closeChanges() { changesOpen.value = false; }
 const helpOpen = ref(false);
-const dialogOpen = () => Object.values(travauxUi.value).some(Boolean) || !!travauxForm.value || !!openedWork.value || searchOpen.value || modesOpen.value || dateOpen.value || settingsOpen.value || pickerOpen.value || changesOpen.value || helpOpen.value || !!focused.value;
+// A work shown in the side panel (wide Travaux) is not a dialog: shortcuts stay available.
+const dialogOpen = () => Object.values(travauxUi.value).some(Boolean) || !!travauxForm.value || (!!openedWork.value && !(travauxWide.value && section.value === 'travaux')) || searchOpen.value || modesOpen.value || dateOpen.value || settingsOpen.value || pickerOpen.value || changesOpen.value || helpOpen.value || !!focused.value;
 const typing = (target: EventTarget | null) => !!(target as HTMLElement | null)?.closest?.('input, select, textarea, [contenteditable]');
 // The current course, or the next one: entry point of the planning for the keyboard.
 const entryCourse = () => document.querySelector<HTMLElement>('.timeline-stage .course[tabindex="0"]') ?? document.querySelector<HTMLElement>('.timeline-stage .course');
@@ -183,6 +184,7 @@ const singleKeys: Record<string, () => void> = {
   '/': toggleSearch, '?': () => { helpOpen.value = true; }, t: () => void today(), g: () => { pickerOpen.value = true; },
   l: () => { view.value = 'list'; }, j: () => { view.value = 'day'; }, s: () => { view.value = 'week'; },
   c: () => void openChanges(), p: () => entryCourse()?.focus(), w: toggleSection,
+  n: () => requireAccount(() => { travauxForm.value = { mode: 'create', day: travauxDay.value >= campusDate(new Date()) ? travauxDay.value : campusDate(new Date()) }; }),
 };
 function showKeys(event: KeyboardEvent | FocusEvent) {
   const visible = event instanceof KeyboardEvent && event.key === 'Alt' && event.type === 'keydown' && accessibility.value.shortcuts && !dialogOpen();

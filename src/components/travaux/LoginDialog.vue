@@ -3,10 +3,10 @@ import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from 'vue'
 import QRCode from 'qrcode';
 import { ArrowPathIcon } from '@heroicons/vue/24/outline';
 import AccessibleDialog from '../AccessibleDialog.vue';
-import { api, errorText, me, ui, needsOnboarding, loadMe, wide, savePendingLogin, readPendingLogin, clearPendingLogin } from '../../scripts/travaux';
+import { ApiError, config, api, errorText, me, setMe, ui, needsOnboarding, loadMe, wide, savePendingLogin, readPendingLogin, clearPendingLogin } from '../../scripts/travaux';
 import { selection } from '../../scripts/calendarStore';
 import { groupOptions } from '../../../shared/selection';
-import { isStudentEmail, type Me } from '../../../shared/travaux';
+import { isStudentEmail, isStaffEmail, type Me } from '../../../shared/travaux';
 
 // Desktop: QR code on the left (scanned by a connected phone), mail on the right.
 // Mobile: mail, then approval on a connected device when there is one, otherwise a code by mail.
@@ -14,6 +14,7 @@ interface Request { requestId: string; poll: string; number: number; devices?: n
 const email = ref(''), code = ref(''), status = ref(''), busy = ref(false);
 const mailRequest = ref<Request>(), qrRequest = ref<Request>(), qrImage = ref(''), qrExpired = ref(false);
 const timers: ReturnType<typeof setInterval>[] = [];
+let mailTimer: ReturnType<typeof setInterval> | undefined;
 onBeforeUnmount(() => timers.forEach(clearInterval));
 function poll(request: Request, onDone: () => void) {
   const timer = setInterval(async () => {
@@ -21,11 +22,15 @@ function poll(request: Request, onDone: () => void) {
     if (request.expiresAt && Date.parse(request.expiresAt) < Date.now()) { clearInterval(timer); onDone(); return; }
     try {
       const result = await api<{ status: string; me?: Me }>('/auth/poll', { body: { requestId: request.requestId, poll: request.poll } });
-      if (result.status === 'approved' && result.me) { timers.forEach(clearInterval); me.value = result.me; }
+      if (result.status === 'approved' && result.me) { timers.forEach(clearInterval); setMe(result.me); }
       else if (result.status === 'denied') { clearInterval(timer); status.value = 'Demande refusée sur l’autre appareil.'; onDone(); }
-    } catch { clearInterval(timer); onDone(); }
+    } catch (error) {
+      // A network hiccup keeps waiting; only a refusal from the server (expired, unknown) ends the request.
+      if (error instanceof ApiError && error.status !== 0) { clearInterval(timer); onDone(); }
+    }
   }, 2000);
   timers.push(timer);
+  return timer;
 }
 async function showQr() {
   qrExpired.value = false;
@@ -39,19 +44,20 @@ async function showQr() {
 onMounted(() => {
   // Coming back from the mail app (the system may have reloaded the page): the request in progress is restored.
   const pending = !me.value ? readPendingLogin() : undefined;
-  if (pending) { email.value = pending.email; mailRequest.value = pending.request; poll(pending.request, () => { mailRequest.value = undefined; clearPendingLogin(); }); }
+  if (pending) { email.value = pending.email; mailRequest.value = pending.request; mailTimer = poll(pending.request, () => { mailRequest.value = undefined; clearPendingLogin(); }); }
   if (wide.value && !me.value) void showQr();
 });
 
 async function start() {
   status.value = '';
-  if (!isStudentEmail(email.value)) { status.value = 'Utilise ton adresse étudiante, qui se termine par .uvsq.fr (prenom.nom@ens.uvsq.fr).'; return; }
+  if (!isStudentEmail(email.value) && !(config.value.teacherAccounts && isStaffEmail(email.value))) { status.value = 'Utilise ton adresse étudiante, qui se termine par .uvsq.fr (prenom.nom@ens.uvsq.fr).'; return; }
   busy.value = true;
   try {
     const result = await api<Request & { devCode?: string }>('/auth/start', { body: { email: email.value } });
     mailRequest.value = result;
     savePendingLogin(email.value, result);
-    poll(result, () => { status.value = 'Demande expirée. Recommence.'; mailRequest.value = undefined; clearPendingLogin(); });
+    clearInterval(mailTimer);
+    mailTimer = poll(result, () => { status.value = 'Demande expirée. Recommence.'; mailRequest.value = undefined; clearPendingLogin(); });
     if (result.devCode) code.value = result.devCode;
     nextTick(() => document.getElementById('login-code')?.focus());
   } catch (error) { status.value = errorText(error); }
@@ -66,10 +72,10 @@ async function sendMail() {
 async function verify() {
   if (!mailRequest.value) return;
   busy.value = true; status.value = '';
-  try { const result = await api<{ me: Me }>('/auth/verify', { body: { requestId: mailRequest.value.requestId, poll: mailRequest.value.poll, code: code.value } }); timers.forEach(clearInterval); me.value = result.me; }
+  try { const result = await api<{ me: Me }>('/auth/verify', { body: { requestId: mailRequest.value.requestId, poll: mailRequest.value.poll, code: code.value } }); timers.forEach(clearInterval); setMe(result.me); }
   catch (error) { status.value = errorText(error); code.value = ''; if (/expirée/i.test(status.value)) { clearPendingLogin(); mailRequest.value = undefined; } } finally { busy.value = false; }
 }
-function restart() { mailRequest.value = undefined; code.value = ''; status.value = ''; clearPendingLogin(); }
+function restart() { clearInterval(mailTimer); mailRequest.value = undefined; code.value = ''; status.value = ''; clearPendingLogin(); }
 
 // First sign-in: name from the address, group, terms.
 const promotion = ref(selection.value?.promotion ?? '');
@@ -84,7 +90,7 @@ async function onboard() {
   try {
     const result = await api<{ me: Me }>('/account/onboard', { body: { groupId: groupId.value, cgu: cgu.value } });
     if (nameFix.value && (firstName.value !== result.me.firstName || lastName.value !== result.me.lastName)) await api('/account/name', { body: { firstName: firstName.value, lastName: lastName.value } });
-    me.value = result.me; ui.value.login = false;
+    setMe(result.me); ui.value.login = false;
   } catch (error) { status.value = errorText(error); } finally { busy.value = false; }
 }
 watch(() => !!me.value && !needsOnboarding.value, ready => { if (ready) { timers.forEach(clearInterval); clearPendingLogin(); ui.value.login = false; void loadMe(); } });

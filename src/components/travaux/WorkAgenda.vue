@@ -114,6 +114,26 @@ async function scrollTo(day: string, smooth = true) {
 }
 watch(() => agendaFocus.value.nonce, () => void scrollTo(agendaFocus.value.day));
 const add = (day: string) => requireAccount(() => { form.value = { mode: 'create', day }; });
+// Keyboard: ←/→ one day, ↑/↓ one week, Début/Fin the ends of the week; the focus follows (roving tabindex).
+async function dateKey(event: KeyboardEvent, day: string) {
+  if (event.altKey || event.ctrlKey || event.metaKey) return;
+  const weekStart = mondayOf(day), last = dayCount.value - 1;
+  const step: Record<string, () => string> = {
+    ArrowLeft: () => { let target = addDay(day, -1); while (target < weekStart) target = addDay(weekStart, -7 + last); return target; },
+    ArrowRight: () => { const index = (Date.parse(day) - Date.parse(weekStart)) / 86400000; return index >= last ? addDay(weekStart, 7) : addDay(day, 1); },
+    ArrowUp: () => addDay(day, -7), ArrowDown: () => addDay(day, 7), Home: () => weekStart, End: () => addDay(weekStart, last),
+  };
+  const move = step[event.key];
+  if (!move) return;
+  event.preventDefault();
+  const target = move();
+  const rendered = !!scroller.value?.querySelector(`[data-agenda-day="${target}"]`);
+  focusDay(target, !rendered);
+  if (!rendered) await scrollTo(target, false);
+  await nextTick();
+  const button = scroller.value?.querySelector<HTMLElement>(`[data-agenda-day="${target}"] .agenda-date`);
+  button?.focus(); button?.scrollIntoView({ block: 'nearest' });
+}
 function selectDay(day: string) { focusDay(day, false); if (wide.value) openedWork.value = undefined; }
 </script>
 <template>
@@ -128,7 +148,7 @@ function selectDay(day: string) { focusDay(day, false); if (wide.value) openedWo
     <div v-for="week in weeks" :key="week" class="agenda-row" :class="{ current: week === mondayOf(today) }" :data-week="week" role="row">
       <span class="agenda-week-label" role="rowheader"><span>{{ weekTitle(week).name || weekTitle(week).range }}</span><b v-if="weekCount(week)" class="count" :title="weekCount(week) + ' à faire'">{{ weekCount(week) }}</b></span>
       <div v-for="day in daysOf(week)" :key="day" role="gridcell" class="agenda-cell" :data-agenda-day="day" :class="{ today: day === today, past: day < today, selected: day === travauxDay, 'first-of-month': day.endsWith('-01') }" @click="selectDay(day)">
-        <button class="agenda-date" :aria-pressed="day === travauxDay" :aria-label="frenchDate(day) + ((worksByDay.get(day)?.length ?? 0) ? `, ${worksByDay.get(day)!.length} travaux` : ', rien')" @click.stop="selectDay(day)">{{ day.endsWith('-01') || day === daysOf(week)[0] && week === weeks[0] ? frenchDate(day, { day: 'numeric', month: 'short' }) : frenchDate(day, { day: 'numeric' }) }}</button>
+        <button class="agenda-date" :tabindex="day === travauxDay ? 0 : -1" :aria-pressed="day === travauxDay" @keydown="dateKey($event, day)" :aria-label="frenchDate(day) + ((worksByDay.get(day)?.length ?? 0) ? `, ${worksByDay.get(day)!.length} travaux` : ', rien')" @click.stop="selectDay(day)">{{ day.endsWith('-01') || day === daysOf(week)[0] && week === weeks[0] ? frenchDate(day, { day: 'numeric', month: 'short' }) : frenchDate(day, { day: 'numeric' }) }}</button>
         <button class="agenda-add icon-button quiet" :aria-label="'Ajouter un travail le ' + frenchDate(day)" @click.stop="add(day)"><PlusIcon aria-hidden="true" /></button>
         <WorkCard v-for="work in worksByDay.get(day) ?? []" :key="work.id" :work="work" />
       </div>

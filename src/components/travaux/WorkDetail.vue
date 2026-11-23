@@ -11,7 +11,7 @@ const work = ref<WorkView | undefined>(works.value.find(item => item.id === open
 const history = ref<HistoryEntry[]>([]);
 const status = ref(''), busy = ref(false), contesting = ref(false), deleting = ref(false), reporting = ref(false), reason = ref(''), detail = ref('');
 async function refresh(id = openedWork.value) {
-  if (!id) return;
+  if (!id || id.startsWith('local-')) return;
   markWorkSeen(id);
   try { const data = await api<{ work: WorkView; history: HistoryEntry[] }>(`/travaux/work/${id}`); if (id !== openedWork.value) return; work.value = data.work; history.value = data.history; replaceWork(data.work); }
   catch (error) { if (!work.value) status.value = errorText(error); }
@@ -19,7 +19,6 @@ async function refresh(id = openedWork.value) {
 watch(openedWork, id => { work.value = works.value.find(item => item.id === id); history.value = []; status.value = ''; contesting.value = deleting.value = reporting.value = false; void refresh(id); }, { immediate: true });
 const left = computed(() => work.value ? label(work.value) : undefined);
 const stateText = computed(() => !work.value ? '' : work.value.state === 'pending' ? `À confirmer · ${Math.floor(work.value.up)}/${work.value.required}` : WORK_STATE_LABELS[work.value.state]);
-const canVote = computed(() => canContribute.value && !!work.value && !work.value.mine && work.value.state !== 'removed');
 const moderator = computed(() => !!work.value?.voters);
 function needAccount() { if (!me.value) { ui.value.login = true; return true; } if (!canContribute.value) { status.value = me.value.banned ? 'Compte banni.' : me.value.readOnlyUntil ? 'Compte en lecture seule pour le moment.' : 'Termine la création de ton compte.'; return true; } return false; }
 async function run(action: () => Promise<WorkView | undefined | void>, done = '') {
@@ -41,6 +40,9 @@ function edit() { if (needAccount() || !work.value) return; form.value = { mode:
 function startContest() { if (needAccount()) return; reason.value = ''; detail.value = ''; contesting.value = !contesting.value; }
 function gotoCourse() { if (!work.value?.course) return; planningDate.value = campusDate(work.value.course.start); section.value = 'cours'; openedWork.value = undefined; }
 const note = ref(marks.value.notes[openedWork.value ?? ''] ?? '');
+// The note follows the account copy when it arrives (unless it is being typed).
+const noteFocused = ref(false);
+watch(() => marks.value.notes[openedWork.value ?? ''], value => { if (!noteFocused.value) note.value = value ?? ''; });
 watch(openedWork, id => { note.value = marks.value.notes[id ?? ''] ?? ''; });
 // ← / → go to the previous or next work, as in a course window.
 const ordered = computed(() => visibleWorks.value);
@@ -62,10 +64,10 @@ const stamp = (iso: string) => new Date(iso).toLocaleString('fr-FR', { timeZone:
   <p class="work-when"><strong>{{ frenchDate(work.day, { weekday: 'long', day: 'numeric', month: 'long' }) }} à {{ work.time }}</strong><span v-if="!work.hasTime" class="muted"> (heure non précisée)</span><br><span class="muted">Pour {{ work.scopeLabel }}</span></p>
     <section class="work-section for-me" aria-label="Pour moi">
     <label class="check-label"><input type="checkbox" :checked="isDone(work.id)" @change="setDone(work.id, ($event.target as HTMLInputElement).checked)"> Marquer comme fait</label>
-    <label class="settings-label"><span class="sr-only">Ma note (privée)</span><textarea v-model="note" rows="2" maxlength="2000" placeholder="Ma note, visible par toi seul…" @input="setNote(work.id, note)"></textarea></label>
+    <label class="settings-label"><span class="sr-only">Ma note (privée)</span><textarea v-model="note" rows="2" maxlength="2000" placeholder="Ma note, visible par toi seul…" @input="setNote(work.id, note)" @focus="noteFocused = true" @blur="noteFocused = false"></textarea></label>
     <p v-if="!me" class="muted">Sans compte, la case et la note restent sur cet appareil.</p>
   </section>
-  <AddToCalendar v-if="work.state !== 'removed'" :work="work" />
+  <AddToCalendar v-if="work.state !== 'removed' && !work.local" :work="work" />
   <p v-if="work.state === 'removed'" class="notice">Ce travail a été retiré. L’historique reste consultable.</p>
   <div v-if="work.state === 'contested' && work.reasons.length" class="work-box warn"><strong>Contesté</strong><ul><li v-for="(item, i) in work.reasons" :key="i">{{ item }}</li></ul><p class="muted">L’auteur peut proposer une correction.</p></div>
 
@@ -86,7 +88,8 @@ const stamp = (iso: string) => new Date(iso).toLocaleString('fr-FR', { timeZone:
   <section v-if="work.ds" class="work-section"><h3>Infos du DS</h3><dl class="work-fields"><template v-if="work.ds.chapters"><dt>Chapitres</dt><dd>{{ work.ds.chapters }}</dd></template><template v-if="work.ds.allowed.length"><dt>Autorisé</dt><dd>{{ work.ds.allowed.join(', ') }}</dd></template><template v-if="work.ds.duration"><dt>Durée</dt><dd>{{ work.ds.duration }}</dd></template><template v-if="work.ds.advice"><dt>Conseils</dt><dd>{{ work.ds.advice }}</dd></template></dl><p class="muted">Pas de sujets ni de corrigés : ils sont retirés.</p></section>
   <section v-if="!work.personal || work.course" class="work-section"><h3>{{ work.personal ? 'Cours' : 'Ajouté par' }}</h3><p v-if="work.personal" hidden></p><p v-if="!work.personal">{{ work.author }} · le {{ stamp(work.createdAt) }}</p><p v-if="work.course">Lié à <button class="text-action" @click="gotoCourse">{{ work.course.type ? work.course.type + ' ' : '' }}{{ work.course.summary }} du {{ frenchDate(campusDate(work.course.start), { day: 'numeric', month: 'short' }) }} à {{ campusTime(work.course.start) }}</button></p></section>
 
-  <div v-if="work.personal" class="button-row personal-actions"><button @click="edit"><PencilSquareIcon aria-hidden="true" />Modifier</button><button class="danger-action" :disabled="busy" @click="removeOwn"><TrashIcon aria-hidden="true" />Supprimer</button></div>
+  <p v-if="work.local" class="work-box warn">En attente d’envoi : ce travail sera proposé dès le retour du réseau.</p>
+  <div v-else-if="work.personal" class="button-row personal-actions"><button @click="edit"><PencilSquareIcon aria-hidden="true" />Modifier</button><button class="danger-action" :disabled="busy" @click="removeOwn"><TrashIcon aria-hidden="true" />Supprimer</button></div>
   <div v-else-if="work.state !== 'removed'" class="vote-block">
     <div v-if="!work.mine" class="button-row"><button class="vote-up" :aria-pressed="work.myVote === 1" :disabled="busy" @click="confirm">👍 Confirmer · {{ Math.floor(work.up) }}</button><button :aria-pressed="work.myVote === -1" :aria-expanded="contesting" :disabled="busy" @click="work.myVote === -1 ? withdraw() : startContest()">👎 {{ work.myVote === -1 ? 'Retirer ma contestation' : 'Contester' }}<template v-if="work.down"> · {{ Math.floor(work.down) }}</template></button></div>
     <p v-else class="muted">Tu as proposé ce travail : ton vote ne compte pas. {{ Math.floor(work.up) }} 👍 · {{ Math.floor(work.down) }} 👎</p>
