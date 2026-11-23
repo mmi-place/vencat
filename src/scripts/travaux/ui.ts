@@ -28,6 +28,13 @@ export const ui = ref({ login: false, account: false, queue: false, delegates: f
 export const openedWork = ref<string>();
 export interface FormRequest { mode: 'create' | 'edit' | 'ds'; work?: WorkView; day?: string; course?: CourseDTO; type?: WorkType }
 export const form = ref<FormRequest>();
+/** Course to put forward when the timetable is opened from a work (« Lié au cours »). */
+export const courseHighlight = ref<{ uid: string; start: string; module: string; summary: string; at: number }>();
+let highlightTimer: ReturnType<typeof setTimeout> | undefined;
+export function highlightCourse(course: { uid: string; start: string; module: string; summary: string }) {
+  courseHighlight.value = { ...course, at: Date.now() };
+  clearTimeout(highlightTimer); highlightTimer = setTimeout(() => { courseHighlight.value = undefined; }, 8000);
+}
 /** Short message at the bottom of the screen (sync results, session changes). */
 export const toast = ref('');
 let toastTimer: ReturnType<typeof setTimeout> | undefined;

@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { ClockIcon, MapPinIcon, UserIcon, UserGroupIcon } from '@heroicons/vue/24/outline';
 import type { CourseDTO } from '../../shared/courses';
 import { campusTime, campusDate, frenchDate } from '../../shared/calendar';
-import { courseColor, colorText, focused, preferences, courseBadges, clock } from '../scripts/calendarStore';
+import { courseColor, colorText, focused, preferences, courseBadges, clock, savedCourses } from '../scripts/calendarStore';
 import { badgeLabels, badgeLevel } from '../../shared/changePresentation';
 import { planningSearch, isSearchMatch } from '../scripts/searchStore';
-import { worksForCourse, unseenWorks, checkCorrection } from '../scripts/travaux';
+import { worksForCourse, unseenWorks, checkCorrection, courseHighlight } from '../scripts/travaux';
+import { normalizedText } from '../../shared/calendar';
 import { WORK_TYPE_LABELS } from '../../shared/travaux';
 import WorkTypeIcon from './travaux/WorkTypeIcon.vue';
 import { FlagIcon } from '@heroicons/vue/24/solid';
@@ -30,10 +31,21 @@ const confirmed = computed(() => correction.value?.state === 'validated');
 const firstWork = computed(() => linked.value[0]?.work);
 const workLabel = (title: string, type: keyof typeof WORK_TYPE_LABELS) => title.toLowerCase().startsWith(WORK_TYPE_LABELS[type].toLowerCase()) ? title : `${WORK_TYPE_LABELS[type]} · ${title}`;
 const correctionText = computed(() => !correction.value ? '' : correction.value.field === 'cancelled' ? 'Annulé selon des étudiants' : correction.value.field === 'room' ? `Salle ${correction.value.value} selon des étudiants` : `${correction.value.value} selon des étudiants`);
+// Opened from a work (« Lié au cours »): the course is scrolled into view, focused and outlined for a few seconds.
+// A course moved by CELCAT is found again by its subject on the same day.
+const element = ref<HTMLButtonElement>();
+const highlighted = computed(() => {
+  const target = courseHighlight.value;
+  if (!target) return false;
+  if (target.uid === props.course.uid && target.start === props.course.start) return true;
+  if (savedCourses.value.some(course => course.uid === target.uid && course.start === target.start)) return false;
+  return campusDate(target.start) === campusDate(props.course.start) && normalizedText(target.summary) === normalizedText(props.course.summary) && normalizedText(target.module) === normalizedText(props.course.module);
+});
+watch(highlighted, value => { if (value) nextTick(() => { element.value?.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); element.value?.focus({ preventScroll: true }); }); }, { immediate: true });
 const label = computed(() => [match.value ? 'Résultat de la recherche' : '', props.course.summary, frenchDate(campusDate(props.course.start)), props.course.type, campusTime(props.course.start) + ' à ' + campusTime(props.course.end), props.course.location || 'Salle non renseignée', ...props.course.teachers, props.course.group, ongoing.value ? 'En cours' : past.value ? 'Terminé' : 'À venir', badge.value ? { added: 'Nouveau cours', moved: 'Cours déplacé', changed: 'Cours modifié' }[badge.value] : '', newWork.value ? 'Nouveau devoir' : '', ...linked.value.map(item => `${WORK_TYPE_LABELS[item.work.type]} : ${item.work.title}`), correctionText.value].filter(Boolean).join(' · '));
 </script>
 <template>
-<button type="button" class="course" aria-haspopup="dialog" :data-course-start="course.start" :class="{ 'past-course': past, 'ongoing-course': ongoing, 'list-course': list, 'grid-course': !list, 'short-course': short, 'full-course': preferences.density === 'full', 'search-match': match === true, 'search-dimmed': match === false, 'cancelled-course': cancelled, 'cancel-confirmed': cancelled && confirmed, 'has-badge': !!badge && level !== undefined || cancelled || newWork }" :style="{ '--course-color': color, '--course-ink': colorText(color), '--course-light-ink': colorText(color) === '#000000' ? '#172033' : color }" :aria-label="label" :title="label" @click="focused = course">
+<button ref="element" type="button" class="course" aria-haspopup="dialog" :data-course-start="course.start" :class="{ 'past-course': past, 'ongoing-course': ongoing, 'list-course': list, 'grid-course': !list, 'short-course': short, 'full-course': preferences.density === 'full', 'search-match': match === true, 'search-dimmed': match === false, 'cancelled-course': cancelled, 'cancel-confirmed': cancelled && confirmed, 'has-badge': !!badge && level !== undefined || cancelled || newWork, 'course-highlight': highlighted }" :style="{ '--course-color': color, '--course-ink': colorText(color), '--course-light-ink': colorText(color) === '#000000' ? '#172033' : color }" :aria-label="label" :title="label" @click="focused = course">
   <span class="course-stripe" aria-hidden="true"></span>
   <span class="course-content">
     <span v-if="cancelled" class="change-label course-badge badge-cancelled" :class="{ unconfirmed: !confirmed }">{{ confirmed ? 'Annulé' : 'Annulé ?' }}</span>

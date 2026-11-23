@@ -662,3 +662,11 @@
 .course-chip:hover { border-color: var(--accent); background: var(--surface); }
 .course-chip > svg:first-child { width: 22px; height: 22px; flex: none; stroke: var(--accent); fill: none; stroke-width: 1.8; }
 .course-chip .chevron { width: 18px; height: 18px; margin-left: auto; flex: none; stroke: var(--muted); fill: none; stroke-width: 2; }
+
+/* Course opened from a work: outlined and pulsing for a few seconds */
+.course.course-highlight { position: relative; z-index: 3; outline: 3px solid var(--accent); outline-offset: 2px; box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 30%, transparent), 0 10px 30px #0006; animation: course-pulse 1.1s ease-out 3; }
+@keyframes course-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent), 0 10px 30px #0006; } 100% { box-shadow: 0 0 0 14px transparent, 0 10px 30px #0006; } }
+:root[data-reduce-motion=true] .course.course-highlight { animation: none; }
+@media (prefers-reduced-motion: reduce) { .course.course-highlight { animation: none; } }
+.timeline-stage:has(.course-highlight) .course:not(.course-highlight) { opacity: .45; transition: opacity .3s; }
+.course.course-highlight { filter: brightness(1.25) saturate(1.2); }

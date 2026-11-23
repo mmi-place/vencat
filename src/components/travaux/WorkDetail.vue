@@ -8,6 +8,7 @@ withDefaults(defineProps<{ inline?: boolean; back?: boolean }>(), { back: true }
 import { WORK_TYPE_LABELS, WORK_STATE_LABELS, CONTEST_REASONS, type WorkView, type HistoryEntry } from '../../../shared/travaux';
 import { frenchDate, campusDate, campusTime } from '../../../shared/calendar';
 import { api, errorText, openedWork, works, replaceWork, vote, me, canContribute, ui, form, marks, isDone, setDone, setNote, markWorkSeen, section, visibleWorks, label } from '../../scripts/travaux';
+import { highlightCourse } from '../../scripts/travaux';
 import { date as planningDate, online } from '../../scripts/calendarStore';
 const work = ref<WorkView | undefined>(works.value.find(item => item.id === openedWork.value));
 const history = ref<HistoryEntry[]>([]);
@@ -40,7 +41,7 @@ const teacherConfirm = () => { if (!work.value) return; const id = work.value.id
 async function removeOwn() { if (!work.value || !window.confirm('Supprimer ce travail perso ?')) return; const id = work.value.id; await run(() => api<WorkView>(`/travaux/work/${id}/proposal`, { body: { kind: 'delete', reason: 'Supprimé par son auteur' } })); openedWork.value = undefined; }
 function edit() { if (needAccount() || !work.value) return; form.value = { mode: 'edit', work: work.value }; }
 function startContest() { if (needAccount()) return; reason.value = ''; detail.value = ''; contesting.value = !contesting.value; }
-function gotoCourse() { if (!work.value?.course) return; planningDate.value = campusDate(work.value.course.start); section.value = 'cours'; openedWork.value = undefined; }
+function gotoCourse() { const course = work.value?.course; if (!course) return; planningDate.value = campusDate(course.start); section.value = 'cours'; openedWork.value = undefined; highlightCourse(course); }
 const note = ref(marks.value.notes[openedWork.value ?? ''] ?? '');
 // The note follows the account copy when it arrives (unless it is being typed).
 const noteFocused = ref(false);
