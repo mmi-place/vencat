@@ -22,6 +22,6 @@ test('the prefetch route needs the cron secret', async () => {
   const base = `http://127.0.0.1:${address.port}/api/prefetch`;
   assert.equal((await fetch(base)).status, 401);
   process.env.CRON_SECRET = 'test-secret';
-  assert.equal((await fetch(base + '?index=999', { headers: { authorization: 'Bearer test-secret' } })).status, 400);
+  assert.equal((await fetch(base + '?from=999', { headers: { authorization: 'Bearer test-secret' } })).status, 400);
   delete process.env.CRON_SECRET;
 });

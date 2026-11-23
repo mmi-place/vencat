@@ -140,7 +140,7 @@ Les fenêtres courtes du planning sont conservées dix minutes dans Redis. La re
 | Jusqu’à 6 mois | 3 jours |
 | Année scolaire | 7 jours |
 
-**Rafraîchissement programmé de la recherche sur 1 mois** : chaque jour à **02:00 et 14:00 (heure de Paris)**, le serveur recharge depuis CELCAT la recherche du mois en cours pour **tous les groupes**, **un groupe par minute** (48 groupes, environ 48 minutes) pour ne pas tout demander d’un coup. Sur un serveur Node qui tourne en continu (`npm run dev:api` ou équivalent), un minuteur interne s’en charge (`PREFETCH=off` pour le désactiver). Sur Vercel, des crons à 00:00, 01:00, 12:00 et 13:00 UTC appellent `GET /api/prefetch` (protégé par `CRON_SECRET`) ; seul l’appel qui tombe à 2 h ou 14 h à Paris démarre, puis chaque appel traite un groupe, attend une minute et lance le suivant. Sur l’offre Hobby, Vercel n’exécute les crons qu’une fois par jour et à l’heure près : l’horaire exact demande l’offre Pro.
+**Rafraîchissement programmé de la recherche sur 1 mois** : chaque jour à **02:00 et 14:00 (heure de Paris)**, le serveur recharge depuis CELCAT la recherche du mois en cours pour **tous les groupes, d’affilée** (4 à la fois). Sur un serveur Node qui tourne en continu, un minuteur interne s’en charge (`PREFETCH=off` pour le désactiver). Sur Vercel, des crons à 00:00, 01:00, 12:00 et 13:00 UTC appellent `GET /api/prefetch` (protégé par `CRON_SECRET`) : seul l’appel qui tombe dans l’heure de 2 h ou de 14 h à Paris travaille, une fois par créneau (verrou Redis), sous un budget de 240 s, en dessous de la limite de 300 s d’une fonction ; s’il reste des groupes, il passe la main à un dernier appel. Sur l’offre Hobby, un cron s’exécute une fois par jour quelque part dans son heure : le passage a donc lieu entre 2 h et 3 h, et entre 14 h et 15 h.
 
 Les bornes exactes des intervalles personnalisés sont de 14, 31, 93, 184 et 366 jours. La recherche annuelle couvre la période du 1er septembre au 31 août. Les deux semaines courantes fraîches complètent les résultats de l’archive annuelle.
 
@@ -194,7 +194,7 @@ Toutes les routes utilisent le même domaine que le frontend.
 | `GET /api/hours/:groupId` | Heures du premier début et de la dernière fin de l’année scolaire, mises en cache 24 h |
 | `GET /api/history/config` | Disponibilité du stockage partagé |
 | `GET /api/monitor` | Tâche planifiée, protégée par `Authorization: Bearer <CRON_SECRET>` |
-| `GET /api/prefetch?index=N` | Rafraîchissement programmé de la recherche sur 1 mois, un groupe par appel (même protection) |
+| `GET /api/prefetch` | Rafraîchissement programmé de la recherche sur 1 mois pour tous les groupes (même protection) ; `?from=N` reprend au groupe N |
 
 Seuls les groupes connus de Vencat sont acceptés. La route planning accepte un écart maximal de 62 jours entre `start` et `end`. La recherche accepte `q=` pour parcourir les cours sans texte, ainsi que les critères facultatifs `type`, `module`, `teacher`, `room` et `group`. `start` et `end` permettent un intervalle personnalisé de 1 à 366 jours inclus. Les scopes internes `week`, `fortnight`, `month`, `quarter`, `semester` et `year` restent disponibles pour les appels API et le préchargement.
 
