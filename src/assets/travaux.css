@@ -532,8 +532,6 @@
 
 /* Personal works, “for me” block, audience choice, scan */
 .state-mark.state-personal, .pill-personal { border: 1px solid var(--line); color: var(--muted); border-style: solid; }
-.for-me { padding: 12px 14px; border-radius: var(--radius); background: color-mix(in srgb, var(--surface) 70%, transparent); border: 1px solid var(--line); }
-.for-me textarea { min-height: 60px !important; }
 .personal-actions button { min-height: 44px; }
 .audience { display: grid !important; grid-template-columns: 1fr 1fr; gap: 8px !important; }
 .audience button { display: flex; align-items: flex-start; gap: 10px; padding: 12px; min-height: 0; border-radius: 14px; text-align: left; }
@@ -620,3 +618,47 @@
 .offline-bar { margin: 0 14px 8px; padding: 8px 12px; border-radius: 12px; font-size: .84rem; font-weight: 700; background: color-mix(in srgb, #d68a1c 16%, var(--surface)); color: var(--text); }
 .travaux-panel.wide .offline-bar { margin: 0 0 10px; }
 .state-mark.state-local { border-color: #d68a1c; color: #f59e0b; }
+
+/* ---------------------------------------------------------------- Work detail: for me, facts, origin */
+.day-panel { overflow-x: hidden; }
+.day-panel > *, .work-detail-root, .work-detail, .work-detail > * { min-width: 0; }
+.work-detail-root.inline, .work-detail { grid-template-columns: minmax(0, 1fr); }
+.work-detail { overflow-wrap: anywhere; }
+.for-me { display: grid; gap: 8px; }
+.done-toggle { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 10px 14px; border-radius: 14px; font-weight: 800; text-align: left; background: color-mix(in srgb, var(--surface) 80%, transparent); border: 1px dashed color-mix(in srgb, var(--muted) 45%, transparent); }
+.done-toggle svg { width: 24px; height: 24px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.8; color: var(--muted); }
+.done-toggle:hover { border-style: solid; border-color: #2fae74; }
+.done-toggle.on { background: color-mix(in srgb, #2fae74 20%, var(--surface)); border: 1px solid #2fae74; color: var(--text); }
+.done-toggle.on svg { fill: #2fae74; stroke: none; color: #2fae74; }
+.note-field { position: relative; display: block; }
+.note-field svg { position: absolute; left: 13px; top: 14px; width: 16px; height: 16px; stroke: var(--muted); fill: none; stroke-width: 1.8; pointer-events: none; }
+.app-dialog .note-field textarea, .note-field textarea { width: 100%; min-height: 44px !important; padding: 11px 14px 11px 38px; border-radius: 14px; border: 1px solid var(--line); background: var(--field); color: var(--text); font: inherit; font-size: .92rem; line-height: 1.4; resize: none; overflow: hidden; }
+.note-field textarea:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--ring); }
+.for-me-hint { font-size: .76rem; color: var(--muted); }
+.facts { display: grid; gap: 2px; padding: 4px 14px 10px; border-radius: 16px; background: color-mix(in srgb, var(--surface) 60%, transparent); border: 1px solid var(--line); }
+.facts h3, .attribution h3 { font-size: .7rem; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 10px 0 4px; }
+.fact { display: flex; align-items: flex-start; gap: 12px; padding: 9px 0; border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+.facts h3 + .fact { border-top: 0; }
+.fact > svg { width: 18px; height: 18px; flex: none; margin-top: 2px; stroke: color-mix(in srgb, var(--work, var(--accent)) 80%, var(--text)); fill: none; stroke-width: 1.8; }
+.fact > div { display: grid; gap: 1px; min-width: 0; }
+.fact-label { display: block; font-size: .72rem; font-weight: 800; color: var(--muted); }
+.fact-value { font-size: .95rem; line-height: 1.4; }
+.fact-value.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.mini-chip { padding: 2px 8px; border-radius: 999px; font-size: .78rem; font-weight: 700; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.fact-note { margin: 4px 0; padding: 10px 12px; border-radius: 12px; background: var(--panel); font-size: .9rem; line-height: 1.5; white-space: pre-wrap; }
+.fact-links { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0 2px; }
+.link-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: .84rem; font-weight: 800; color: var(--accent); background: var(--panel); border: 1px solid var(--line); text-decoration: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link-chip:hover { border-color: var(--accent); }
+.link-chip.inactive { color: var(--muted); }
+.link-chip svg { width: 15px; height: 15px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; }
+.fact-foot { padding-top: 8px; font-size: .74rem; color: var(--muted); }
+.attribution { display: grid; gap: 8px; }
+.attribution-author, .course-chip { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 60%, transparent); min-width: 0; }
+.attribution-author > span:last-child, .course-chip > span { display: grid; min-width: 0; }
+.attribution-author small, .course-chip small { color: var(--muted); font-size: .78rem; }
+.attribution-author strong, .course-chip strong { font-size: .92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.avatar.small { width: 34px; height: 34px; font-size: .78rem; }
+.course-chip { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.course-chip:hover { border-color: var(--accent); background: var(--surface); }
+.course-chip > svg:first-child { width: 22px; height: 22px; flex: none; stroke: var(--accent); fill: none; stroke-width: 1.8; }
+.course-chip .chevron { width: 18px; height: 18px; margin-left: auto; flex: none; stroke: var(--muted); fill: none; stroke-width: 2; }

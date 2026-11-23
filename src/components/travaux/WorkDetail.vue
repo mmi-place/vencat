@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AddToCalendar from './AddToCalendar.vue';
+import { CheckCircleIcon, PencilIcon, MapPinIcon, DocumentTextIcon, UserGroupIcon, UserIcon, LinkIcon, BookOpenIcon, CheckBadgeIcon, ClockIcon, LightBulbIcon, AcademicCapIcon } from '@heroicons/vue/24/outline';
+import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/vue/24/solid';
 import { ChevronLeftIcon, ChevronRightIcon, FlagIcon, PencilSquareIcon, TrashIcon, ArrowRightIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline';
 withDefaults(defineProps<{ inline?: boolean; back?: boolean }>(), { back: true });
 import { WORK_TYPE_LABELS, WORK_STATE_LABELS, CONTEST_REASONS, type WorkView, type HistoryEntry } from '../../../shared/travaux';
@@ -57,15 +59,17 @@ function keydown(event: KeyboardEvent) {
 }
 onMounted(() => window.addEventListener('keydown', keydown));
 onBeforeUnmount(() => window.removeEventListener('keydown', keydown));
+const initials = (name: string) => name.split(/\s+/).filter(Boolean).map(part => part[0]).slice(0, 2).join('').toUpperCase();
+function autoGrow(event: Event) { const area = event.target as HTMLTextAreaElement; area.style.height = 'auto'; area.style.height = area.scrollHeight + 'px'; }
 const stamp = (iso: string) => new Date(iso).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 </script>
 <template><div class="work-detail-root" :class="{ inline }"><header v-if="inline" class="panel-header"><button v-if="back" class="icon-button quiet" aria-label="Revenir à la journée" @click="openedWork = undefined"><ArrowLeftIcon aria-hidden="true" /></button><h2 tabindex="-1">{{ work?.title ?? 'Travail' }}</h2></header><div v-if="work" class="work-detail" :class="'type-' + work.type">
   <p class="work-detail-tags"><span class="type-tag" :class="'tag-' + work.type">{{ WORK_TYPE_LABELS[work.type] }}<template v-if="work.ds"> · DS</template></span><span v-if="!work.personal" class="pill" :class="'pill-' + work.state">{{ stateText }}</span><span v-if="work.teacherConfirmed" class="pill pill-validated">Confirmé par l’enseignant</span><span v-if="work.personal" class="pill pill-personal">Perso · visible par toi seul</span><span v-if="left && work.state !== 'removed'" class="pill" :class="left.late ? 'pill-late' : left.level >= 2 ? 'pill-soon' : 'pill-neutral'">{{ left.label }}</span></p>
   <p class="work-when"><strong>{{ frenchDate(work.day, { weekday: 'long', day: 'numeric', month: 'long' }) }} à {{ work.time }}</strong><span v-if="!work.hasTime" class="muted"> (heure non précisée)</span><br><span class="muted">Pour {{ work.scopeLabel }}</span></p>
-    <section class="work-section for-me" aria-label="Pour moi">
-    <label class="check-label"><input type="checkbox" :checked="isDone(work.id)" @change="setDone(work.id, ($event.target as HTMLInputElement).checked)"> Marquer comme fait</label>
-    <label class="settings-label"><span class="sr-only">Ma note (privée)</span><textarea v-model="note" rows="2" maxlength="2000" placeholder="Ma note, visible par toi seul…" @input="setNote(work.id, note)" @focus="noteFocused = true" @blur="noteFocused = false"></textarea></label>
-    <p v-if="!me" class="muted">Sans compte, la case et la note restent sur cet appareil.</p>
+  <section class="for-me" aria-label="Pour moi">
+    <button type="button" class="done-toggle" :class="{ on: isDone(work.id) }" :aria-pressed="isDone(work.id)" @click="setDone(work.id, !isDone(work.id))"><CheckCircleSolidIcon v-if="isDone(work.id)" aria-hidden="true" /><CheckCircleIcon v-else aria-hidden="true" /><span>{{ isDone(work.id) ? 'Fait' : 'Marquer comme fait' }}</span></button>
+    <label class="note-field"><span class="sr-only">Ma note (privée)</span><PencilIcon aria-hidden="true" /><textarea v-model="note" rows="1" maxlength="2000" placeholder="Ajouter une note perso…" @input="autoGrow($event); setNote(work.id, note)" @focus="noteFocused = true" @blur="noteFocused = false"></textarea></label>
+    <p v-if="!me" class="for-me-hint">Sans compte, la case et la note restent sur cet appareil.</p>
   </section>
   <AddToCalendar v-if="work.state !== 'removed' && !work.local" :work="work" />
   <p v-if="work.state === 'removed'" class="notice">Ce travail a été retiré. L’historique reste consultable.</p>
@@ -80,13 +84,26 @@ const stamp = (iso: string) => new Date(iso).toLocaleString('fr-FR', { timeZone:
     <p v-else class="muted">Ta proposition attend l’avis des autres.</p>
   </div>
 
-  <section v-if="work.details.where || work.details.format || work.details.mode || work.details.info || work.links.length" class="work-section"><h3>Modalités</h3>
-    <dl class="work-fields"><template v-if="work.details.where"><dt>Où rendre</dt><dd>{{ work.details.where }}</dd></template><template v-if="work.details.format"><dt>Format</dt><dd>{{ work.details.format }}</dd></template><template v-if="work.details.mode"><dt>Travail</dt><dd>{{ work.details.mode === 'seul' ? 'Seul' : 'En groupe' }}</dd></template></dl>
-    <p v-if="work.details.info" class="work-info">{{ work.details.info }}</p>
-    <ul class="work-links"><li v-for="link in work.links" :key="link.url"><a v-if="link.active" :href="link.url" target="_blank" rel="noopener noreferrer nofollow ugc">↗ {{ link.domain }}</a><span v-else class="muted" :title="link.url">↗ {{ link.domain }} · lien actif après validation</span></li></ul>
+  <section v-if="work.details.where || work.details.format || work.details.mode || work.details.info || work.links.length" class="facts" aria-label="Modalités">
+    <h3>Modalités</h3>
+    <div v-if="work.details.where" class="fact"><MapPinIcon aria-hidden="true" /><div><span class="fact-label">Où rendre</span><span class="fact-value">{{ work.details.where }}</span></div></div>
+    <div v-if="work.details.format" class="fact"><DocumentTextIcon aria-hidden="true" /><div><span class="fact-label">Format</span><span class="fact-value">{{ work.details.format }}</span></div></div>
+    <div v-if="work.details.mode" class="fact"><UserGroupIcon v-if="work.details.mode === 'groupe'" aria-hidden="true" /><UserIcon v-else aria-hidden="true" /><div><span class="fact-label">Travail</span><span class="fact-value">{{ work.details.mode === 'seul' ? 'Seul' : 'En groupe' }}</span></div></div>
+    <p v-if="work.details.info" class="fact-note">{{ work.details.info }}</p>
+    <div v-if="work.links.length" class="fact-links"><template v-for="link in work.links" :key="link.url"><a v-if="link.active" class="link-chip" :href="link.url" target="_blank" rel="noopener noreferrer nofollow ugc"><LinkIcon aria-hidden="true" />{{ link.domain }}</a><span v-else class="link-chip inactive" :title="link.url"><LinkIcon aria-hidden="true" />{{ link.domain }} · actif après validation</span></template></div>
   </section>
-  <section v-if="work.ds" class="work-section"><h3>Infos du DS</h3><dl class="work-fields"><template v-if="work.ds.chapters"><dt>Chapitres</dt><dd>{{ work.ds.chapters }}</dd></template><template v-if="work.ds.allowed.length"><dt>Autorisé</dt><dd>{{ work.ds.allowed.join(', ') }}</dd></template><template v-if="work.ds.duration"><dt>Durée</dt><dd>{{ work.ds.duration }}</dd></template><template v-if="work.ds.advice"><dt>Conseils</dt><dd>{{ work.ds.advice }}</dd></template></dl><p class="muted">Pas de sujets ni de corrigés : ils sont retirés.</p></section>
-  <section v-if="!work.personal || work.course" class="work-section"><h3>{{ work.personal ? 'Cours' : 'Ajouté par' }}</h3><p v-if="work.personal" hidden></p><p v-if="!work.personal">{{ work.author }} · le {{ stamp(work.createdAt) }}</p><p v-if="work.course">Lié à <button class="text-action" @click="gotoCourse">{{ work.course.type ? work.course.type + ' ' : '' }}{{ work.course.summary }} du {{ frenchDate(campusDate(work.course.start), { day: 'numeric', month: 'short' }) }} à {{ campusTime(work.course.start) }}</button></p></section>
+  <section v-if="work.ds" class="facts" aria-label="Infos du DS">
+    <h3>Infos du DS</h3>
+    <div v-if="work.ds.chapters" class="fact"><BookOpenIcon aria-hidden="true" /><div><span class="fact-label">Chapitres</span><span class="fact-value">{{ work.ds.chapters }}</span></div></div>
+    <div v-if="work.ds.allowed.length" class="fact"><CheckBadgeIcon aria-hidden="true" /><div><span class="fact-label">Autorisé</span><span class="fact-value chips"><span v-for="item in work.ds.allowed" :key="item" class="mini-chip">{{ item }}</span></span></div></div>
+    <div v-if="work.ds.duration" class="fact"><ClockIcon aria-hidden="true" /><div><span class="fact-label">Durée</span><span class="fact-value">{{ work.ds.duration }}</span></div></div>
+    <div v-if="work.ds.advice" class="fact"><LightBulbIcon aria-hidden="true" /><div><span class="fact-label">Conseils</span><span class="fact-value">{{ work.ds.advice }}</span></div></div>
+    <p class="fact-foot">Pas de sujets ni de corrigés : ils sont retirés.</p>
+  </section>
+  <section v-if="!work.personal || work.course" class="attribution" aria-label="Origine">
+    <div v-if="!work.personal" class="attribution-author"><span class="avatar small" aria-hidden="true">{{ initials(work.author) }}</span><span><span class="fact-label">Ajouté par</span><strong>{{ work.author }}</strong><small>le {{ stamp(work.createdAt) }}</small></span></div>
+    <button v-if="work.course" type="button" class="course-chip" @click="gotoCourse"><AcademicCapIcon aria-hidden="true" /><span><span class="fact-label">Lié au cours</span><strong>{{ work.course.type ? work.course.type + ' · ' : '' }}{{ work.course.summary }}</strong><small>{{ frenchDate(campusDate(work.course.start), { weekday: 'short', day: 'numeric', month: 'short' }) }} à {{ campusTime(work.course.start) }}</small></span><ChevronRightIcon class="chevron" aria-hidden="true" /></button>
+  </section>
 
   <p v-if="work.local" class="work-box warn">En attente d’envoi : ce travail sera proposé dès le retour du réseau.</p>
   <div v-else-if="work.personal" class="button-row personal-actions"><button @click="edit"><PencilSquareIcon aria-hidden="true" />Modifier</button><button class="danger-action" :disabled="busy" @click="removeOwn"><TrashIcon aria-hidden="true" />Supprimer</button></div>
