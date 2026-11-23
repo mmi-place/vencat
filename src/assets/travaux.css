@@ -299,8 +299,15 @@
 .diff del { color: var(--muted); }
 .inline-icon { width: 14px; height: 14px; display: inline; vertical-align: -2px; stroke: currentColor; fill: none; stroke-width: 2; }
 .vote-block { display: grid; gap: 10px; padding: 14px; border-radius: var(--radius); background: color-mix(in srgb, var(--surface) 70%, transparent); border: 1px solid var(--line); }
-.button-row.secondary button { font-size: .86rem; min-height: 40px; }
-.vote-up[aria-pressed=true] { background: color-mix(in srgb, #15803d 35%, var(--surface)); border-color: #2fae74; color: var(--text); }
+.action-bar { display: flex; gap: 8px; }
+.action-bar > button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 12px; }
+.action-bar svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.7; flex-shrink: 0; }
+.vote-button { flex: 1 1 0; min-width: 0; }
+.vote-count { font-size: .95rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.square-action { flex: 0 0 48px; width: 48px; padding: 0 !important; }
+.vote-button.up[aria-pressed=true] { background: color-mix(in srgb, #15803d 35%, var(--surface)); border-color: #2fae74; color: var(--text); }
+.vote-button.down[aria-pressed=true] { background: color-mix(in srgb, #b91c1c 30%, var(--surface)); border-color: #e05a5a; color: var(--text); }
+.square-action[aria-expanded=true] { border-color: var(--accent); color: var(--accent); }
 .contest-box { display: grid; gap: 12px; padding: 14px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel); }
 .contest-box.moderator { border-style: dashed; }
 .contest-box ul { padding-left: 18px; font-size: .9rem; }
