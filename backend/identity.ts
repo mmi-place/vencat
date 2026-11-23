@@ -1,3 +1,5 @@
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Request } from 'express';
 import { configured, redis } from './storage.js';
@@ -69,12 +71,20 @@ export async function tokenRequestLimited(req: Request): Promise<boolean> {
 export interface SessionPayload { v: 1; kind: 'user'; id: string; iat: number }
 export const SESSION_MAX_AGE_S = 180 * 86400;
 let developmentSecret: string | undefined;
+function persistentDevelopmentSecret() {
+  const file = resolve(process.cwd(), '.data/dev-token-secret');
+  try { const saved = readFileSync(file, 'utf8').trim(); if (saved.length >= 32) return saved; } catch { /* first start */ }
+  const value = randomBytes(32).toString('hex');
+  if (process.env.NODE_ENV !== 'test' && !process.env.NODE_TEST_CONTEXT) { try { mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, value, { mode: 0o600 }); } catch { /* memory only */ } }
+  return value;
+}
 /** TOKEN_SECRET in production. In development a random secret is generated so sign-in works out of the box. */
 function sessionSecret() {
   const configured = secret();
   if (configured) return configured;
   if (process.env.NODE_ENV === 'production') throw new Error('TOKEN_SECRET doit être configuré pour les comptes.');
-  return developmentSecret ??= randomBytes(32).toString('hex');
+  // Kept in .data so that a restart of the development server does not sign everyone out.
+  return developmentSecret ??= persistentDevelopmentSecret();
 }
 const signSession = (body: string) => createHmac('sha256', sessionSecret()).update('session:' + body).digest('base64url');
 export function issueSessionToken(id: string, now = Date.now()) {
