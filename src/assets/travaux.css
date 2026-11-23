@@ -11,8 +11,8 @@
 .count { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 10px; background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); font-size: .72rem; font-weight: 800; }
 
 /* ---------------------------------------------------------------- Top bar: Cours | Travaux tabs and account */
-@media (min-width: 1024px) {
-  .app-nav:not(.onboarding-nav) { display: grid !important; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; }
+@media (min-width: 768px) {
+  .app-nav:not(.onboarding-nav) { display: grid !important; grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr); align-items: center; gap: 16px; }
   .app-nav .desktop-actions { justify-self: end; }
 }
 .section-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: color-mix(in srgb, var(--surface) 85%, transparent); border: 1px solid var(--line); box-shadow: 0 2px 10px #0003; }
@@ -663,13 +663,14 @@
 .kill-switch.on { border-color: var(--alert); background: color-mix(in srgb, var(--alert) 10%, var(--panel)); }
 .kill-state { font-weight: 900; color: var(--alert); }
 
-/* Tablets: the Cours | Travaux tabs make room for the group and the actions of the bar. */
-@media (min-width: 768px) and (max-width: 1099px) {
+
+/* Narrow tablets: everything stays, in a more compact form (the word « Vencat » stays readable by screen readers). */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .app-nav:not(.onboarding-nav) { gap: 10px; }
+  .app-nav > * { flex-shrink: 0; }
+  .app-nav .brand span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .section-tabs button { padding: 8px 14px; gap: 6px; }
-}
-@media (min-width: 768px) and (max-width: 1099px) {
-  /* Appearance and background stay in the settings; the sign-in button keeps its icon. */
-  .desktop-actions .wide-only { display: none; }
   .account-button.signed-out .account-label { display: none; }
   .account-button.signed-out { padding-inline: 10px; }
 }
+.account-button { white-space: nowrap; flex-shrink: 0; }
