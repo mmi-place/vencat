@@ -3,6 +3,7 @@ import { searchDataset } from './search.js';
 import { configured, redis } from './storage.js';
 import { groupOptions } from '../shared/selection.js';
 import { campusDate } from '../shared/calendar.js';
+import { detectAll } from './changes.js';
 
 // Scheduled refresh of the one-month search for every group, at 02:00 and 14:00 (Paris), in one pass.
 // Vercel limits (Hobby): a cron runs once a day within its hour, a function stops after 300 s.
@@ -51,7 +52,8 @@ export function startPrefetchScheduler(log: (message: string) => void = console.
     timer = setTimeout(run, at - now);
     log(`[préchargement] prochain passage le ${new Date(at).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}`);
   };
-  const run = () => { void prefetchAll(0, Infinity, log).finally(plan); };
+  // Each pass also detects the timetable changes of every group (current and next week).
+  const run = () => { void prefetchAll(0, Infinity, log).then(() => detectAll(prefetchGroups(), Infinity)).then(result => log(`[changements] ${result.groups} groupes, ${result.changes} changement(s) en ${Math.round(result.ms / 1000)} s`)).catch(error => log(`[changements] ${error instanceof Error ? error.message : error}`)).finally(plan); };
   plan();
   return () => clearTimeout(timer);
 }
@@ -70,11 +72,13 @@ prefetchRouter.get('/prefetch', async (req, res, next) => {
   try {
     if (configured() && !await redis('SET', `vencat:prefetch:${slot}:${from}`, '1', 'NX', 'EX', 86400)) return res.status(202).json({ duplicate: true });
     const result = await prefetchAll(from);
+    // Change detection in the same call when the budget allows it (otherwise the daily /api/monitor does it).
+    const changes = result.next === undefined && from === 0 ? await detectAll(prefetchGroups(), Math.max(0, PREFETCH_BUDGET_MS - result.ms)) : undefined;
     if (result.next !== undefined) {
       // Out of budget: one more call finishes the slot (only its start is awaited).
       const origin = process.env.PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : `${req.protocol}://${req.headers.host}`);
       await fetch(`${origin}/api/prefetch?from=${result.next}&slot=${encodeURIComponent(slot)}`, { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` }, signal: AbortSignal.timeout(4000) }).catch(() => undefined);
     }
-    res.json({ slot, from, ...result });
+    res.json({ slot, from, ...result, changes });
   } catch (error) { next(error); }
 });

@@ -36,4 +36,13 @@ export async function saveSnapshot(snapshot: Snapshot, changes: CourseChange[]) 
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
   });
 }
+/** Server history of a group, kept on the device for offline reading (replaces the previous copy). */
+export async function saveHistory(group: string, changes: CourseChange[]) {
+  const db = await database();
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction('history', 'readwrite');
+    tx.objectStore('history').put(JSON.parse(JSON.stringify(changes.slice(0, 300))), group);
+    tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
+  });
+}
 export async function clearCalendarStorage() { const db = await database(); return new Promise<void>((resolve, reject) => { const tx = db.transaction(['snapshots', 'history'], 'readwrite'); tx.objectStore('snapshots').clear(); tx.objectStore('history').clear(); tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); }); }

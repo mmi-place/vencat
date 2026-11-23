@@ -2,7 +2,7 @@ import { computed, ref, watch } from 'vue';
 import { budgetedFetch } from './deviceToken';
 import { hydrateCourse, repairCourseText, type CourseDTO } from '../../shared/courses';
 import { addDay, campusDate, mondayOf, normalizedText, validDay, isWeekend, todayPlanningDate, hourBounds, mergeHours, type HourRange } from '../../shared/calendar';
-import { compareSnapshots, type Snapshot, type CourseChange } from '../../shared/changes';
+import type { Snapshot, CourseChange } from '../../shared/changes';
 import { changeBadge, type ChangeBadge } from '../../shared/changePresentation';
 import { groupById, type GroupOption } from '../../shared/selection';
 import { readPreference, writePreference, savedSnapshot, savedHistory, saveSnapshot } from './storage';
@@ -124,14 +124,11 @@ async function readSaved(id: string, start: string) {
   try { const saved = await savedSnapshot(id, start); if (saved?.version === 1 && saved.groupId === id && validDay(saved.start) && saved.start === start && saved.end === addDay(start, 6) && Array.isArray(saved.courses)) { saved.courses.forEach(hydrateCourse); saved.courses = saved.courses.map(repairCourseText); snapshots.value[key] = saved; return saved; } }
   catch { storageError.value = 'Le stockage local est indisponible. Les cours restent consultables en ligne.'; }
 }
+// Changes are detected on the server (the same for everyone): the device only keeps the week for offline use.
 async function updateSnapshot(id: string, start: string) {
-  let before = await readSaved(id, start);
   const next = await fetchSnapshot(id, start);
-  if (before?.source !== next.source) before = await savedSnapshot(id, start, next.source).catch(() => undefined);
-  const changes = compareSnapshots(before, next);
   snapshots.value[`${id}:${start}`] = next;
-  if (changes.length && selectedIds.value.includes(id)) history.value = [...new Map([...changes, ...history.value].map(item => [item.id, item])).values()].slice(0, 200);
-  try { await saveSnapshot(next, changes); } catch { storageError.value = 'La copie hors ligne n’a pas pu être enregistrée. Libérez de l’espace puis actualisez.'; }
+  try { await saveSnapshot(next, []); } catch { storageError.value = 'La copie hors ligne n’a pas pu être enregistrée. Libérez de l’espace puis actualisez.'; }
   return next;
 }
 // A copy younger than this is shown without asking the server again (the refresh button bypasses it).

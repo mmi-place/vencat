@@ -70,10 +70,6 @@ export async function searchDatasetRange(id: string, start: string, end: string,
   })();
   pending.set(key, work); try { return await work; } finally { pending.delete(key); }
 }
-export async function warmSearchCaches(id: string, anchor: string) {
-  const seed = await searchDataset(id, 'year', anchor);
-  for (const scope of ['semester', 'quarter', 'month', 'fortnight', 'week'] as const) await searchDataset(id, scope, anchor, seed);
-}
 export const searchRouter = Router();
 // Earliest start and latest end of the school year, reusing the cached annual dataset.
 searchRouter.get('/hours/:groupId', async (req, res, next) => {
@@ -102,10 +98,7 @@ searchRouter.get('/search/:groupId', async (req, res, next) => {
     if (typeof value === 'string') filters[field] = value;
   }
   try {
-    if (configured()) {
-      if (await rateLimited(req)) return res.status(429).json({ error: 'Trop de recherches. Réessayez dans quelques minutes.' });
-      await redis('SADD', 'vencat:monitored', id);
-    }
+    if (configured() && await rateLimited(req)) return res.status(429).json({ error: 'Trop de recherches. Réessayez dans quelques minutes.' });
     const dataset = await searchDatasetRange(id, range.start, range.end, range.ttl);
     let courses = dataset.courses;
     // Keep the current two weeks fresh without resetting the lifetime of the annual archive.

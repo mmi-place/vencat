@@ -14,7 +14,7 @@ Vencat est une application de consultation des emplois du temps CELCAT de l’IU
 - Samedi et dimanche masqués par défaut, même avec des cours (souvent des créneaux provisoires). Une option les affiche lorsqu’ils contiennent des cours. Un week-end masqué ou vide ouvre le lundi suivant.
 - Grille Jour et Semaine limitée aux heures du premier et du dernier cours de l’année scolaire du groupe, élargie si un cours affiché en sort.
 - Consultation des semaines enregistrées hors connexion et installation comme application web sur mobile. L’interface se met à jour lors du rechargement et au retour dans l’application.
-- Historique local et partagé des changements, présenté comme un centre de notifications groupé par jour : glisser une notification sur le côté (ou Suppr) la supprime, avec possibilité d’annuler ; « Voir le cours » ouvre le jour concerné. Indicateurs non lus dans le menu mobile et cloche rouge sur ordinateur. Sur les cartes, une pastille Nouveau, Déplacé ou Modifié devient de plus en plus visible à 7, 5, 3 puis 1 jour du cours. Il n’y a pas de notifications push sur l’appareil.
+- Changements détectés **côté serveur**, les mêmes pour tout le monde : à chaque lecture de CELCAT d’une semaine, le serveur la compare avec la précédente et ajoute les différences à l’historique du groupe (30 jours). L’appareil ne compare plus rien : il affiche cet historique et en garde une copie hors ligne. Présenté comme un centre de notifications groupé par jour : glisser une notification sur le côté (ou Suppr) la supprime, avec possibilité d’annuler ; « Voir le cours » ouvre le jour concerné. Indicateurs non lus dans le menu mobile et cloche rouge sur ordinateur. Sur les cartes, une pastille Nouveau, Déplacé ou Modifié devient de plus en plus visible à 7, 5, 3 puis 1 jour du cours. Il n’y a pas de notifications push sur l’appareil.
 
 ## Travaux
 
@@ -174,7 +174,7 @@ Le second appel crée un déploiement de prévisualisation. Pour un déploiement
 
 Les secrets restent côté serveur, dans les variables d’environnement Vercel ou dans `.env.local`, ignoré par Git. Aucune clé Redis n’est transmise au navigateur. Une paire Redis complète est nécessaire pour activer le stockage partagé.
 
-La tâche `/api/monitor` est configurée à **05 h UTC chaque jour**, soit 07 h en France métropolitaine en été et 06 h en hiver. Elle compare les plannings des groupes suivis et précharge leurs caches expirés, avec une rotation des groupes et un budget de temps. Les groupes s’inscrivent au suivi lorsqu’ils utilisent l’historique partagé ou la recherche.
+La tâche `/api/monitor` est configurée à **05 h UTC chaque jour**, soit 07 h en France métropolitaine en été et 06 h en hiver. Elle relit depuis CELCAT la semaine en cours et la suivante de **tous les groupes** et enregistre leurs changements ; le passage de 2 h et 14 h (voir plus haut) fait de même. L’historique et les semaines de référence sont gardés dans le stockage des Travaux (Postgres en production, `.data/` en développement) : Redis n’est plus nécessaire pour les changements. Une semaine qui se vide d’un coup n’est prise en compte qu’à la deuxième lecture.
 
 Les durées du tableau sont des validités de cache, pas des fréquences de tâche planifiée : un cache expiré est renouvelé à la demande, ou lors du passage quotidien du serveur.
 
@@ -190,7 +190,7 @@ Toutes les routes utilisent le même domaine que le frontend.
 | Même route avec `format=course` | Tableau de cours normalisés |
 | Même route avec `format=snapshot` | Cours et couverture, source et date de récupération ; format utilisé par l’application |
 | `GET /api/search/:groupId?q=texte&date=YYYY-MM-DD` | Recherche annuelle, versions et choix des menus |
-| `GET /api/changes/:groupId` | Historique partagé des changements (consulté au plus toutes les dix minutes, sauf ouverture du panneau) |
+| `GET /api/changes/:groupId` | Historique des changements détectés par le serveur (consulté au plus toutes les deux minutes, aussitôt à l’ouverture du panneau ou après une actualisation) |
 | `GET /api/hours/:groupId` | Heures du premier début et de la dernière fin de l’année scolaire, mises en cache 24 h |
 | `GET /api/history/config` | Disponibilité du stockage partagé |
 | `GET /api/monitor` | Tâche planifiée, protégée par `Authorization: Bearer <CRON_SECRET>` |

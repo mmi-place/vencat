@@ -66,7 +66,9 @@ export function store(): DocStore {
   if (instance) return instance;
   const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
   if (url) return instance = new NeonStore(url);
-  const file = process.env.TRAVAUX_DATA_FILE ?? (process.env.NODE_ENV === 'test' ? undefined : resolve(process.cwd(), '.data/travaux.json'));
+  // Automated tests never touch the local data file.
+  const testing = process.env.NODE_ENV === 'test' || !!process.env.NODE_TEST_CONTEXT;
+  const file = testing ? undefined : process.env.TRAVAUX_DATA_FILE ?? resolve(process.cwd(), '.data/travaux.json');
   return instance = new FileStore(file);
 }
 /** Tests use a fresh in-memory store. */

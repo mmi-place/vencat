@@ -28,7 +28,7 @@ import TravauxPanel from '../components/travaux/TravauxPanel.vue';
 import TravauxRoot from '../components/travaux/TravauxRoot.vue';
 import { section, toggleSection, ui as travauxUi, form as travauxForm, openedWork, requireAccount, travauxDay, wide as travauxWide } from '../scripts/travaux';
 import { selection, date, view, week, preferences, selectedIds, loading, error, storageError, hasData, missingGroups, lastFetched, online, fallback, loadCalendar, weekCourses, clock, focused, history, unseenChanges, resolveTodayDate, snapshots, showLinkedView } from '../scripts/calendarStore';
-import { readPreference, writePreference } from '../scripts/storage';
+import { readPreference, writePreference, saveHistory } from '../scripts/storage';
 import { groupById, groupByPath, type GroupOption } from '../../shared/selection';
 import { campusDate, campusTime, frenchDate, addDay, validDay, isWeekend } from '../../shared/calendar';
 const route = useRoute(), router = useRouter();
@@ -158,19 +158,23 @@ async function goToday() {
   if (current === navigationGeneration) date.value = target;
 }
 
-// The shared history changes at most once a day: ask at most every ten minutes, unless the panel is opened.
+// The history is detected on the server at each read of CELCAT: ask at most every two minutes (at once when the panel opens).
+// It is kept on the device for offline reading.
 const changesCheckedAt = new Map<string, number>();
 async function refreshSharedChanges(force = false) {
   if (!online.value || !selection.value) return;
   const selected = selectedIds.value.join();
-  const ids = selectedIds.value.filter(id => force || Date.now() - (changesCheckedAt.get(id) ?? 0) > 10 * 60_000);
+  const ids = selectedIds.value.filter(id => force || Date.now() - (changesCheckedAt.get(id) ?? 0) > 2 * 60_000);
   if (!ids.length) return;
   ids.forEach(id => changesCheckedAt.set(id, Date.now()));
   const results = await Promise.allSettled(ids.map(async id => { const response = await fetch(`/api/changes/${id}`); if (!response.ok) { changesCheckedAt.delete(id); throw new Error(); } return await response.json(); }));
   if (selected !== selectedIds.value.join()) return;
+  results.forEach((item, index) => { if (item.status === 'fulfilled' && Array.isArray(item.value)) void saveHistory(ids[index]!, item.value).catch(() => undefined); });
   const data = results.flatMap(item => item.status === 'fulfilled' && Array.isArray(item.value) ? item.value : []);
   history.value = [...new Map([...data, ...history.value].map(item => [item.id, item])).values()].sort((a, b) => b.detectedAt.localeCompare(a.detectedAt));
 }
+// The refresh button reads CELCAT again, then fetches the changes the server just detected.
+async function refreshAll() { await loadCalendar(true); await refreshSharedChanges(true); }
 async function openChanges() { changesOpen.value = true; await refreshSharedChanges(true); }
 function closeChanges() { changesOpen.value = false; }
 const helpOpen = ref(false);
@@ -229,7 +233,7 @@ onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.
 <a class="skip-link" href="#planning">Aller au planning</a>
 <div class="app-shell" :class="{ 'calendar-app': selection }">
   <nav class="app-nav" :class="{ 'onboarding-nav': !selection }" aria-label="Navigation principale">
-    <div class="brand-row"><a class="brand" href="/" @click.prevent="router.push('/')"><img src="../assets/logo.svg" width="26" height="26" alt=""><span>Vencat</span></a><button v-if="selection" class="icon-button quiet" :disabled="loading || !online" aria-label="Actualiser les cours" @click="loadCalendar(true)"><ArrowPathIcon aria-hidden="true" :class="{ refreshing: loading }" /></button></div>
+    <div class="brand-row"><a class="brand" href="/" @click.prevent="router.push('/')"><img src="../assets/logo.svg" width="26" height="26" alt=""><span>Vencat</span></a><button v-if="selection" class="icon-button quiet" :disabled="loading || !online" aria-label="Actualiser les cours" @click="refreshAll"><ArrowPathIcon aria-hidden="true" :class="{ refreshing: loading }" /></button></div>
     <SectionTabs v-if="selection" />
     <div v-if="selection" class="desktop-actions"><button data-key="G" class="group-button" aria-haspopup="dialog" :aria-expanded="pickerOpen" :aria-controls="pickerOpen ? 'group-dialog' : undefined" @click="pickerOpen = true">{{ groupLabel }}</button><button class="icon-button quiet" aria-haspopup="dialog" :aria-expanded="searchOpen" :aria-controls="searchOpen ? 'search-dialog' : undefined" data-key="/" aria-label="Rechercher un cours" @click="toggleSearch"><MagnifyingGlassIcon aria-hidden="true" /></button><button class="icon-button quiet" aria-label="Apparence : thème et couleurs des cours" aria-haspopup="dialog" :aria-expanded="settingsOpen && settingsPage === 'appearance'" @click="openSettings('appearance')"><PaintBrushIcon aria-hidden="true" /></button><button class="icon-button quiet" aria-label="Fond de l’application" aria-haspopup="dialog" :aria-expanded="settingsOpen && settingsPage === 'background'" @click="openSettings('background')"><PhotoIcon aria-hidden="true" /></button><button class="icon-button quiet" aria-label="Réglages" aria-haspopup="dialog" :aria-expanded="settingsOpen" :aria-controls="settingsOpen ? 'settings-dialog' : undefined" @click="openSettings()"><Cog6ToothIcon aria-hidden="true" /></button><button class="icon-button quiet" :class="{ 'unread-bell': unseenChanges.length }" :aria-label="unseenChanges.length ? 'Changements du planning non lus' : 'Changements du planning'" data-key="C" aria-haspopup="dialog" :aria-expanded="changesOpen" :aria-controls="changesOpen ? 'changes-dialog' : undefined" @click="openChanges"><BellSolidIcon aria-hidden="true" v-if="unseenChanges.length" /><BellIcon aria-hidden="true" v-else /></button><AccountButton /></div>
   </nav>
@@ -242,13 +246,13 @@ onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.
     <header class="planning-header">
       <button class="date-heading" aria-haspopup="dialog" :aria-expanded="dateOpen" :aria-controls="dateOpen ? 'date-dialog' : undefined" :aria-label="frenchDate(date) + ' · Choisir une date'" @click="dateOpen = true"><span class="date-number" :class="{ today: date === campusDate(clock) }">{{ frenchDate(date, { day: 'numeric' }) }}</span><span class="date-text"><span class="date-weekday">{{ frenchDate(date, { weekday: 'long' }) }}</span><span>{{ frenchDate(date, { month: 'long', year: 'numeric' }) }}<WorkDots v-if="daily" :day="date" inline /></span></span></button>
     <div class="week-navigation"><button class="icon-button quiet" :aria-label="daily ? 'Jour précédent' : 'Semaine précédente'" @click="move(-1)"><ArrowLeftIcon aria-hidden="true" /></button><button class="period-label" @click="dateOpen = true">{{ daily ? frenchDate(date, { weekday: 'short', day: 'numeric', month: 'short' }) : frenchDate(week, { day: 'numeric', month: 'short' }) + ' – ' + frenchDate(addDay(week, 6), { day: 'numeric', month: 'short' }) }}<span class="sr-only"> · Choisir une date</span></button><button class="icon-button quiet" :aria-label="daily ? 'Jour suivant' : 'Semaine suivante'" @click="move(1)"><ArrowRightIcon aria-hidden="true" /></button><button data-key="T" class="desktop-today" :disabled="onToday" @click="today">Aujourd’hui</button></div>
-      <div class="mobile-clock"><AccountButton compact /><time :datetime="clock.toISOString()">{{ campusTime(clock) }}</time><button class="icon-button" :disabled="loading || !online" aria-label="Actualiser les cours" @click="loadCalendar(true)"><ArrowPathIcon aria-hidden="true" :class="{ refreshing: loading }" /></button></div>
+      <div class="mobile-clock"><AccountButton compact /><time :datetime="clock.toISOString()">{{ campusTime(clock) }}</time><button class="icon-button" :disabled="loading || !online" aria-label="Actualiser les cours" @click="refreshAll"><ArrowPathIcon aria-hidden="true" :class="{ refreshing: loading }" /></button></div>
       <div class="desktop-view-controls"><div v-arrow-navigation role="group" class="view-switch" aria-label="Vue du planning"><button data-key="L" :aria-pressed="view === 'list'" @click="view = 'list'">Liste</button><button data-key="J" :aria-pressed="view === 'day'" @click="view = 'day'">Jour</button><button data-key="S" :aria-pressed="view === 'week'" @click="view = 'week'">Semaine</button></div><div v-arrow-navigation role="group" class="view-switch" aria-label="Détail des cartes"><button :aria-pressed="preferences.density === 'compact'" @click="preferences.density = 'compact'">Compact</button><button :aria-pressed="preferences.density === 'full'" @click="preferences.density = 'full'">Complet</button></div></div>
     </header>
 
     <div v-if="planningSearch" class="planning-search" role="region" aria-label="Résultats de recherche sur le planning"><MagnifyingGlassIcon aria-hidden="true" /><p><strong>{{ planningSearch.label }}</strong><span>{{ periodMatches }} ici · {{ planningSearch.count }} au total</span></p><button class="icon-button quiet" :disabled="!previousResult" :aria-label="'Résultat précédent' + (previousResult ? ', ' + frenchDate(previousResult) : '')" @click="moveToResult(-1)"><ArrowLeftIcon aria-hidden="true" /></button><button class="icon-button quiet" :disabled="!nextResult" :aria-label="'Résultat suivant' + (nextResult ? ', ' + frenchDate(nextResult) : '')" @click="moveToResult(1)"><ArrowRightIcon aria-hidden="true" /></button><button class="text-action" @click="toggleSearch">Modifier</button><button class="icon-button quiet" aria-label="Quitter la recherche sur le planning" @click="closePlanningSearch"><XMarkIcon aria-hidden="true" /></button><p class="sr-only" role="status">{{ searchNotice }}</p></div>
     <div v-if="!online || fallback" class="sync-status" role="status" aria-live="polite"><span v-if="!online">Hors ligne{{ lastFetched ? ' · copie du ' + new Date(lastFetched).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' }) : ' · aucune copie disponible' }}</span><span v-else-if="fallback">Planning de secours</span></div>
-    <p v-if="error" role="alert" class="notice">{{ error }} <button :disabled="loading || !online" @click="loadCalendar(true)">Réessayer</button></p><p v-if="storageError" role="alert" class="notice">{{ storageError }}</p>
+    <p v-if="error" role="alert" class="notice">{{ error }} <button :disabled="loading || !online" @click="refreshAll">Réessayer</button></p><p v-if="storageError" role="alert" class="notice">{{ storageError }}</p>
     <p v-if="missingGroups.length && !loading" class="notice">Cette semaine n’est pas enregistrée pour {{ groupLabel }}. {{ online ? 'Actualisez pour la charger.' : 'Reconnectez-vous pour la charger.' }}</p>
     <CalendarSkeleton v-if="loading && !hasData" :daily="daily" :list="view === 'list'" />
     <div v-if="hasData || weekCourses.length" class="timeline-stage" :aria-busy="loading" @touchstart.passive="startSwipe" @touchend.passive="finishSwipe" @click.capture="interceptClick"><ListCalendar v-if="view === 'list'" :daily="daily" /><CalendarGrid v-else ref="calendar" /></div>
