@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ChevronLeftIcon, ChevronRightIcon, FlagIcon, PencilSquareIcon, TrashIcon, ArrowRightIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline';
-defineProps<{ inline?: boolean }>();
+withDefaults(defineProps<{ inline?: boolean; back?: boolean }>(), { back: true });
 import { WORK_TYPE_LABELS, WORK_STATE_LABELS, CONTEST_REASONS, type WorkView, type HistoryEntry } from '../../../shared/travaux';
 import { frenchDate, campusDate, campusTime } from '../../../shared/calendar';
 import { api, errorText, openedWork, works, replaceWork, vote, me, canContribute, ui, form, marks, isDone, setDone, setNote, markWorkSeen, section, visibleWorks, label } from '../../scripts/travaux';
@@ -35,6 +35,7 @@ function proposeDelete() { if (!work.value || !reason.value.trim()) { status.val
 function report() { if (!work.value) return; const id = work.value.id, text = reason.value.trim() || 'Contenu inapproprié'; reporting.value = false; void run(async () => { await api(`/travaux/work/${id}/report`, { body: { reason: text } }); }, 'Signalement envoyé. Merci.'); }
 const moderate = (action: 'validate' | 'remove' | 'restore', falseWork = false) => { if (!work.value) return; const id = work.value.id; void run(() => api<WorkView>(`/travaux/work/${id}/moderate`, { body: { action, reason: reason.value.trim(), false: falseWork } })); };
 const teacherConfirm = () => { if (!work.value) return; const id = work.value.id; void run(() => api<WorkView>(`/travaux/work/${id}/confirm`, { body: {} })); };
+async function removeOwn() { if (!work.value || !window.confirm('Supprimer ce travail perso ?')) return; const id = work.value.id; await run(() => api<WorkView>(`/travaux/work/${id}/proposal`, { body: { kind: 'delete', reason: 'Supprimé par son auteur' } })); openedWork.value = undefined; }
 function edit() { if (needAccount() || !work.value) return; form.value = { mode: 'edit', work: work.value }; }
 function startContest() { if (needAccount()) return; reason.value = ''; detail.value = ''; contesting.value = !contesting.value; }
 function gotoCourse() { if (!work.value?.course) return; planningDate.value = campusDate(work.value.course.start); section.value = 'cours'; openedWork.value = undefined; }
@@ -55,9 +56,14 @@ onMounted(() => window.addEventListener('keydown', keydown));
 onBeforeUnmount(() => window.removeEventListener('keydown', keydown));
 const stamp = (iso: string) => new Date(iso).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 </script>
-<template><div class="work-detail-root" :class="{ inline }"><header v-if="inline" class="panel-header"><button class="icon-button quiet" aria-label="Revenir à la journée" @click="openedWork = undefined"><ArrowLeftIcon aria-hidden="true" /></button><h2 tabindex="-1">{{ work?.title ?? 'Travail' }}</h2></header><div v-if="work" class="work-detail" :class="'type-' + work.type">
-  <p class="work-detail-tags"><span class="type-tag" :class="'tag-' + work.type">{{ WORK_TYPE_LABELS[work.type] }}<template v-if="work.ds"> · DS</template></span><span class="pill" :class="'pill-' + work.state">{{ stateText }}</span><span v-if="work.teacherConfirmed" class="pill pill-validated">Confirmé par l’enseignant</span><span v-if="left && work.state !== 'removed'" class="pill" :class="left.late ? 'pill-late' : left.level >= 2 ? 'pill-soon' : 'pill-neutral'">{{ left.label }}</span></p>
+<template><div class="work-detail-root" :class="{ inline }"><header v-if="inline" class="panel-header"><button v-if="back" class="icon-button quiet" aria-label="Revenir à la journée" @click="openedWork = undefined"><ArrowLeftIcon aria-hidden="true" /></button><h2 tabindex="-1">{{ work?.title ?? 'Travail' }}</h2></header><div v-if="work" class="work-detail" :class="'type-' + work.type">
+  <p class="work-detail-tags"><span class="type-tag" :class="'tag-' + work.type">{{ WORK_TYPE_LABELS[work.type] }}<template v-if="work.ds"> · DS</template></span><span v-if="!work.personal" class="pill" :class="'pill-' + work.state">{{ stateText }}</span><span v-if="work.teacherConfirmed" class="pill pill-validated">Confirmé par l’enseignant</span><span v-if="work.personal" class="pill pill-personal">Perso · visible par toi seul</span><span v-if="left && work.state !== 'removed'" class="pill" :class="left.late ? 'pill-late' : left.level >= 2 ? 'pill-soon' : 'pill-neutral'">{{ left.label }}</span></p>
   <p class="work-when"><strong>{{ frenchDate(work.day, { weekday: 'long', day: 'numeric', month: 'long' }) }} à {{ work.time }}</strong><span v-if="!work.hasTime" class="muted"> (heure non précisée)</span><br><span class="muted">Pour {{ work.scopeLabel }}</span></p>
+    <section class="work-section for-me" aria-label="Pour moi">
+    <label class="check-label"><input type="checkbox" :checked="isDone(work.id)" @change="setDone(work.id, ($event.target as HTMLInputElement).checked)"> Marquer comme fait</label>
+    <label class="settings-label"><span class="sr-only">Ma note (privée)</span><textarea v-model="note" rows="2" maxlength="2000" placeholder="Ma note, visible par toi seul…" @input="setNote(work.id, note)"></textarea></label>
+    <p v-if="!me" class="muted">Sans compte, la case et la note restent sur cet appareil.</p>
+  </section>
   <p v-if="work.state === 'removed'" class="notice">Ce travail a été retiré. L’historique reste consultable.</p>
   <div v-if="work.state === 'contested' && work.reasons.length" class="work-box warn"><strong>Contesté</strong><ul><li v-for="(item, i) in work.reasons" :key="i">{{ item }}</li></ul><p class="muted">L’auteur peut proposer une correction.</p></div>
 
@@ -76,9 +82,10 @@ const stamp = (iso: string) => new Date(iso).toLocaleString('fr-FR', { timeZone:
     <ul class="work-links"><li v-for="link in work.links" :key="link.url"><a v-if="link.active" :href="link.url" target="_blank" rel="noopener noreferrer nofollow ugc">↗ {{ link.domain }}</a><span v-else class="muted" :title="link.url">↗ {{ link.domain }} · lien actif après validation</span></li></ul>
   </section>
   <section v-if="work.ds" class="work-section"><h3>Infos du DS</h3><dl class="work-fields"><template v-if="work.ds.chapters"><dt>Chapitres</dt><dd>{{ work.ds.chapters }}</dd></template><template v-if="work.ds.allowed.length"><dt>Autorisé</dt><dd>{{ work.ds.allowed.join(', ') }}</dd></template><template v-if="work.ds.duration"><dt>Durée</dt><dd>{{ work.ds.duration }}</dd></template><template v-if="work.ds.advice"><dt>Conseils</dt><dd>{{ work.ds.advice }}</dd></template></dl><p class="muted">Pas de sujets ni de corrigés : ils sont retirés.</p></section>
-  <section class="work-section"><h3>Ajouté par</h3><p>{{ work.author }} · le {{ stamp(work.createdAt) }}</p><p v-if="work.course">Lié à <button class="text-action" @click="gotoCourse">{{ work.course.type ? work.course.type + ' ' : '' }}{{ work.course.summary }} du {{ frenchDate(campusDate(work.course.start), { day: 'numeric', month: 'short' }) }} à {{ campusTime(work.course.start) }}</button></p></section>
+  <section v-if="!work.personal || work.course" class="work-section"><h3>{{ work.personal ? 'Cours' : 'Ajouté par' }}</h3><p v-if="work.personal" hidden></p><p v-if="!work.personal">{{ work.author }} · le {{ stamp(work.createdAt) }}</p><p v-if="work.course">Lié à <button class="text-action" @click="gotoCourse">{{ work.course.type ? work.course.type + ' ' : '' }}{{ work.course.summary }} du {{ frenchDate(campusDate(work.course.start), { day: 'numeric', month: 'short' }) }} à {{ campusTime(work.course.start) }}</button></p></section>
 
-  <div v-if="work.state !== 'removed'" class="vote-block">
+  <div v-if="work.personal" class="button-row personal-actions"><button @click="edit"><PencilSquareIcon aria-hidden="true" />Modifier</button><button class="danger-action" :disabled="busy" @click="removeOwn"><TrashIcon aria-hidden="true" />Supprimer</button></div>
+  <div v-else-if="work.state !== 'removed'" class="vote-block">
     <div v-if="!work.mine" class="button-row"><button class="vote-up" :aria-pressed="work.myVote === 1" :disabled="busy" @click="confirm">👍 Confirmer · {{ Math.floor(work.up) }}</button><button :aria-pressed="work.myVote === -1" :aria-expanded="contesting" :disabled="busy" @click="work.myVote === -1 ? withdraw() : startContest()">👎 {{ work.myVote === -1 ? 'Retirer ma contestation' : 'Contester' }}<template v-if="work.down"> · {{ Math.floor(work.down) }}</template></button></div>
     <p v-else class="muted">Tu as proposé ce travail : ton vote ne compte pas. {{ Math.floor(work.up) }} 👍 · {{ Math.floor(work.down) }} 👎</p>
     <div v-if="contesting" class="contest-box" role="group" aria-label="Motif de la contestation"><p>Pourquoi ?</p><div class="filter-chips"><button v-for="choice in CONTEST_REASONS.filter(item => item !== 'Autre')" :key="choice" @click="contest(choice)">{{ choice }}</button></div><label class="settings-label">Précision (facultatif)<input v-model="detail" maxlength="200" placeholder="Ex. c’est vendredi, pas jeudi"></label><label class="settings-label">Autre motif<input v-model="reason" maxlength="300"></label><button :disabled="!reason.trim()" @click="contest('Autre')">Envoyer</button></div>
@@ -90,12 +97,8 @@ const stamp = (iso: string) => new Date(iso).toLocaleString('fr-FR', { timeZone:
   </div>
   <div v-else-if="moderator" class="button-row"><button @click="moderate('restore')">Rétablir</button></div>
 
-  <section class="work-section"><h3>Pour moi</h3>
-    <label class="check-label"><input type="checkbox" :checked="isDone(work.id)" @change="setDone(work.id, ($event.target as HTMLInputElement).checked)"> Marquer comme fait</label>
-    <label class="settings-label">Ma note (privée)<textarea v-model="note" rows="2" maxlength="2000" placeholder="Visible par toi seul" @input="setNote(work.id, note)"></textarea></label>
-    <p v-if="!me" class="muted">Sans compte, la case et la note restent sur cet appareil.</p>
-  </section>
-  <details v-if="history.length" class="work-history"><summary>Historique ({{ history.length }})</summary><ol><li v-for="(entry, i) in history" :key="i"><span class="muted">{{ stamp(entry.at) }}</span> · {{ entry.action }} · {{ entry.by }}<span v-if="entry.detail" class="muted"> — {{ entry.detail }}</span></li></ol></details>
+
+  <details v-if="history.length && !work.personal" class="work-history"><summary>Historique ({{ history.length }})</summary><ol><li v-for="(entry, i) in history" :key="i"><span class="muted">{{ stamp(entry.at) }}</span> · {{ entry.action }} · {{ entry.by }}<span v-if="entry.detail" class="muted"> — {{ entry.detail }}</span></li></ol></details>
   <p class="sr-only" role="status">{{ status }}</p><p v-if="status" class="form-status">{{ status }}</p>
   <nav v-if="previous || next" class="course-stepper" aria-label="Autres travaux"><button :disabled="!previous" :aria-label="previous ? 'Travail précédent : ' + previous.title : 'Pas de travail précédent'" @click="openedWork = previous?.id"><ChevronLeftIcon aria-hidden="true" />Précédent</button><button :disabled="!next" :aria-label="next ? 'Travail suivant : ' + next.title : 'Pas de travail suivant'" @click="openedWork = next?.id"><span>Suivant</span><ChevronRightIcon aria-hidden="true" /></button></nav>
 </div><p v-else-if="status" class="notice">{{ status }}</p><p v-else role="status">Chargement…</p></div></template>

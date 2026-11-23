@@ -17,7 +17,7 @@
   ],
   "rewrites": [
     {
-      "source": "/api/(travaux|auth|account)/(.*)",
+      "source": "/api/(travaux|auth|account|admin)/(.*)",
       "destination": "/api/$1"
     },
     {

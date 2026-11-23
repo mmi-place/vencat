@@ -23,7 +23,10 @@ export class HttpError extends Error { constructor(public status: number, messag
 // ---------------------------------------------------------------------------
 // Roles: admins are listed in ADMIN_EMAILS; delegates hold an active delegation.
 // ---------------------------------------------------------------------------
-export const isAdmin = (user: User) => !!user.email && (process.env.ADMIN_EMAILS ?? '').split(',').map(normalizeEmail).filter(Boolean).includes(user.email);
+// Administration happens on /admin with its own sign-in (ADMIN_EMAILS). A student account is never an
+// administrator, unless explicitly listed in APP_ADMIN_EMAILS (kept for exceptional cases).
+export const isAdmin = (user: User) => !!user.email && (process.env.APP_ADMIN_EMAILS ?? '').split(',').map(normalizeEmail).filter(Boolean).includes(user.email);
+export const adminEmails = () => (process.env.ADMIN_EMAILS ?? '').split(',').map(normalizeEmail).filter(Boolean);
 export async function activeDelegations(userId?: string) {
   const all = await store().list<Delegation>('delegations');
   const current = now();

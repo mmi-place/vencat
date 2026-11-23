@@ -16,5 +16,5 @@ import { selection } from '../../scripts/calendarStore';
   <h3>Tes droits</h3><p>Accès, rectification (correction du nom) et suppression : depuis « Mon compte ». La suppression efface immédiatement ton mail et ton nom ; tes contributions restent sous « Ancien étudiant » pour ne pas casser l’historique de la promo.</p>
   <h3>Règles</h3><ul><li>Pas de sujets ni de corrigés d’évaluation.</li><li>Pas de fausses informations, pas de votes de complaisance.</li><li>Une fausse déclaration (y compris une correction d’emploi du temps « certifiée sur l’honneur ») entraîne une sanction : signal discret, mail explicatif, lecture seule 7 jours, puis bannissement, avec contestation possible par mail.</li></ul>
 </div></AccessibleDialog>
-<AccessibleDialog v-if="ui.ics" id="ics-dialog" title="Ajouter à mon agenda" :subtitle="'Travaux de ' + (selection?.promotion ?? '') + ' ' + (selection?.label ?? '') + ', rappel la veille'" @close="ui.ics = false"><SubscribeButtons /><p class="muted dialog-note">L’agenda se met à jour toutes les quelques heures. Il remplace les notifications.</p></AccessibleDialog>
+<AccessibleDialog v-if="ui.ics" id="ics-dialog" title="Ajouter à mon agenda" :subtitle="'Travaux de ' + (selection?.promotion ?? '') + ' ' + (selection?.label ?? '') + ', rappel la veille'" @close="ui.ics = false"><SubscribeButtons open /></AccessibleDialog>
 </template>

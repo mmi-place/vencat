@@ -32,13 +32,19 @@ export function validScope(value: unknown): value is WorkScope {
 export function scopeLabel(scope: WorkScope): string {
   const members = scopeMembers(scope);
   if (scope.kind === 'group') return members[0] ? `${members[0].label}` : 'Groupe';
-  if (scope.kind === 'wide') { const wide = scope.key.split('|')[1] ?? ''; return members.length > 1 ? `${wide} (${members.map(group => group.label).join(' + ')})` : wide; }
+  if (scope.kind === 'wide') return `Groupe ${scope.key.split('|')[1] ?? ''}`;
   return scope.key;
 }
 /** Scope choices offered to an author: the wide group is skipped when it is the final group itself. */
-export function scopeChoices(group: GroupOption): { scope: WorkScope; label: string }[] {
-  const choices = (['group', 'wide', 'promo'] as ScopeKind[]).map(kind => ({ scope: scopeFor(group, kind), label: '' }));
-  return choices.filter((choice, index) => index !== 1 || scopeMembers(choice.scope).length > 1).map(choice => ({ ...choice, label: scopeLabel(choice.scope) }));
+export function scopeChoices(group: GroupOption): { scope: WorkScope; label: string; detail: string }[] {
+  const choices = (['group', 'wide', 'promo'] as ScopeKind[]).map(kind => ({ scope: scopeFor(group, kind), label: '', detail: '' }));
+  return choices.filter((choice, index) => index !== 1 || scopeMembers(choice.scope).length > 1).map(choice => ({ ...choice, label: scopeLabel(choice.scope), detail: choice.scope.kind === 'wide' ? scopeMembers(choice.scope).map(group => group.label).join(' + ') : choice.scope.kind === 'promo' ? 'toute la promo' : 'mon sous-groupe' }));
+}
+/** Short tag of a scope: #B1, #B, #MMI-2. */
+export function scopeTag(scope: WorkScope): string {
+  if (scope.kind === 'group') return groupById(scope.key)?.label.replace(/\s+/g, '') ?? '';
+  if (scope.kind === 'wide') return (scope.key.split('|')[1] ?? '').replace(/\s+/g, '');
+  return scope.key;
 }
 
 // ---------------------------------------------------------------------------
@@ -132,14 +138,15 @@ export interface CourseLink { uid: string; start: string; module: string; summar
 export interface WorkDetails { where: string; format: string; mode: '' | 'seul' | 'groupe'; info: string }
 export interface DsInfo { chapters: string; allowed: string[]; duration: string; advice: string }
 export const DS_ALLOWED = ['Aucun document', 'Calculatrice', 'Notes', 'Documents imprimés', 'Ordinateur'] as const;
-export interface WorkInput { type: WorkType; title: string; day: string; time?: string; scope: WorkScope; course?: CourseLink; details: WorkDetails; links: string[]; ds?: DsInfo }
+/** personal: visible only by its author (no vote), otherwise shared with the scope. */
+export interface WorkInput { type: WorkType; title: string; day: string; time?: string; scope: WorkScope; course?: CourseLink; details: WorkDetails; links: string[]; ds?: DsInfo; personal?: boolean }
 export interface PublicLink { url: string; domain: string; active: boolean }
 export interface WorkProposalView { id: string; kind: 'edit' | 'delete'; author: string; reason?: string; changes: { field: string; label: string; before: string; after: string }[]; up: number; down: number; myVote?: 1 | -1; mine: boolean; createdAt: string }
 export interface WorkView {
   id: string; type: WorkType; title: string; due: string; day: string; time: string; hasTime: boolean; scope: WorkScope; scopeLabel: string;
   course?: CourseLink; details: WorkDetails; links: PublicLink[]; ds?: DsInfo; author: string; authorId?: string; createdAt: string; updatedAt: string;
   state: WorkState; up: number; down: number; required: number; myVote?: 1 | -1; mine: boolean; reasons: string[]; proposal?: WorkProposalView;
-  teacherConfirmed?: string; voters?: { name: string; value: 1 | -1; reason?: string }[];
+  teacherConfirmed?: string; voters?: { name: string; value: 1 | -1; reason?: string }[]; personal?: boolean;
 }
 export interface HistoryEntry { at: string; by: string; action: string; detail?: string }
 export type Role = 'student' | 'delegate' | 'admin' | 'teacher';
@@ -179,7 +186,7 @@ export function parseWorkInput(body: unknown): WorkInput | { error: string } {
   let ds: DsInfo | undefined;
   if (value.ds) ds = { chapters: cleanText(value.ds.chapters, LIMITS.field), allowed: (Array.isArray(value.ds.allowed) ? value.ds.allowed : []).filter(item => (DS_ALLOWED as readonly string[]).includes(item)), duration: cleanText(value.ds.duration, 60), advice: cleanText(value.ds.advice, LIMITS.field) };
   return {
-    type: value.type, title, day: value.day, time: value.time || undefined, scope: { kind: value.scope.kind, key: value.scope.key }, course, ds, links,
+    type: value.type, title, day: value.day, time: value.time || undefined, scope: { kind: value.scope.kind, key: value.scope.key }, course, ds, links, personal: value.personal === true || undefined,
     details: { where: cleanText(details.where, LIMITS.field), format: cleanText(details.format, LIMITS.field), mode: details.mode === 'seul' || details.mode === 'groupe' ? details.mode : '', info: cleanText(details.info, LIMITS.info) },
   };
 }
@@ -205,7 +212,7 @@ const fold = (line: string) => { const out: string[] = []; let rest = line; whil
 export function worksToIcs(groupLabel: string, works: WorkView[], origin: string, now = new Date()): string {
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Vencat//Travaux//FR', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', `X-WR-CALNAME:${icsText('Travaux · ' + groupLabel)}`, 'X-WR-TIMEZONE:Europe/Paris', 'REFRESH-INTERVAL;VALUE=DURATION:PT6H', 'X-PUBLISHED-TTL:PT6H'];
   for (const work of works) {
-    if (work.state === 'removed') continue;
+    if (work.state === 'removed' || work.personal) continue;
     const start = new Date(Date.parse(work.due) - (work.hasTime ? 0 : 30 * 60000)).toISOString();
     const description = [WORK_STATE_LABELS[work.state], work.details.where && 'Où : ' + work.details.where, work.details.format && 'Format : ' + work.details.format, work.details.info, ...work.links.map(link => link.url), `${origin}/?travail=${work.id}`].filter(Boolean).join('\n');
     lines.push('BEGIN:VEVENT', `UID:${work.id}@vencat`, `DTSTAMP:${icsDate(now.toISOString())}`, `DTSTART:${icsDate(start)}`, `DTEND:${icsDate(work.due)}`,

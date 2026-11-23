@@ -4,7 +4,7 @@ import { sendMail, loginMail, mailConfigured } from './mail.js';
 import {
   HttpError, id, now, authenticate, requireUser, requireContributor, createSession, clearSessionCookie, sameOrigin, overLimit, addressKey,
   newLogin, loginExpired, samePoll, newSecrets, checkCode, checkMagic, userForEmail, allowedEmail, groupExists, meOf, roleOf, isAdmin, isNewAccount,
-  displayName, shortDisplayName, activeDelegations, LOGIN_TTL_MS, MAX_ATTEMPTS, type User, type Session, type Login, type Delegation,
+  displayName, shortDisplayName, activeDelegations, adminEmails, LOGIN_TTL_MS, MAX_ATTEMPTS, type User, type Session, type Login, type Delegation,
 } from './auth.js';
 import {
   parseWorkInput, voteState, tally, requiredUpvotes, scopeIncludes, scopeLabel, scopeMembers, parisInstant, DEFAULT_DUE_TIME, linkDomain, cleanText, LIMITS,
@@ -21,7 +21,7 @@ export interface Work extends Omit<WorkInput, 'time'> {
   forced?: 'validated' | 'removed'; removedReason?: string; teacherConfirmed?: string; proposalId?: string;
 }
 interface VoteDoc extends Vote { targetId: string; userId: string }
-interface Proposal { id: string; workId: string; kind: 'edit' | 'delete'; changes: Partial<WorkInput>; reason?: string; authorId: string; createdAt: string; status: 'open' | 'accepted' | 'rejected'; closedAt?: string }
+export interface Proposal { id: string; workId: string; kind: 'edit' | 'delete'; changes: Partial<WorkInput>; reason?: string; authorId: string; createdAt: string; status: 'open' | 'accepted' | 'rejected'; closedAt?: string }
 interface Marks { done: Record<string, string>; notes: Record<string, string> }
 interface Report { id: string; target: { kind: 'work' | 'delegate' | 'correction' | 'user'; id: string }; reason: string; by: string; at: string; status: 'open' | 'done'; resolution?: string }
 interface NameRequest { id: string; userId: string; firstName: string; lastName: string; at: string; status: 'open' | 'accepted' | 'refused' }
@@ -76,6 +76,7 @@ async function powers(user: User | undefined, scope: WorkScope) {
 // Work state: forced by a moderator, or computed from the votes. Reliability moves when it settles.
 // ---------------------------------------------------------------------------
 async function settle(work: Work, by = 'system') {
+  if (work.personal) { if (work.state !== 'removed' && work.forced !== 'removed' && work.state !== 'validated') { work.state = 'validated'; await db().put('works', work.id, work); } return work; }
   const author = await db().get<User>('users', work.authorId);
   const votes = await votesOf(work.id);
   const previous = work.state;
@@ -99,7 +100,7 @@ async function workView(work: Work, viewer: User | undefined, people: Map<string
   const votes = extra?.votes ?? await votesOf(work.id);
   const author = people.get(work.authorId);
   const { up, down } = tally(votes, work.authorId);
-  const state: WorkState = work.forced ?? (work.teacherConfirmed ? 'validated' : voteState(votes, work.authorId, work.createdAt, author?.reliability ?? 0));
+  const state: WorkState = work.forced ?? (work.personal || work.teacherConfirmed ? 'validated' : voteState(votes, work.authorId, work.createdAt, author?.reliability ?? 0));
   const time = work.time ?? DEFAULT_DUE_TIME;
   const linksActive = !work.authorNew || state === 'validated' || state === 'probable';
   const { moderator } = await powers(viewer, work.scope);
@@ -117,7 +118,7 @@ async function workView(work: Work, viewer: User | undefined, people: Map<string
     author: displayName(author), authorId: work.authorId, createdAt: work.createdAt, updatedAt: work.updatedAt, state, up, down, required: requiredUpvotes(author?.reliability ?? 0),
     myVote: viewer ? votes[viewer.id]?.value : undefined, mine: work.authorId === viewer?.id,
     reasons: Object.values(votes).filter(vote => vote.value < 0 && vote.reason).map(vote => vote.reason!),
-    proposal, teacherConfirmed: work.teacherConfirmed,
+    proposal, teacherConfirmed: work.teacherConfirmed, personal: work.personal,
     // Votes are anonymous between students, visible to delegates and the admin.
     voters: moderator ? Object.values(votes).map(vote => ({ name: displayName(people.get(vote.userId)), value: vote.value, reason: vote.reason })) : undefined,
   };
@@ -333,8 +334,9 @@ router.put('/account/marks', route(async (req, res) => {
 // ---------------------------------------------------------------------------
 // Works
 // ---------------------------------------------------------------------------
-async function worksForGroup(groupId: string) {
-  return (await db().list<Work>('works')).filter(work => scopeIncludes(work.scope, groupId));
+/** Shared works of a group, plus the viewer's own personal works. */
+async function worksForGroup(groupId: string, viewerId?: string) {
+  return (await db().list<Work>('works')).filter(work => work.personal ? work.authorId === viewerId : scopeIncludes(work.scope, groupId));
 }
 router.get('/travaux/group/:groupId', route(async (req, res) => {
   const groupId = String(req.params.groupId);
@@ -342,26 +344,27 @@ router.get('/travaux/group/:groupId', route(async (req, res) => {
   const { user } = await authenticate(req);
   const people = await users();
   const since = String(req.query.since ?? '');
-  const works = (await worksForGroup(groupId)).filter(work => !since || work.day >= since || work.updatedAt >= since);
+  const works = (await worksForGroup(groupId, user?.id)).filter(work => !since || work.day >= since || work.updatedAt >= since);
   for (const work of works) await settle(work);
   res.json(await Promise.all(works.map(work => workView(work, user, people))));
 }));
 router.get('/travaux/work/:id', route(async (req, res) => {
   const work = await db().get<Work>('works', String(req.params.id));
-  if (!work) throw new HttpError(404, 'Travail introuvable.');
   const { user } = await authenticate(req);
+  if (!work || (work.personal && work.authorId !== user?.id)) throw new HttpError(404, 'Travail introuvable.');
   const people = await users();
   const entries = (await db().list<HistoryEntry & { workId: string }>('history', work.id + ':')).sort((a, b) => a.at.localeCompare(b.at));
-  res.json({ work: await workView(await settle(work), user, people), history: entries.map(entry => ({ at: entry.at, by: entry.by === 'system' ? 'Vencat' : displayName(people.get(entry.by)), action: entry.action, detail: entry.detail })) });
+  res.json({ work: await workView(await settle(work), user, people), history: entries.map(entry => ({ at: entry.at, by: entry.by === 'system' ? 'Vencat' : entry.by.startsWith('admin:') ? 'Administration' : displayName(people.get(entry.by)), action: entry.action, detail: entry.detail })) });
 }));
 router.post('/travaux/works', route(async (req, res) => {
   const { user } = await requireContributor(req);
   const input = parseWorkInput(req.body);
   if ('error' in input) throw new HttpError(400, input.error);
   const rights = await powers(user, input.scope);
-  if (!rights.member && !rights.moderator && !rights.teacher) throw new HttpError(403, 'Tu ne peux ajouter un travail que pour ton groupe.');
-  if (!rights.admin && await overLimit('add:' + user.id, LIMITS.addsPerDay, 86400)) throw new HttpError(429, `Limite de ${LIMITS.addsPerDay} ajouts par jour atteinte.`);
-  const work: Work = { ...input, id: id(), authorId: user.id, authorNew: isNewAccount(user), createdAt: now(), updatedAt: now(), state: 'pending', forced: rights.moderator ? 'validated' : undefined, teacherConfirmed: rights.teacher ? displayName(user) : undefined };
+  if (!input.personal && !rights.member && !rights.moderator && !rights.teacher) throw new HttpError(403, 'Tu ne peux ajouter un travail que pour ton groupe.');
+  // Personal works only concern their author: a wider budget, and no validation.
+  if (!rights.admin && await overLimit((input.personal ? 'add-personal:' : 'add:') + user.id, input.personal ? 50 : LIMITS.addsPerDay, 86400)) throw new HttpError(429, 'Limite d’ajouts atteinte pour aujourd’hui.');
+  const work: Work = { ...input, id: id(), authorId: user.id, authorNew: isNewAccount(user), createdAt: now(), updatedAt: now(), state: input.personal ? 'validated' : 'pending', forced: rights.moderator && !input.personal ? 'validated' : undefined, teacherConfirmed: rights.teacher && !input.personal ? displayName(user) : undefined };
   await db().put('works', work.id, work);
   await history(work.id, user.id, input.ds ? 'infos du DS ajoutées' : 'création');
   await settle(work, user.id);
@@ -385,6 +388,7 @@ async function castVote(user: User, targetId: string, value: unknown, reason: un
 router.post('/travaux/work/:id/vote', route(async (req, res) => {
   const { user } = await requireContributor(req);
   const work = await loadWork(String(req.params.id));
+  if (work.personal) throw new HttpError(400, 'Un travail perso ne se vote pas.');
   if (work.authorId === user.id) throw new HttpError(400, 'Ton propre vote ne compte pas.');
   const rights = await powers(user, work.scope);
   if (!rights.member && !rights.moderator) throw new HttpError(403, 'Seuls les élèves concernés peuvent voter.');
@@ -395,7 +399,9 @@ router.post('/travaux/work/:id/vote', route(async (req, res) => {
 router.post('/travaux/work/:id/proposal', route(async (req, res) => {
   const { user } = await requireContributor(req);
   const work = await loadWork(String(req.params.id));
-  const rights = await powers(user, work.scope);
+  const own = !!work.personal && work.authorId === user.id;
+  if (work.personal && !own) throw new HttpError(404, 'Travail introuvable.');
+  const rights = own ? { member: true, moderator: true } : await powers(user, work.scope);
   if (!rights.member && !rights.moderator) throw new HttpError(403, 'Seuls les élèves concernés peuvent proposer une modification.');
   if (work.proposalId && (await db().get<Proposal>('proposals', work.proposalId))?.status === 'open') throw new HttpError(409, 'Une proposition est déjà ouverte sur ce travail : vote d’abord sur celle-ci.');
   const kind = req.body?.kind === 'delete' ? 'delete' : 'edit';
@@ -407,7 +413,7 @@ router.post('/travaux/work/:id/proposal', route(async (req, res) => {
     if (!describeChanges(work, changes).length) throw new HttpError(400, 'Aucun changement à proposer.');
   }
   const reason = cleanText(req.body?.reason, LIMITS.reason);
-  if (kind === 'delete' && !reason) throw new HttpError(400, 'Indique pourquoi ce travail n’existe plus.');
+  if (kind === 'delete' && !reason && !own) throw new HttpError(400, 'Indique pourquoi ce travail n’existe plus.');
   const proposal: Proposal = { id: id(), workId: work.id, kind, changes, reason, authorId: user.id, createdAt: now(), status: 'open' };
   if (rights.moderator) { await db().put('proposals', proposal.id, proposal); await applyProposal(work, proposal, user.id); }
   else { await db().put('proposals', proposal.id, proposal); work.proposalId = proposal.id; work.updatedAt = now(); await db().put('works', work.id, work); await history(work.id, user.id, kind === 'delete' ? 'suppression proposée' : 'modification proposée', reason || describeChanges(work, changes).map(change => `${change.label} : ${change.before} → ${change.after}`).join(' · ')); }
@@ -419,7 +425,7 @@ async function applyProposal(work: Work, proposal: Proposal, by: string) {
   work.proposalId = undefined; work.updatedAt = now();
   if (proposal.kind === 'delete') {
     work.forced = 'removed'; work.state = 'removed'; work.removedReason = proposal.reason;
-    if (/n.existe pas/i.test(proposal.reason ?? '')) { await adjustReliability(work.authorId, -2); await problem(work.authorId, 'travail retiré car faux', work.title); }
+    if (!work.personal && /n.existe pas/i.test(proposal.reason ?? '')) { await adjustReliability(work.authorId, -2); await problem(work.authorId, 'travail retiré car faux', work.title); }
     await history(work.id, by, 'retiré', proposal.reason);
   } else {
     const detail = describeChanges(work, proposal.changes).map(change => `${change.label} : ${change.before} → ${change.after}`).join(' · ');
@@ -427,7 +433,7 @@ async function applyProposal(work: Work, proposal: Proposal, by: string) {
     if (!proposal.changes.time) work.time = undefined;
     await history(work.id, by, 'modification validée', detail);
   }
-  if (proposal.authorId !== work.authorId) await adjustReliability(proposal.authorId, proposal.kind === 'edit' ? 0.5 : 0.2);
+  if (!work.personal && proposal.authorId !== work.authorId) await adjustReliability(proposal.authorId, proposal.kind === 'edit' ? 0.5 : 0.2);
   await db().put('works', work.id, work);
 }
 router.post('/travaux/proposal/:id/vote', route(async (req, res) => {
@@ -492,7 +498,7 @@ router.get('/travaux/queue', route(async (req, res) => {
   const { user } = await requireUser(req);
   if (!user.groupId) return res.json({ works: [], corrections: [] });
   const people = await users();
-  const works = (await worksForGroup(user.groupId)).filter(work => work.state !== 'removed');
+  const works = (await worksForGroup(user.groupId)).filter(work => work.state !== 'removed' && !work.personal);
   const pending: WorkView[] = [];
   for (const work of works) {
     if (work.authorId === user.id) continue;
@@ -556,7 +562,7 @@ router.post('/travaux/delegates/:id/support', route(async (req, res) => {
   delegation.supporters = req.body?.value === false ? delegation.supporters.filter(item => item !== user.id) : [...new Set([...delegation.supporters, user.id])];
   if (delegation.supporters.length >= SUPPORTS_FOR_ALERT && !delegation.alertedAt) {
     delegation.alertedAt = now();
-    for (const admin of (process.env.ADMIN_EMAILS ?? '').split(',').map(item => item.trim()).filter(Boolean)) {
+    for (const admin of adminEmails()) {
       const people = await users();
       void sendMail({ to: admin, subject: 'Vencat : demande de délégué à trancher', text: `${displayName(people.get(delegation.userId))} a reçu ${delegation.supporters.length} soutiens pour devenir délégué de ${groupById(delegation.groupId)?.promotion} ${groupById(delegation.groupId)?.label}.\nÀ valider dans la file de modération.` }).catch(() => undefined);
     }
@@ -572,33 +578,38 @@ router.get('/travaux/moderation', route(async (req, res) => {
   const { user } = await requireUser(req);
   const { role, delegateGroups } = await roleOf(user);
   if (role !== 'admin' && role !== 'delegate') throw new HttpError(403, 'Réservé aux délégués et à l’admin.');
-  const admin = role === 'admin';
+  res.json(await moderationData(role === 'admin', delegateGroups));
+}));
+/** Moderation queue: everything for the administration, reports of their groups for delegates. */
+export async function moderationData(admin: boolean, delegateGroups: string[]) {
   const people = await users();
   const works = new Map((await db().list<Work>('works')).map(work => [work.id, work]));
   const inMyGroups = (work?: Work) => admin || (!!work && scopeMembers(work.scope).some(group => delegateGroups.includes(group.id)));
   const reports = (await db().list<Report>('reports')).filter(item => item.status === 'open' && (admin || (item.target.kind === 'work' && inMyGroups(works.get(item.target.id)))));
-  const out = {
+  const problems = await db().list<Problem>('problems');
+  const actor = (id: string) => id.startsWith('admin:') ? (admin ? id.slice(6) : 'Administration') : displayName(people.get(id));
+  return {
     reports: reports.map(item => ({ id: item.id, kind: item.target.kind, targetId: item.target.id, title: item.target.kind === 'work' ? works.get(item.target.id)?.title ?? 'Travail' : item.target.kind === 'delegate' ? displayName(people.get(item.target.id)) : item.target.id, reason: item.reason, by: displayName(people.get(item.by)), at: item.at })),
     delegates: admin ? (await db().list<Delegation>('delegations')).filter(item => item.status === 'requested').map(item => ({ id: item.id, name: displayName(people.get(item.userId)), group: `${groupById(item.groupId)?.promotion} ${groupById(item.groupId)?.label}`, supports: item.supporters.length, at: item.createdAt })) : [],
+    activeDelegates: admin ? (await activeDelegations()).map(item => ({ id: item.id, name: displayName(people.get(item.userId)), group: `${groupById(item.groupId)?.promotion} ${groupById(item.groupId)?.label}`, until: item.until })) : [],
     names: admin ? (await db().list<NameRequest>('names')).filter(item => item.status === 'open').map(item => ({ id: item.id, before: displayName(people.get(item.userId)), after: [item.firstName, item.lastName].filter(Boolean).join(' '), email: people.get(item.userId)?.email, at: item.at })) : [],
-    alerts: admin ? (await db().list<Alert>('alerts')).filter(item => item.status === 'open').map(item => {
-      const problems = [] as string[];
-      return { id: item.id, userId: item.userId, name: displayName(people.get(item.userId)), at: item.at, problems };
-    }) : [],
-    students: delegateGroups.length || admin ? [...people.values()].filter(person => !person.deletedAt && person.groupId && (admin || delegateGroups.includes(person.groupId))).map(person => ({ id: person.id, name: displayName(person), groupId: person.groupId, readOnlyUntil: person.readOnlyUntil, banned: !!person.banned, reliability: person.reliability })) : [],
-    log: admin ? (await db().list<Audit>('audit')).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 30).map(item => ({ ...item, by: displayName(people.get(item.by)) })) : [],
-    role,
+    alerts: admin ? (await db().list<Alert>('alerts')).filter(item => item.status === 'open').map(item => ({ id: item.id, userId: item.userId, name: displayName(people.get(item.userId)), at: item.at, problems: problems.filter(entry => entry.userId === item.userId && Date.parse(entry.at) > Date.now() - 7 * 86400000).map(entry => `${entry.kind} : ${entry.detail}`) })) : [],
+    students: [...people.values()].filter(person => !person.deletedAt && (admin || (person.groupId && delegateGroups.includes(person.groupId)))).map(person => ({ id: person.id, name: displayName(person), email: admin ? person.email : undefined, groupId: person.groupId, readOnlyUntil: person.readOnlyUntil, banned: !!person.banned, reliability: person.reliability, createdAt: person.createdAt })),
+    log: admin ? (await db().list<Audit>('audit')).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 60).map(item => ({ ...item, by: actor(item.by) })) : [],
+    role: admin ? 'admin' : 'delegate',
   };
-  const problems = await db().list<Problem>('problems');
-  for (const alert of out.alerts) alert.problems.push(...problems.filter(item => item.userId === alert.userId && Date.parse(item.at) > Date.now() - 7 * 86400000).map(item => `${item.kind} : ${item.detail}`));
-  res.json(out);
-}));
-export const explanation = (name: string, what: string, contact: string) => `Bonjour ${name},\n\n${what}\n\nCe n’est pas une accusation : il arrive à tout le monde de se tromper de date ou de groupe. Pour que Vencat reste fiable pour toute la promo, les informations ajoutées et les votes doivent correspondre à ce qui a été annoncé en cours.\n\nSi tu penses que c’est une erreur, réponds simplement à ce mail${contact ? ` ou écris à ${contact}` : ''} : une personne relira la décision.\n\nVencat est un projet étudiant non officiel.`;
+}
+const explanation = (name: string, what: string, contact: string) => `Bonjour ${name},\n\n${what}\n\nCe n’est pas une accusation : il arrive à tout le monde de se tromper de date ou de groupe. Pour que Vencat reste fiable pour toute la promo, les informations ajoutées et les votes doivent correspondre à ce qui a été annoncé en cours.\n\nSi tu penses que c’est une erreur, réponds simplement à ce mail${contact ? ` ou écris à ${contact}` : ''} : une personne relira la décision.\n\nVencat est un projet étudiant non officiel.`;
 router.post('/travaux/moderation/action', route(async (req, res) => {
   const { user } = await requireUser(req);
   const { role, delegateGroups } = await roleOf(user);
   if (role !== 'admin' && role !== 'delegate') throw new HttpError(403, 'Réservé aux délégués et à l’admin.');
-  const admin = role === 'admin';
+  await moderationAction(user.id, role === 'admin', delegateGroups, req.body ?? {});
+  res.json({ ok: true });
+}));
+/** One moderation decision, recorded with its reason. actorId is an account or "admin:<address>". */
+export async function moderationAction(actorId: string, admin: boolean, delegateGroups: string[], body: Record<string, unknown>) {
+  const req = { body };
   const { kind, action } = req.body ?? {};
   const targetId = String(req.body?.id ?? ''), reason = cleanText(req.body?.reason, LIMITS.reason);
   const contact = process.env.CONTACT_EMAIL || '';
@@ -609,7 +620,7 @@ router.post('/travaux/moderation/action', route(async (req, res) => {
       const work = await loadWork(report.target.id);
       if (!admin && !scopeMembers(work.scope).some(group => delegateGroups.includes(group.id))) throw new HttpError(403, 'Hors de ta portée.');
       work.forced = 'removed'; work.state = 'removed'; work.removedReason = reason || report.reason; work.updatedAt = now();
-      await db().put('works', work.id, work); await history(work.id, user.id, 'retiré après signalement', reason || report.reason);
+      await db().put('works', work.id, work); await history(work.id, actorId, 'retiré après signalement', reason || report.reason);
       await problem(work.authorId, 'contenu retiré', work.title);
     }
     if (action === 'remove' && report.target.kind === 'delegate' && admin) {
@@ -652,9 +663,8 @@ router.post('/travaux/moderation/action', route(async (req, res) => {
     else throw new HttpError(400, 'Action inconnue.');
     await db().put('users', person.id, person);
   } else throw new HttpError(400, 'Action inconnue.');
-  await audit(user.id, `${kind}:${action}`, targetId, reason);
-  res.json({ ok: true });
-}));
+  await audit(actorId, `${kind}:${action}`, targetId, reason);
+}
 
 // ---------------------------------------------------------------------------
 // Timetable corrections certified on honour: shown over CELCAT, never replacing it.
@@ -724,3 +734,4 @@ router.use(['/auth', '/account', '/travaux'], (error: unknown, _req: Request, re
 });
 
 export const travauxRouter = router;
+export { settle, workView, users, history, audit };

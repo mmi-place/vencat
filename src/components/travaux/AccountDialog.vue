@@ -43,24 +43,42 @@ const when = (iso: string) => { const minutes = (Date.now() - Date.parse(iso)) /
 // Connect a computer: scan its QR code with the camera when the browser can, else the phone camera app opens the link.
 const video = ref<HTMLVideoElement>();
 let stream: MediaStream | undefined;
-const canScan = 'BarcodeDetector' in window;
+const canScan = !!navigator.mediaDevices?.getUserMedia;
+// Native detector when the browser has one, otherwise jsQR on video frames (iPhone Safari).
+async function detector(): Promise<(source: HTMLVideoElement) => Promise<string | undefined>> {
+  const Native = (window as unknown as { BarcodeDetector?: new (options: unknown) => { detect(source: HTMLVideoElement): Promise<{ rawValue: string }[]> } }).BarcodeDetector;
+  if (Native) { const native = new Native({ formats: ['qr_code'] }); return async source => (await native.detect(source).catch(() => []))[0]?.rawValue; }
+  const { default: jsQR } = await import('jsqr');
+  const canvas = document.createElement('canvas'), context = canvas.getContext('2d', { willReadFrequently: true })!;
+  return async source => {
+    const width = source.videoWidth, height = source.videoHeight;
+    if (!width || !height) return undefined;
+    const scale = Math.min(1, 640 / Math.max(width, height));
+    canvas.width = Math.round(width * scale); canvas.height = Math.round(height * scale);
+    context.drawImage(source, 0, 0, canvas.width, canvas.height);
+    return jsQR(context.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height)?.data;
+  };
+}
 async function scan() {
-  page.value = 'scan';
+  page.value = 'scan'; status.value = '';
   if (!canScan) return;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
     await new Promise(resolve => requestAnimationFrame(resolve));
     if (!video.value) return;
     video.value.srcObject = stream; await video.value.play();
-    const detector = new (window as unknown as { BarcodeDetector: new (options: unknown) => { detect(source: HTMLVideoElement): Promise<{ rawValue: string }[]> } }).BarcodeDetector({ formats: ['qr_code'] });
+    const read = await detector();
     const loop = async () => {
       if (page.value !== 'scan' || !video.value) return;
-      const value = (await detector.detect(video.value).catch(() => []))[0]?.rawValue;
-      if (value) { try { const url = new URL(value); if (url.origin === location.origin && url.searchParams.get('qr')) { stopScan(); qrRequest.value = { id: url.searchParams.get('qr')!, number: Number(url.searchParams.get('n')) }; ui.value.account = false; return; } } catch { /* not a Vencat code */ } }
-      requestAnimationFrame(() => void loop());
+      const value = await read(video.value);
+      if (value) {
+        try { const url = new URL(value); if (url.origin === location.origin && url.searchParams.get('qr')) { stopScan(); qrRequest.value = { id: url.searchParams.get('qr')!, number: Number(url.searchParams.get('n')) }; ui.value.account = false; return; } } catch { /* not a link */ }
+        status.value = 'Ce n’est pas un QR code de connexion Vencat.';
+      }
+      setTimeout(() => requestAnimationFrame(() => void loop()), 120);
     };
     void loop();
-  } catch { status.value = 'Caméra indisponible : utilise l’appareil photo du téléphone pour scanner le QR code.'; }
+  } catch { status.value = 'Caméra indisponible : autorise l’accès à la caméra, ou utilise l’appareil photo du téléphone.'; }
 }
 function stopScan() { stream?.getTracks().forEach(track => track.stop()); stream = undefined; }
 onBeforeUnmount(stopScan);
@@ -70,6 +88,7 @@ const title = computed(() => !wide.value && page.value ? titles[page.value] : 'M
 <div class="account-space" :class="{ 'has-page': !!page }">
   <nav class="account-nav" aria-label="Rubriques du compte">
     <div class="profile-mini"><span class="avatar" :style="{ '--hue': hue }" aria-hidden="true">{{ initials }}</span><strong>{{ me.firstName }} {{ me.lastName }}</strong><small>{{ group ? group.promotion + ' · ' + group.label : roleLabel }} · {{ roleLabel }}</small></div>
+    <button v-if="!wide && canScan" class="scan-cta" @click="scan"><QrCodeIcon aria-hidden="true" /><span><strong>Scanner un QR code</strong><small>Connecter un ordinateur en un geste</small></span></button>
     <button v-for="item in nav" :key="item.id" :aria-current="page === item.id ? 'page' : undefined" @click="page = item.id"><component :is="item.icon" aria-hidden="true" />{{ item.label }}<ChevronRightIcon v-if="!wide" class="row-chevron" style="margin-left:auto" aria-hidden="true" /></button>
     <button v-if="queueCount" @click="ui.account = false; ui.queue = true"><CheckBadgeIcon aria-hidden="true" />À valider<span class="count-badge">{{ queueCount }}</span></button>
     <button v-if="me.role === 'admin' || me.role === 'delegate'" @click="ui.moderation = true"><ScaleIcon aria-hidden="true" />Modération</button>
@@ -91,7 +110,7 @@ const title = computed(() => !wide.value && page.value ? titles[page.value] : 'M
     </template>
     <template v-else-if="page === 'scan'">
       <h3 v-if="wide">Connecter un ordinateur</h3>
-      <template v-if="canScan"><video ref="video" class="scan-video" playsinline muted></video><p class="lead">Vise le QR code affiché sur l’ordinateur.</p></template>
+      <template v-if="canScan"><div class="scan-frame"><video ref="video" class="scan-video" playsinline muted></video><span class="scan-target" aria-hidden="true"></span></div><p class="lead">Vise le QR code affiché sur l’écran de connexion de l’ordinateur.</p></template>
       <p v-else class="lead">Sur l’ordinateur, ouvre Vencat › Se connecter. Scanne le QR code avec l’appareil photo de ce téléphone : le lien s’ouvre ici et te demande de confirmer.</p>
     </template>
     <template v-else-if="page === 'group'">
@@ -99,7 +118,7 @@ const title = computed(() => !wide.value && page.value ? titles[page.value] : 'M
       <form class="work-form" @submit.prevent="changeGroup"><label class="settings-label">Mon groupe<select v-model="groupId" :disabled="!me.groupChangeAllowed"><option v-for="option in groupOptions" :key="option.id" :value="option.id">{{ option.promotion }} · {{ option.label }}</option></select></label><p class="field-hint">{{ me.groupChangeAllowed ? 'Possible une fois par semestre.' : 'Déjà changé ce semestre : demande à un délégué.' }}</p><button type="submit" :disabled="busy || groupId === me.groupId">Changer de groupe</button></form>
       <div class="list-card"><button class="row" @click="ui.delegates = true"><span class="row-icon"><UserGroupIcon aria-hidden="true" /></span><span class="row-text"><strong>Délégués du groupe</strong><small>Voir, soutenir une demande, signaler un abus</small></span><ChevronRightIcon class="row-chevron" aria-hidden="true" /></button></div>
     </template>
-    <template v-else-if="page === 'agenda'"><h3 v-if="wide">Ajouter à mon agenda</h3><p class="lead">Les travaux de ton groupe dans ton agenda, avec un rappel la veille. Ça remplace les notifications.</p><SubscribeButtons /></template>
+    <template v-else-if="page === 'agenda'"><h3 v-if="wide">Ajouter à mon agenda</h3><p class="lead">Les travaux de ton groupe dans ton agenda, avec un rappel la veille. Ça remplace les notifications.</p><SubscribeButtons open /></template>
     <template v-else-if="page === 'privacy'">
       <h3 v-if="wide">Données et compte</h3>
       <div class="list-card"><div><span class="row-text"><strong>Ce que Vencat garde</strong><small>{{ me.email }} · ton nom · ton groupe · tes contributions, votes, cases « fait » et notes privées.</small></span></div><button class="row" @click="ui.cgu = true"><span class="row-text"><strong>Conditions et confidentialité</strong><small>Finalité, durée de conservation, tes droits</small></span><ChevronRightIcon class="row-chevron" aria-hidden="true" /></button></div>

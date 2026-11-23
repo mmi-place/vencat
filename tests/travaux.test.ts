@@ -31,7 +31,7 @@ test('validation needs 3 upvotes and twice as many up as down, the author does n
 
 test('scopes, links, deadlines and addresses', () => {
   const b1 = groupById(B1)!;
-  assert.deepEqual(scopeChoices(b1).map(choice => choice.label), ['B1', 'B (B1 + B2)', 'MMI-2']);
+  assert.deepEqual(scopeChoices(b1).map(choice => choice.label), ['B1', 'Groupe B', 'MMI-2']);
   assert.deepEqual(scopeMembers({ kind: 'wide', key: 'MMI-2|B' }).map(group => group.id), [B1, B2]);
   assert.equal(scopeChoices(groupById('G1-BV1RUTBT5956')!).length, 2);
   assert.deepEqual(checkLink('https://www.figma.com/file/x'), { url: 'https://www.figma.com/file/x', domain: 'figma.com' });
@@ -57,7 +57,7 @@ function client() {
   let cookie = '';
   return async (path: string, init: { method?: string; body?: unknown; header?: boolean } = {}) => {
     const response = await fetch(base + path, { method: init.method ?? (init.body ? 'POST' : 'GET'), redirect: 'manual', headers: { 'content-type': 'application/json', ...(init.header === false ? {} : { 'x-requested-with': 'vencat' }), ...(cookie ? { cookie } : {}) }, body: init.body ? JSON.stringify(init.body) : undefined });
-    const set = response.headers.getSetCookie().find(item => item.startsWith('vencat_session='));
+    const set = response.headers.getSetCookie().find(item => item.startsWith('vencat_session=') || item.startsWith('vencat_admin='));
     if (set) cookie = set.split(';')[0]!.endsWith('=') ? '' : set.split(';')[0]!;
     const text = await response.text();
     return { status: response.status, body: text && response.headers.get('content-type')?.includes('json') ? JSON.parse(text) : text, location: response.headers.get('location') };
@@ -154,4 +154,43 @@ test('a wrong number denies a device request, and ICS renders', async () => {
   assert.equal((await thief('/auth/poll', { body: { requestId: request.body.requestId, poll: request.body.poll } })).body.status, 'denied');
   const view = { id: 'x', type: 'eval', title: 'DS, maths; ch. 3', due: '2026-11-25T13:00:00.000Z', hasTime: true, state: 'validated', details: { where: '', format: '', mode: '', info: '' }, links: [] } as unknown as WorkView;
   assert.match(worksToIcs('MMI-2 B1', [view], 'https://vencat.mmi.place'), /SUMMARY:Éval · DS\\, maths\\; ch. 3/);
+});
+
+test('personal works stay private and are edited directly', async () => {
+  resetLimits();
+  const owner = await signIn('perso.owner@ens.uvsq.fr');
+  const other = await signIn('perso.other@ens.uvsq.fr');
+  const work = await owner.browser('/travaux/works', { body: { type: 'devoir', title: 'Relire mes notes', day: '2026-12-03', scope: { kind: 'group', key: B1 }, details: { where: '', format: '', mode: '', info: '' }, links: [], personal: true } });
+  assert.equal(work.status, 201);
+  assert.equal(work.body.personal, true);
+  assert.equal(work.body.state, 'validated');
+  assert.ok(!(await other.browser(`/travaux/group/${B1}`)).body.some((item: { id: string }) => item.id === work.body.id));
+  assert.ok((await owner.browser(`/travaux/group/${B1}`)).body.some((item: { id: string }) => item.id === work.body.id));
+  assert.equal((await other.browser(`/travaux/work/${work.body.id}`)).status, 404);
+  assert.equal((await other.browser(`/travaux/work/${work.body.id}/vote`, { body: { value: 1 } })).status, 400);
+  const edited = await owner.browser(`/travaux/work/${work.body.id}/proposal`, { body: { kind: 'edit', changes: { title: 'Relire mes notes de cours' } } });
+  assert.equal(edited.body.title, 'Relire mes notes de cours');
+  assert.doesNotMatch((await client()(`/travaux/ics/${B1}.ics`)).body, /Relire mes notes/);
+});
+
+test('administration has its own mail-code sign-in and session cookie', async () => {
+  resetLimits();
+  process.env.ADMIN_EMAILS = 'chef.admin@gmail.com';
+  process.env.MAIL_LOG_ONLY = '@gmail\\.com$';
+  const admin = client();
+  assert.equal((await admin('/admin/overview')).status, 401);
+  const refused = await admin('/admin/start', { body: { email: 'intrus@gmail.com' } });
+  assert.equal(refused.status, 200, 'same answer for unknown addresses');
+  assert.equal(refused.body.devCode, undefined);
+  const start = await admin('/admin/start', { body: { email: 'chef.admin@gmail.com' } });
+  assert.equal((await admin('/admin/verify', { body: { requestId: start.body.requestId, code: '000000' } })).status, 400);
+  const verify = await admin('/admin/verify', { body: { requestId: start.body.requestId, code: start.body.devCode } });
+  assert.equal(verify.status, 200, JSON.stringify(verify.body));
+  const overview = await admin('/admin/overview');
+  assert.equal(overview.status, 200);
+  assert.ok(overview.body.stats.accounts > 0);
+  // A student account is not an administrator.
+  const student = await signIn('pas.admin@ens.uvsq.fr');
+  assert.equal((await student.browser('/travaux/moderation')).status, 403);
+  delete process.env.ADMIN_EMAILS; delete process.env.MAIL_LOG_ONLY;
 });

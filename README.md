@@ -28,7 +28,9 @@ Une bascule **Cours | Travaux** (touche **W**) affiche les devoirs, rendus, éva
 - **Connexion** : adresse en `.uvsq.fr`, code à 6 chiffres et lien magique par mail (10 minutes, 5 essais, haché), validation sur un appareil déjà connecté en choisissant un nombre parmi trois, ou QR code. Session dans un cookie `HttpOnly` (jeton signé `kind: 'user'`).
 - **Compte** : appareils et déconnexion à distance, groupe modifiable une fois par semestre, correction du nom validée par l’admin, suppression (contributions gardées sous « Ancien étudiant »).
 - **Délégués** (mandat d’un an, validés par l’admin, alerte à 8 soutiens), **modération** (signalements, noms, alertes de fiabilité, lecture seule, bannissement, journal), **corrections d’emploi du temps** certifiées sur l’honneur, affichées par-dessus CELCAT et fermées quand CELCAT change le cours.
-- **Abonnement agenda** : `GET /api/travaux/ics/<groupe>.ics`, rappel la veille.
+- **Abonnement agenda** : `GET /api/travaux/ics/<groupe>.ics`, rappel la veille ; un bouton qui propose d’abord l’agenda le plus probable pour l’appareil.
+- **Ajout perso** : un travail « juste pour moi » n’est visible que par son auteur, sans vote, modifiable et supprimable directement, absent de l’ICS.
+- **Administration** (`/admin`) : vue d’ensemble, modération (signalements, délégués, noms, alertes), comptes (groupe, lecture seule, bannissement, suppression, nomination de délégué), travaux, corrections d’emploi du temps, délégués et journal.
 
 | Variable | Rôle |
 | --- | --- |
@@ -37,7 +39,8 @@ Une bascule **Cours | Travaux** (touche **W**) affiche les devoirs, rendus, éva
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Serveur SMTP Oracle (nodemailer) |
 | `SMTP_ADMIN_EMAIL`, `SMTP_SENDER_NAME` | Expéditeur approuvé, par exemple `MMI-Place <no-reply@mmi.place>` |
 | `CONTACT_EMAIL` | Adresse de contact (CGU, contestation des sanctions) et `Reply-To` des mails |
-| `ADMIN_EMAILS` | Adresses des administrateurs, séparées par des virgules |
+| `ADMIN_EMAILS` | Adresses autorisées sur `/admin` (connexion séparée par code mail, session limitée à la session du navigateur, 12 h au plus). Un compte étudiant n’est jamais administrateur |
+| `APP_ADMIN_EMAILS` | Facultatif, exceptionnel : comptes étudiants dotés des droits d’administration dans l’application |
 | `TEACHER_ACCOUNTS` | `true` pour accepter les adresses `@uvsq.fr` (badge « Confirmé par l’enseignant ») |
 | `PUBLIC_URL` | Facultatif : origine utilisée dans les liens des mails et de l’ICS |
 | `MAIL_LOG_ONLY` | Développement : expression des adresses qui reçoivent le mail dans la console (ex. `@test\.uvsq\.fr$`) |
@@ -52,6 +55,7 @@ Sans SMTP configuré, le développement affiche les mails dans la console et pr�
 | `/api/account/*` | Intégration, appareils, groupe, nom, cases et notes, suppression |
 | `GET /api/travaux/group/:groupId`, `/work/:id`, `/queue` ; `POST /api/travaux/works`, `/work/:id/vote`, `/work/:id/proposal`, `/proposal/:id/vote`, `/work/:id/report`, `/work/:id/moderate` | Travaux |
 | `/api/travaux/delegates/*`, `/api/travaux/moderation*`, `/api/travaux/corrections*` | Délégués, modération, corrections |
+| `POST /api/admin/start`, `/verify`, `/logout`, `/action`, `/work/:id`, `/correction/:id` ; `GET /api/admin/me`, `/overview`, `/works`, `/corrections` | Administration (cookie `vencat_admin`, chemin `/api/admin`) |
 
 Les routes qui modifient des données exigent l’en-tête `X-Requested-With: vencat` et refusent les autres origines.
 

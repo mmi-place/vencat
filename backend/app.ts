@@ -14,6 +14,7 @@ import { configured, redis } from './storage.js';
 import { issueToken, tokenRequestLimited } from './identity.js';
 import { groupById } from '../shared/selection.js';
 import { travauxRouter } from './travaux/routes.js';
+import { adminRouter } from './travaux/admin.js';
 
 const app = express();
 
@@ -27,11 +28,12 @@ const CELCAT_EDT_URL =
 
 app.set('trust proxy', 'loopback');
 // Account routes are same-origin only (cookies); the public timetable API stays open to other sites.
-app.use(/^\/api\/(?!auth|account|travaux)/, cors());
+app.use(/^\/api\/(?!auth|account|travaux|admin)/, cors());
 app.use(express.json({ limit: '16kb' }));
 app.use('/api', monitoringRouter);
 app.use('/api', searchRouter);
 app.use('/api', travauxRouter);
+app.use('/api', adminRouter);
 
 // ---------------------------------------------------------------------------
 // Errors

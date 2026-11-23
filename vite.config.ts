@@ -22,6 +22,8 @@ export default defineConfig({
 				runtimeCaching: [{ urlPattern: /\/(?:(?:background|noel)\.jpg|backgrounds\/[^/]+\.jpg)$/, handler: 'CacheFirst', options: { cacheName: 'vencat-background', expiration: { maxEntries: 8, maxAgeSeconds: 30 * 86400 } } }],
 			},
 			registerType: 'autoUpdate',
+			// The manifest is also served by the development server, so an install from a dev or tunnel URL keeps its icon.
+			devOptions: { enabled: true, suppressWarnings: true },
 			includeAssets: ['favicon.ico', 'retire-device-alerts.js', 'icons/*.png'],
 			manifest: {
 				name: 'Vencat',
@@ -33,7 +35,8 @@ export default defineConfig({
 				theme_color: '#020618',
 				icons: [
 					{ src: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
-					{ src: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' }
+					{ src: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+					{ src: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
 				]
 			}
 		})
