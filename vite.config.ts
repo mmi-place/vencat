@@ -34,6 +34,9 @@ export default defineConfig({
 				start_url: "/",
 				scope: "/",
 				lang: "fr",
+				// Chrome / Edge: open links of the site in the installed app and reuse its window instead of a new one.
+				handle_links: "preferred",
+				launch_handler: { client_mode: ["navigate-existing", "auto"] },
 				display: "standalone",
 				background_color: "#020618",
 				theme_color: '#020618',
