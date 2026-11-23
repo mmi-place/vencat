@@ -358,6 +358,17 @@ router.get('/travaux/group/:groupId', route(async (req, res) => {
   for (const work of works) await settle(work);
   res.json(await Promise.all(works.map(work => workView(work, user, people))));
 }));
+/** One work as a calendar event (Apple Calendrier opens the file; reminder the day before). */
+router.get('/travaux/event/:file', route(async (req, res) => {
+  const work = await db().get<Work>('works', String(req.params.file).replace(/\.ics$/, ''));
+  const { user } = await authenticate(req);
+  if (!work || work.state === 'removed' || (work.personal && work.authorId !== user?.id)) throw new HttpError(404, 'Travail introuvable.');
+  const view = await workView(work, user, await users());
+  res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+  res.setHeader('Content-Disposition', `inline; filename="${work.title.normalize('NFD').replace(/[^A-Za-z0-9]+/g, '-').slice(0, 60) || 'travail'}.ics"`);
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.send(worksToIcs(view.title, [view], origin(req), new Date(), true));
+}));
 router.get('/travaux/work/:id', route(async (req, res) => {
   const work = await db().get<Work>('works', String(req.params.id));
   const { user } = await authenticate(req);

@@ -4,7 +4,6 @@ import { PlusIcon, CheckBadgeIcon, ChevronRightIcon } from '@heroicons/vue/24/ou
 import WorkDetail from './WorkDetail.vue';
 import WorkItem from './WorkItem.vue';
 import InfoCard from './InfoCard.vue';
-import SubscribeButtons from './SubscribeButtons.vue';
 import { travauxDay, today, worksByDay, openedWork, form, requireAccount, queueCount, ui, me, relativeDay, worksForCourse, section, travauxView, visibleWorks, lateWorks } from '../../scripts/travaux';
 import { savedCourses, focused } from '../../scripts/calendarStore';
 import { campusDate, campusTime, frenchDate } from '../../../shared/calendar';
@@ -34,6 +33,5 @@ function openCourse(course: CourseDTO) { section.value = 'cours'; focused.value 
     <button v-if="queueCount" class="panel-cta" @click="ui.queue = true"><CheckBadgeIcon aria-hidden="true" /><span><strong>{{ queueCount }} proposition{{ queueCount > 1 ? 's' : '' }} à valider</strong><small>Un geste par proposition</small></span><ChevronRightIcon aria-hidden="true" /></button>
     <button v-else-if="!me" class="panel-cta" @click="ui.login = true"><CheckBadgeIcon aria-hidden="true" /><span><strong>Se connecter</strong><small>Pour proposer, voter et cocher « fait » partout</small></span><ChevronRightIcon aria-hidden="true" /></button>
     <InfoCard />
-    <SubscribeButtons />
   </template>
 </aside></template>

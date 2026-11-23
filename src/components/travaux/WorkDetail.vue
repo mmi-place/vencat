@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import AddToCalendar from './AddToCalendar.vue';
 import { ChevronLeftIcon, ChevronRightIcon, FlagIcon, PencilSquareIcon, TrashIcon, ArrowRightIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline';
 withDefaults(defineProps<{ inline?: boolean; back?: boolean }>(), { back: true });
 import { WORK_TYPE_LABELS, WORK_STATE_LABELS, CONTEST_REASONS, type WorkView, type HistoryEntry } from '../../../shared/travaux';
@@ -64,6 +65,7 @@ const stamp = (iso: string) => new Date(iso).toLocaleString('fr-FR', { timeZone:
     <label class="settings-label"><span class="sr-only">Ma note (privée)</span><textarea v-model="note" rows="2" maxlength="2000" placeholder="Ma note, visible par toi seul…" @input="setNote(work.id, note)"></textarea></label>
     <p v-if="!me" class="muted">Sans compte, la case et la note restent sur cet appareil.</p>
   </section>
+  <AddToCalendar v-if="work.state !== 'removed'" :work="work" />
   <p v-if="work.state === 'removed'" class="notice">Ce travail a été retiré. L’historique reste consultable.</p>
   <div v-if="work.state === 'contested' && work.reasons.length" class="work-box warn"><strong>Contesté</strong><ul><li v-for="(item, i) in work.reasons" :key="i">{{ item }}</li></ul><p class="muted">L’auteur peut proposer une correction.</p></div>
 

@@ -600,3 +600,16 @@
 .admin-table th[aria-sort=ascending] .sort-button span, .admin-table th[aria-sort=descending] .sort-button span { opacity: 1; }
 .admin-filters select { width: auto; max-width: 340px; }
 .admin-filters .admin-search { flex: 1 1 260px; }
+
+/* Mobile bars: everything fits on 360 px */
+.toolbar-row > * { flex-shrink: 0; }
+.toolbar-row .travaux-title { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 767px) { .add-work span { display: none; } .add-work { width: 44px; height: 44px; padding: 0; justify-content: center; } }
+@media (max-width: 479px) {
+  .mobile-dock { gap: 6px; left: 8px; right: 8px; }
+  .mobile-dock .dock-tabs button { padding: 6px 10px; gap: 5px; }
+  .mobile-dock .dock-right .icon-button { width: 42px; height: 46px; padding: 10px; }
+  .mobile-dock .dock-left .icon-button { width: 46px; height: 46px; }
+}
+@media (max-width: 419px) { .mobile-dock .dock-tabs button svg { display: none; } .mobile-dock .dock-tabs button { padding: 6px 12px; } }
+.add-to-calendar { margin-top: -4px; }

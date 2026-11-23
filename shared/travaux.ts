@@ -209,10 +209,11 @@ export const semesterOf = (iso: string) => { const d = new Date(iso); const y = 
 const icsText = (value: string) => value.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 const icsDate = (iso: string) => iso.replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 const fold = (line: string) => { const out: string[] = []; let rest = line; while (rest.length > 74) { out.push(rest.slice(0, 74)); rest = ' ' + rest.slice(74); } out.push(rest); return out.join('\r\n'); };
-export function worksToIcs(groupLabel: string, works: WorkView[], origin: string, now = new Date()): string {
+/** includePersonal: a single personal work exported by its author. */
+export function worksToIcs(groupLabel: string, works: WorkView[], origin: string, now = new Date(), includePersonal = false): string {
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Vencat//Travaux//FR', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', `X-WR-CALNAME:${icsText('Travaux · ' + groupLabel)}`, 'X-WR-TIMEZONE:Europe/Paris', 'REFRESH-INTERVAL;VALUE=DURATION:PT6H', 'X-PUBLISHED-TTL:PT6H'];
   for (const work of works) {
-    if (work.state === 'removed' || work.personal) continue;
+    if (work.state === 'removed' || (work.personal && !includePersonal)) continue;
     const start = new Date(Date.parse(work.due) - (work.hasTime ? 0 : 30 * 60000)).toISOString();
     const description = [WORK_STATE_LABELS[work.state], work.details.where && 'Où : ' + work.details.where, work.details.format && 'Format : ' + work.details.format, work.details.info, ...work.links.map(link => link.url), `${origin}/?travail=${work.id}`].filter(Boolean).join('\n');
     lines.push('BEGIN:VEVENT', `UID:${work.id}@vencat`, `DTSTAMP:${icsDate(now.toISOString())}`, `DTSTART:${icsDate(start)}`, `DTEND:${icsDate(work.due)}`,
