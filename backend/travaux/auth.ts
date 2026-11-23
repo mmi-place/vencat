@@ -57,7 +57,7 @@ export async function meOf(user: User): Promise<Me> {
 function cookies(req: Request) {
   return Object.fromEntries((req.headers.cookie ?? '').split(';').map(part => part.trim().split('=')).filter(pair => pair.length >= 2).map(([key, ...rest]) => [key!, decodeURIComponent(rest.join('='))]));
 }
-const secureCookie = (req: Request) => req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' || process.env.NODE_ENV === 'production';
+const secureCookie = (req: Request) => req.protocol === 'https' || String(req.headers['x-forwarded-proto'] ?? '').split(',')[0]?.trim() === 'https' || process.env.NODE_ENV === 'production';
 export function setSessionCookie(req: Request, res: Response, token: string) {
   res.append('Set-Cookie', `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_S}${secureCookie(req) ? '; Secure' : ''}`);
 }
@@ -106,7 +106,8 @@ export function sameOrigin(req: Request, res: Response, next: NextFunction) {
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
   const origin = req.headers.origin;
   if (req.headers['x-requested-with'] !== 'vencat') return res.status(403).json({ error: 'Requête refusée.' });
-  if (origin) { try { if (new URL(origin).host !== req.headers.host && new URL(origin).host !== req.headers['x-forwarded-host']) return res.status(403).json({ error: 'Origine refusée.' }); } catch { return res.status(403).json({ error: 'Origine refusée.' }); } }
+  const forwardedHost = String(req.headers['x-forwarded-host'] ?? '').split(',').map(item => item.trim());
+  if (origin) { try { if (new URL(origin).host !== req.headers.host && !forwardedHost.includes(new URL(origin).host)) return res.status(403).json({ error: 'Origine refusée.' }); } catch { return res.status(403).json({ error: 'Origine refusée.' }); } }
   next();
 }
 

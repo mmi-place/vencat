@@ -35,7 +35,9 @@ const router = express.Router();
 router.use(['/auth', '/account', '/travaux'], sameOrigin);
 router.use(['/auth', '/account', '/travaux'], (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 const route = (handler: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) => { handler(req, res).catch(next); };
-const origin = (req: Request) => process.env.PUBLIC_URL || `${req.headers['x-forwarded-proto'] ?? req.protocol}://${req.headers['x-forwarded-host'] ?? req.headers.host}`;
+// Proxies chained (tunnel, then the development proxy) append their values: "https,http". Only the first one is the client's.
+const forwarded = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value)?.split(',')[0]?.trim() || undefined;
+const origin = (req: Request) => process.env.PUBLIC_URL || `${forwarded(req.headers['x-forwarded-proto']) ?? req.protocol}://${forwarded(req.headers['x-forwarded-host']) ?? req.headers.host}`;
 const users = async () => new Map((await db().list<User>('users')).map(user => [user.id, user]));
 
 async function history(workId: string, by: string, action: string, detail?: string) {

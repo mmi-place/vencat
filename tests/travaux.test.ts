@@ -194,3 +194,10 @@ test('administration has its own mail-code sign-in and session cookie', async ()
   assert.equal((await student.browser('/travaux/moderation')).status, 403);
   delete process.env.ADMIN_EMAILS; delete process.env.MAIL_LOG_ONLY;
 });
+
+test('links built behind chained proxies use the client protocol and host only', async () => {
+  resetLimits();
+  const response = await fetch(base + '/auth/qr', { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'vencat', 'x-forwarded-proto': 'https,http', 'x-forwarded-host': 'vencat.example,127.0.0.1:5173', origin: 'https://vencat.example' }, body: '{}' });
+  assert.equal(response.status, 200);
+  assert.match((await response.json() as { url: string }).url, /^https:\/\/vencat\.example\/\?qr=[a-f0-9]{32}&n=\d{2}$/);
+});

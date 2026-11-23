@@ -16,7 +16,7 @@ const db = () => store();
 const router = express.Router();
 router.use('/admin', sameOrigin, (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 const route = (handler: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) => { handler(req, res).catch(next); };
-const secure = (req: Request) => req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' || process.env.NODE_ENV === 'production';
+const secure = (req: Request) => req.protocol === 'https' || String(req.headers['x-forwarded-proto'] ?? '').split(',')[0]?.trim() === 'https' || process.env.NODE_ENV === 'production';
 const cookie = (req: Request) => (req.headers.cookie ?? '').split(';').map(part => part.trim()).find(part => part.startsWith(COOKIE + '='))?.slice(COOKIE.length + 1);
 
 async function requireAdmin(req: Request) {
