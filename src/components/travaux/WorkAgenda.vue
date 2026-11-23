@@ -9,7 +9,7 @@ import { addDay, frenchDate, mondayOf } from '../../../shared/calendar';
 
 // Continuous agenda from the current week: weeks are added while scrolling down (and up),
 // the farthest ones are removed so the page stays light.
-const MAX_WEEKS = 24, STEP = 4;
+const MAX_WEEKS = 30, STEP = 4;
 const scroller = ref<HTMLElement>(), top = ref<HTMLElement>(), bottom = ref<HTMLElement>();
 const start = mondayOf(today.value);
 const weeks = ref<string[]>(Array.from({ length: 6 }, (_, index) => addDay(start, index * 7)));
@@ -22,35 +22,59 @@ const weekTitle = (week: string) => {
 };
 const weekCount = (week: string) => daysOf(week).reduce((sum, day) => sum + (worksByDay.value.get(day)?.filter(work => !isDone(work.id)).length ?? 0), 0);
 
+// Changing the weeks keeps the row on screen exactly where it was (the browser's own scroll anchoring is off,
+// otherwise both corrections add up and the agenda jumps back).
+function anchor(element: HTMLElement) {
+  const rows = [...element.querySelectorAll<HTMLElement>('[data-week]')];
+  const row = rows.find(item => item.offsetTop + item.offsetHeight > element.scrollTop + 1);
+  return row ? { week: row.dataset.week!, delta: row.offsetTop - element.scrollTop } : undefined;
+}
+async function keep(element: HTMLElement | undefined, change: () => void) {
+  const before = element ? anchor(element) : undefined;
+  change();
+  await nextTick();
+  const row = before && element?.querySelector<HTMLElement>(`[data-week="${before.week}"]`);
+  if (element && row && before) element.scrollTop = row.offsetTop - before.delta;
+}
 async function grow(direction: 1 | -1) {
   const element = scroller.value;
   if (direction > 0) {
     const last = weeks.value[weeks.value.length - 1]!;
     const added = Array.from({ length: STEP }, (_, index) => addDay(last, (index + 1) * 7));
     // Only weeks already scrolled out of sight above are removed, never the ones on screen.
-    let removable = 0, removedHeight = 0;
+    let removable = 0;
     if (weeks.value.length + STEP > MAX_WEEKS && element) {
       const top = (week?: string) => week ? element.querySelector<HTMLElement>(`[data-week="${week}"]`)?.offsetTop : undefined;
-      const origin = top(weeks.value[0]) ?? 0;
-      // A week can go when the next one already starts above the visible area.
       while (removable < STEP) { const next = top(weeks.value[removable + 1]); if (next === undefined || next > element.scrollTop - 200) break; removable++; }
-      if (removable) removedHeight = (top(weeks.value[removable]) ?? origin) - origin;
     }
-    weeks.value = [...weeks.value.slice(removable), ...added];
-    if (removable && element) { await nextTick(); element.scrollTop -= removedHeight; }
+    if (removable) await keep(element, () => { weeks.value = [...weeks.value.slice(removable), ...added]; });
+    else weeks.value = [...weeks.value, ...added];
   } else {
     const first = weeks.value[0]!;
     const added = Array.from({ length: 2 }, (_, index) => addDay(first, -(2 - index) * 7));
-    const before = element?.scrollHeight ?? 0;
-    weeks.value = [...added, ...weeks.value].slice(0, MAX_WEEKS);
-    await nextTick();
-    if (element) element.scrollTop += element.scrollHeight - before;
+    // Weeks far below the screen can go: removing them below does not move what is shown.
+    let keepCount = weeks.value.length;
+    if (element && keepCount + 2 > MAX_WEEKS) {
+      const limit = element.scrollTop + element.clientHeight + 1200;
+      while (keepCount > MAX_WEEKS - 2) { const row = element.querySelector<HTMLElement>(`[data-week="${weeks.value[keepCount - 1]}"]`); if (!row || row.offsetTop < limit) break; keepCount--; }
+    }
+    await keep(element, () => { weeks.value = [...added, ...weeks.value.slice(0, keepCount)]; });
   }
 }
-// Load more at both ends.
-let edges: IntersectionObserver | undefined, sections: IntersectionObserver | undefined;
-let growing = false, topArmed = false;
-async function edge(direction: 1 | -1) { if (growing) return; growing = true; try { await grow(direction); } finally { setTimeout(() => { growing = false; }, 120); } }
+// Load more at both ends, checked on every scroll (and again after each load, in case the end is still close).
+let sections: IntersectionObserver | undefined;
+let growing = false, topArmed = false, frame = 0;
+async function checkEdges() {
+  const element = scroller.value;
+  if (!element || growing) return;
+  const nearBottom = element.scrollTop + element.clientHeight > element.scrollHeight - 900;
+  const nearTop = topArmed && element.scrollTop < 400;
+  if (!nearBottom && !nearTop) return;
+  growing = true;
+  try { await grow(nearBottom ? 1 : -1); } finally { growing = false; }
+  requestAnimationFrame(() => void checkEdges());
+}
+const onScroll = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => void checkEdges()); };
 // The week bar follows the week at the top of the agenda.
 const visible = new Map<string, number>();
 function observeSections() {
@@ -64,16 +88,16 @@ function observeSections() {
 }
 watch(weeks, () => nextTick(observeSections));
 onMounted(() => {
-  edges = new IntersectionObserver(entries => entries.forEach(entry => { if (entry.isIntersecting) void edge(entry.target === bottom.value ? 1 : -1); }), { root: scroller.value, rootMargin: '600px 0px' });
-  if (bottom.value) edges.observe(bottom.value);
+  scroller.value?.addEventListener('scroll', onScroll, { passive: true });
   // Earlier weeks load only once the person scrolls up by themselves: the agenda opens on the current week.
-  const armTop = () => { if (top.value && !topArmed) { topArmed = true; edges?.observe(top.value); } };
+  const armTop = () => { topArmed = true; };
   scroller.value?.addEventListener('wheel', armTop, { passive: true, once: true });
   scroller.value?.addEventListener('touchmove', armTop, { passive: true, once: true });
   observeSections();
+  void checkEdges();
   if (mondayOf(travauxDay.value) !== start) void scrollTo(travauxDay.value, false);
 });
-onBeforeUnmount(() => { edges?.disconnect(); sections?.disconnect(); });
+onBeforeUnmount(() => { scroller.value?.removeEventListener('scroll', onScroll); cancelAnimationFrame(frame); sections?.disconnect(); });
 
 // Go to a day asked by the week bar, the timetable or a link.
 async function scrollTo(day: string, smooth = true) {

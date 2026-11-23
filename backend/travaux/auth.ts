@@ -137,6 +137,8 @@ export const addressKey = (req: Request) => hashedAddress(req).slice(0, 24);
 export interface Login {
   id: string; email?: string; pollHash: string; codeHash?: string; magicHash?: string; number: number; decoys: number[];
   createdAt: string; expiresAt: string; attempts: number; mails: number; status: 'waiting' | 'approved' | 'denied'; approvedUserId?: string; device: string; qr?: boolean;
+  /** A code (or link) already used stays valid for REUSE_MAX sign-ins during REUSE_MS, e.g. when the app was reloaded. */
+  firstUsedAt?: string; uses?: number;
 }
 export const LOGIN_TTL_MS = 10 * 60000;
 export const MAX_ATTEMPTS = 5;
@@ -147,7 +149,8 @@ export function newLogin(req: Request, email?: string) {
   const login: Login = { id: id(), email, pollHash: hash(poll), number, decoys: [...decoys], createdAt: now(), expiresAt: new Date(Date.now() + LOGIN_TTL_MS).toISOString(), attempts: 0, mails: 0, status: 'waiting', device: deviceLabel(req), qr: !email };
   return { login, poll };
 }
-export const loginExpired = (login: Login) => login.expiresAt < now();
+export const REUSE_MS = 3 * 60000, REUSE_MAX = 12;
+export const loginExpired = (login: Login) => login.firstUsedAt ? Date.parse(login.firstUsedAt) + REUSE_MS < Date.now() || (login.uses ?? 0) >= REUSE_MAX : login.expiresAt < now();
 export function samePoll(login: Login, poll: unknown) {
   if (typeof poll !== 'string') return false;
   const a = Buffer.from(login.pollHash), b = Buffer.from(hash(poll));

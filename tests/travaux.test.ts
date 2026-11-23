@@ -201,3 +201,17 @@ test('links built behind chained proxies use the client protocol and host only',
   assert.equal(response.status, 200);
   assert.match((await response.json() as { url: string }).url, /^https:\/\/vencat\.example\/\?qr=[a-f0-9]{32}&n=\d{2}$/);
 });
+
+test('a mail code stays valid for a few sign-ins after its first use', async () => {
+  resetLimits();
+  const first = client();
+  const start = await first('/auth/start', { body: { email: 'reuse.code@ens.uvsq.fr' } });
+  for (let index = 0; index < 3; index++) {
+    const again = await client()('/auth/verify', { body: { requestId: start.body.requestId, poll: start.body.poll, code: start.body.devCode } });
+    assert.equal(again.status, 200, JSON.stringify(again.body));
+  }
+  const login = (await store().get<{ uses: number; firstUsedAt: string }>('logins', start.body.requestId))!;
+  assert.equal(login.uses, 3);
+  await store().put('logins', start.body.requestId, { ...login, firstUsedAt: new Date(Date.now() - 4 * 60000).toISOString() });
+  assert.equal((await client()('/auth/verify', { body: { requestId: start.body.requestId, poll: start.body.poll, code: start.body.devCode } })).status, 410);
+});

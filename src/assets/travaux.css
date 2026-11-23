@@ -129,7 +129,7 @@
 .chip-queue svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
 
 /* Agenda */
-.work-agenda { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 14px 150px; position: relative; }
+.work-agenda { flex: 1; min-height: 0; overflow-y: auto; overflow-anchor: none; overscroll-behavior: contain; padding: 0 14px 150px; position: relative; }
 .work-agenda.desktop { padding: 0 2px 40px 0; }
 .agenda-edge { height: 1px; }
 .agenda-more { height: auto; padding: 18px; text-align: center; color: var(--muted); font-size: .8rem; }

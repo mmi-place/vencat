@@ -9,7 +9,7 @@ import QueueDialog from './QueueDialog.vue';
 import DelegatesDialog from './DelegatesDialog.vue';
 import ModerationDialog from './ModerationDialog.vue';
 import InfoDialogs from './InfoDialogs.vue';
-import { wide, ui, form, openedWork, me, needsOnboarding, loadMe, launchLinks, loadQueue, loadWorks, loadCorrections, section } from '../../scripts/travaux';
+import { readPendingLogin, wide, ui, form, openedWork, me, needsOnboarding, loadMe, launchLinks, loadQueue, loadWorks, loadCorrections, section } from '../../scripts/travaux';
 import { online } from '../../scripts/calendarStore';
 // Dialogs of the Travaux section, available from both sections.
 const notice = ref('');
@@ -18,9 +18,10 @@ onMounted(async () => {
   if (launchLinks.connexion === 'ok') notice.value = me.value ? `Connecté en tant que ${me.value.firstName}.` : '';
   if (launchLinks.connexion === 'expiree') { notice.value = 'Ce lien de connexion a expiré ou a déjà servi. Recommence.'; ui.value.login = true; }
   if (launchLinks.work) { section.value = 'travaux'; openedWork.value = launchLinks.work; }
-  if (needsOnboarding.value) ui.value.login = true;
+  if (needsOnboarding.value || (!me.value && readPendingLogin())) ui.value.login = true;
   setTimeout(() => { notice.value = ''; }, 5000);
 });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !me.value && !ui.value.login && readPendingLogin()) ui.value.login = true; });
 watch(online, value => { if (value) { void loadWorks(); void loadQueue(); void loadCorrections(); } });
 let timer: ReturnType<typeof setInterval> | undefined;
 onMounted(() => { timer = setInterval(() => { if (!document.hidden) { void loadQueue(); if (section.value === 'travaux') void loadWorks(); } }, 5 * 60_000); });

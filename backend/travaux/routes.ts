@@ -4,7 +4,7 @@ import { sendMail, loginMail, mailConfigured } from './mail.js';
 import {
   HttpError, id, now, authenticate, requireUser, requireContributor, createSession, clearSessionCookie, sameOrigin, overLimit, addressKey,
   newLogin, loginExpired, samePoll, newSecrets, checkCode, checkMagic, userForEmail, allowedEmail, groupExists, meOf, roleOf, isAdmin, isNewAccount,
-  displayName, shortDisplayName, activeDelegations, adminEmails, LOGIN_TTL_MS, MAX_ATTEMPTS, type User, type Session, type Login, type Delegation,
+  displayName, shortDisplayName, activeDelegations, adminEmails, REUSE_MAX, LOGIN_TTL_MS, MAX_ATTEMPTS, type User, type Session, type Login, type Delegation,
 } from './auth.js';
 import {
   parseWorkInput, voteState, tally, requiredUpvotes, scopeIncludes, scopeLabel, scopeMembers, parisInstant, DEFAULT_DUE_TIME, linkDomain, cleanText, LIMITS,
@@ -201,7 +201,8 @@ router.post('/auth/send-mail', route(async (req, res) => {
 }));
 
 async function finish(req: Request, res: Response, user: User, login: Login) {
-  await db().delete('logins', login.id);
+  // A request already used with its code stays reusable for a few minutes; otherwise it is consumed.
+  if (!login.firstUsedAt) await db().delete('logins', login.id);
   await createSession(req, res, user);
   return { me: await meOf(user) };
 }
@@ -212,8 +213,16 @@ router.post('/auth/verify', route(async (req, res) => {
     login.attempts++; await db().put('logins', login.id, login);
     throw new HttpError(400, login.attempts >= MAX_ATTEMPTS ? 'Trop d’essais. Demande un nouveau code.' : `Code incorrect. ${MAX_ATTEMPTS - login.attempts} essai(s) restant(s).`);
   }
-  res.json(await finish(req, res, await userForEmail(login.email!), login));
+  res.json(await useCode(req, res, login));
 }));
+/** Sign-in with the mail code or link: the request is kept, reusable for a few minutes (REUSE_MAX times). */
+async function useCode(req: Request, res: Response, login: Login) {
+  const user = await userForEmail(login.email!);
+  login.firstUsedAt ??= now(); login.uses = (login.uses ?? 0) + 1; login.attempts = 0;
+  if (login.uses >= REUSE_MAX) await db().delete('logins', login.id); else await db().put('logins', login.id, login);
+  await createSession(req, res, user);
+  return { me: await meOf(user) };
+}
 router.post('/auth/poll', route(async (req, res) => {
   const login = await ownedLogin(req);
   if (login.status === 'denied') { await db().delete('logins', login.id); return res.json({ status: 'denied' }); }
@@ -225,11 +234,10 @@ router.post('/auth/poll', route(async (req, res) => {
 router.get('/auth/magic', route(async (req, res) => {
   const login = await db().get<Login>('logins', String(req.query.r ?? ''));
   if (!login || loginExpired(login) || !login.email || !checkMagic(login, req.query.t)) return res.redirect(302, '/?connexion=expiree');
-  const user = await userForEmail(login.email);
   // The device that opens the link is signed in; the device that asked is approved too.
-  login.status = 'approved'; login.approvedUserId = user.id; login.magicHash = undefined;
-  await db().put('logins', login.id, login);
-  await createSession(req, res, user);
+  const user = await userForEmail(login.email);
+  login.status = 'approved'; login.approvedUserId = user.id;
+  await useCode(req, res, login);
   res.redirect(302, '/?connexion=ok');
 }));
 router.get('/auth/pending', route(async (req, res) => {

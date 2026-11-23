@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from 'vue'
 import QRCode from 'qrcode';
 import { ArrowPathIcon } from '@heroicons/vue/24/outline';
 import AccessibleDialog from '../AccessibleDialog.vue';
-import { api, errorText, me, ui, needsOnboarding, loadMe, wide } from '../../scripts/travaux';
+import { api, errorText, me, ui, needsOnboarding, loadMe, wide, savePendingLogin, readPendingLogin, clearPendingLogin } from '../../scripts/travaux';
 import { selection } from '../../scripts/calendarStore';
 import { groupOptions } from '../../../shared/selection';
 import { isStudentEmail, type Me } from '../../../shared/travaux';
@@ -36,7 +36,12 @@ async function showQr() {
     poll(result, () => { qrExpired.value = true; });
   } catch { qrExpired.value = true; }
 }
-onMounted(() => { if (wide.value && !me.value) void showQr(); });
+onMounted(() => {
+  // Coming back from the mail app (the system may have reloaded the page): the request in progress is restored.
+  const pending = !me.value ? readPendingLogin() : undefined;
+  if (pending) { email.value = pending.email; mailRequest.value = pending.request; poll(pending.request, () => { mailRequest.value = undefined; clearPendingLogin(); }); }
+  if (wide.value && !me.value) void showQr();
+});
 
 async function start() {
   status.value = '';
@@ -45,7 +50,8 @@ async function start() {
   try {
     const result = await api<Request & { devCode?: string }>('/auth/start', { body: { email: email.value } });
     mailRequest.value = result;
-    poll(result, () => { status.value = 'Demande expirée. Recommence.'; mailRequest.value = undefined; });
+    savePendingLogin(email.value, result);
+    poll(result, () => { status.value = 'Demande expirée. Recommence.'; mailRequest.value = undefined; clearPendingLogin(); });
     if (result.devCode) code.value = result.devCode;
     nextTick(() => document.getElementById('login-code')?.focus());
   } catch (error) { status.value = errorText(error); }
@@ -54,16 +60,16 @@ async function start() {
 async function sendMail() {
   if (!mailRequest.value) return;
   busy.value = true; status.value = '';
-  try { const result = await api<{ devCode?: string }>('/auth/send-mail', { body: { requestId: mailRequest.value.requestId, poll: mailRequest.value.poll } }); mailRequest.value = { ...mailRequest.value, mailSent: true }; if (result.devCode) code.value = result.devCode; nextTick(() => document.getElementById('login-code')?.focus()); }
+  try { const result = await api<{ devCode?: string }>('/auth/send-mail', { body: { requestId: mailRequest.value.requestId, poll: mailRequest.value.poll } }); mailRequest.value = { ...mailRequest.value, mailSent: true }; savePendingLogin(email.value, mailRequest.value); if (result.devCode) code.value = result.devCode; nextTick(() => document.getElementById('login-code')?.focus()); }
   catch (error) { status.value = errorText(error); } finally { busy.value = false; }
 }
 async function verify() {
   if (!mailRequest.value) return;
   busy.value = true; status.value = '';
   try { const result = await api<{ me: Me }>('/auth/verify', { body: { requestId: mailRequest.value.requestId, poll: mailRequest.value.poll, code: code.value } }); timers.forEach(clearInterval); me.value = result.me; }
-  catch (error) { status.value = errorText(error); code.value = ''; } finally { busy.value = false; }
+  catch (error) { status.value = errorText(error); code.value = ''; if (/expirée/i.test(status.value)) { clearPendingLogin(); mailRequest.value = undefined; } } finally { busy.value = false; }
 }
-function restart() { mailRequest.value = undefined; code.value = ''; status.value = ''; }
+function restart() { mailRequest.value = undefined; code.value = ''; status.value = ''; clearPendingLogin(); }
 
 // First sign-in: name from the address, group, terms.
 const promotion = ref(selection.value?.promotion ?? '');
@@ -81,7 +87,7 @@ async function onboard() {
     me.value = result.me; ui.value.login = false;
   } catch (error) { status.value = errorText(error); } finally { busy.value = false; }
 }
-watch(() => !!me.value && !needsOnboarding.value, ready => { if (ready) { timers.forEach(clearInterval); ui.value.login = false; void loadMe(); } });
+watch(() => !!me.value && !needsOnboarding.value, ready => { if (ready) { timers.forEach(clearInterval); clearPendingLogin(); ui.value.login = false; void loadMe(); } });
 const title = computed(() => me.value ? 'Bienvenue sur Vencat' : 'Se connecter');
 const subtitle = computed(() => me.value ? 'Deux réglages et c’est prêt.' : 'Pour proposer, voter, cocher « fait » et retrouver tes notes partout. La lecture reste ouverte à tous.');
 </script>

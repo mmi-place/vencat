@@ -257,3 +257,16 @@ export const relativeDay = (day: string, from: string) => {
   const days = Math.round((Date.parse(day + 'T12:00:00Z') - Date.parse(from + 'T12:00:00Z')) / 86400000);
   return days === 0 ? 'Aujourd’hui' : days === 1 ? 'Demain' : days === -1 ? 'Hier' : days > 1 ? `Dans ${days} jours` : `Il y a ${-days} jours`;
 };
+
+// Sign-in in progress, kept on the device: switching to the mail app may reload the page.
+interface PendingLogin { email: string; request: { requestId: string; poll: string; number: number; devices?: number; mailSent?: boolean; expiresAt?: string }; savedAt: number }
+const PENDING_KEY = 'vencat:pending-login';
+export function savePendingLogin(email: string, request: PendingLogin['request']) { writePreference(PENDING_KEY, { email, request, savedAt: Date.now() }); }
+export function readPendingLogin(): PendingLogin | undefined {
+  const saved = readPreference<PendingLogin | null>(PENDING_KEY, null);
+  if (!saved?.request?.requestId) return undefined;
+  // The code lives 10 minutes, and 3 more minutes after a first use.
+  if (Date.now() - saved.savedAt > 13 * 60000) { clearPendingLogin(); return undefined; }
+  return saved;
+}
+export function clearPendingLogin() { try { localStorage.removeItem(PENDING_KEY); } catch { /* storage blocked */ } }
