@@ -55,7 +55,7 @@
 .course-works .work-type-icon { width: 14px; height: 14px; stroke: currentColor; }
 .course-works-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .course-works-more { flex: none; padding: 0 5px; border-radius: 6px; background: #ffffff26; }
-.calendar-scroll:not(.day-timeline) .grid-course.short-course .course-works-text { display: none; }
+.calendar-scroll:not(.day-timeline) .grid-course .course-works-text { display: none; }
 .badge-cancelled { --badge: #b91c1c; --badge-soft: #fca5a5; }
 .badge-cancelled.unconfirmed { --badge: #7f1d1d; }
 .work-new-badge { --badge: #15803d; --badge-soft: #4ade80; }
@@ -486,13 +486,13 @@
 .course-works { width: fit-content; max-width: 100%; margin-top: 3px; padding: 2px 7px; border-radius: 6px; background: #00000038; }
 [data-theme=light] .course-works { background: #ffffffa8; }
 /* Works of a short course, by view. List: the card grows. Day: the label sits over the card.
-   Week: one icon per work in the bottom right corner. */
+   Week: one icon per work in the bottom right corner, for every course. */
 .list-course.has-works { height: auto; min-height: var(--list-course-height, 88px); }
 .course-work-icons { display: none; }
 .day-timeline .grid-course.short-course .course-works { position: absolute; top: 50%; right: 8px; transform: translateY(-50%); max-width: 45%; margin: 0; z-index: 1; box-shadow: 0 2px 8px #0005; }
 .day-timeline .grid-course.short-course .course-works-text { display: inline; }
-.calendar-scroll:not(.day-timeline) .grid-course.short-course .course-works { display: none; }
-.calendar-scroll:not(.day-timeline) .grid-course.short-course .course-work-icons { position: absolute; right: 4px; bottom: 4px; display: flex; align-items: center; gap: 2px; padding: 2px 4px; border-radius: 7px; background: #00000047; color: inherit; font-size: .68rem; font-weight: 800; }
+.calendar-scroll:not(.day-timeline) .grid-course .course-works { display: none; }
+.calendar-scroll:not(.day-timeline) .grid-course .course-work-icons { position: absolute; right: 4px; bottom: 4px; display: flex; align-items: center; gap: 2px; padding: 2px 4px; border-radius: 7px; background: #00000047; color: inherit; font-size: .68rem; font-weight: 800; }
 [data-theme=light] .course-work-icons { background: #ffffffb8 !important; }
 .course-work-icons .work-type-icon { width: 13px; height: 13px; stroke: currentColor; }
 .grid-course { position: relative; }
