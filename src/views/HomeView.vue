@@ -72,6 +72,11 @@ let launching = true, ownRoute = '';
 const linkView = (value: unknown) => ['day', 'jour'].includes(String(value)) ? 'day' as const : ['week', 'semaine', 'grid'].includes(String(value)) ? 'week' as const : ['list', 'liste'].includes(String(value)) ? 'list' as const : undefined;
 let navigationGeneration = 0;
 const resolvingDate = ref(false);
+function rememberedGroup() {
+  let remembered = readPreference<string>('vencat:group', '');
+  if (!remembered) { try { remembered = localStorage.getItem('group_id') ?? ''; } catch { /* storage blocked */ } }
+  return groupById(remembered);
+}
 async function applyRoute() {
   // URLs written by the app itself only mirror its state: nothing to recompute.
   // Consumed once, so a later real navigation (Back) to the same URL is applied.
@@ -79,15 +84,16 @@ async function applyRoute() {
   ownRoute = '';
   const current = ++navigationGeneration;
   const query = launching && standalone ? {} : route.query;
+  // The installed app always starts from the root: some systems (iOS) reopen the page where it was installed,
+  // so at launch the address is ignored and the last chosen group opens instead.
+  const fromRoot = launching && standalone && route.path !== '/' && !!rememberedGroup();
   launching = false;
   resolvingDate.value = false;
   routeError.value = '';
   let group = groupByPath(route.path);
-  if (route.path === '/') {
-    let remembered = readPreference<string>('vencat:group', '');
-    if (!remembered) { try { remembered = localStorage.getItem('group_id') ?? ''; } catch { /* storage blocked */ } }
-    group = groupById(remembered);
-    if (group) { router.replace({ path: group.path, query }); return; }
+  if (route.path === '/' || fromRoot) {
+    group = rememberedGroup();
+    if (group) { if (group.path !== route.path || Object.keys(route.query).length) { router.replace({ path: group.path, query }); return; } }
   } else if (!group) routeError.value = 'Ce lien ne correspond pas à un groupe. Choisissez votre filière, votre promotion et votre groupe.';
   const explicitDate = typeof query.date === 'string' && validDay(query.date) ? query.date : undefined;
   let targetDate = explicitDate ? visibleDay(explicitDate) : campusDate(new Date());

@@ -29,7 +29,11 @@ export default defineConfig({
 				name: 'Vencat',
 				short_name: 'Vencat',
 				description: "Emploi du temps plus beau que CELCAT",
+				// The app is the root of the site: same identity and start page whatever page it was installed from.
+				id: "/",
 				start_url: "/",
+				scope: "/",
+				lang: "fr",
 				display: "standalone",
 				background_color: "#020618",
 				theme_color: '#020618',
