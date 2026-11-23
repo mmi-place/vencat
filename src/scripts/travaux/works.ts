@@ -6,9 +6,9 @@ import { me, userKey, config } from './session';
 import { isDone } from './marks';
 import { myOutbox } from './outbox';
 import { filters } from './ui';
-import { addDay, campusDate, mondayOf, normalizedText } from '../../../shared/calendar';
+import { addDay, campusDate, normalizedText } from '../../../shared/calendar';
 import type { CourseDTO } from '../../../shared/courses';
-import { countdown, scopeLabel, parisInstant, DEFAULT_DUE_TIME, type WorkView, type WorkType, type WorkInput, type CourseLink, type WorkScope } from '../../../shared/travaux';
+import { countdown, scopeLabel, parisInstant, DEFAULT_DUE_TIME, type WorkView, type WorkInput, type CourseLink } from '../../../shared/travaux';
 
 // Works of the selected group, kept on the device (per account: personal works stay private) for offline reading.
 export const works = ref<WorkView[]>([]);
@@ -70,12 +70,6 @@ export const worksByDay = computed(() => {
 /** All works of a day, whatever the filters (used in the timetable). */
 export const worksOn = (day: string) => works.value.filter(work => work.day === day && work.state !== 'removed');
 export const lateWorks = computed(() => visibleWorks.value.filter(work => work.due < clock.value.toISOString() && !isDone(work.id) && work.day >= addDay(today.value, -30)));
-export const weekSummary = computed(() => {
-  const start = mondayOf(today.value), end = addDay(start, 6);
-  const list = works.value.filter(work => work.state !== 'removed' && work.day >= start && work.day <= end);
-  const count = (type: WorkType) => list.filter(work => work.type === type).length;
-  return { rendu: count('rendu'), eval: count('eval'), devoir: count('devoir'), projet: count('projet'), total: list.length, done: list.filter(work => isDone(work.id)).length, late: lateWorks.value.length };
-});
 export const label = (work: WorkView) => countdown(work.day, today.value);
 
 /** Works linked to a course: same CELCAT identifier and start, else same subject on the same day ("cours modifié"). */
@@ -90,7 +84,6 @@ export function worksForCourse(course: CourseDTO): { work: WorkView; moved: bool
 }
 export const isDs = (course: CourseDTO) => /\b(ds|devoir surveill|contr[ôo]le|examen|partiel|évaluation|evaluation)\b/i.test(`${course.type} ${course.summary}`);
 export const courseLink = (course: CourseDTO): CourseLink => ({ uid: course.uid, start: course.start, module: course.module, summary: course.summary, type: course.type, location: course.location, audience: course.group });
-export const emptyInput = (scope: WorkScope, day: string): WorkInput => ({ type: 'rendu', title: '', day, time: '', scope, details: { where: '', format: '', mode: '', info: '' }, links: [] });
 
 // Timetable corrections (shown over CELCAT, closed when CELCAT changes the course)
 export interface CorrectionView { id: string; groupId: string; course: CourseLink & { end: string }; field: 'room' | 'time' | 'cancelled'; value: string; start?: string; end?: string; author: string; state: string; up: number; down: number; myVote?: 1 | -1; mine: boolean; status: string; createdAt: string }

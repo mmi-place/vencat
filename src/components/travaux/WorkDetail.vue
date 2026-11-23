@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AddToCalendar from './AddToCalendar.vue';
-import { CheckCircleIcon, PencilIcon, MapPinIcon, DocumentTextIcon, UserGroupIcon, UserIcon, LinkIcon, BookOpenIcon, CheckBadgeIcon, ClockIcon, LightBulbIcon, AcademicCapIcon } from '@heroicons/vue/24/outline';
+import { CheckCircleIcon, PencilIcon, MapPinIcon, DocumentTextIcon, UserGroupIcon, UserIcon, LinkIcon, BookOpenIcon, CheckBadgeIcon, ClockIcon, LightBulbIcon, AcademicCapIcon, ChevronLeftIcon, ChevronRightIcon, FlagIcon, PencilSquareIcon, TrashIcon, ArrowRightIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline';
 import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/vue/24/solid';
-import { ChevronLeftIcon, ChevronRightIcon, FlagIcon, PencilSquareIcon, TrashIcon, ArrowRightIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline';
 withDefaults(defineProps<{ inline?: boolean; back?: boolean }>(), { back: true });
 import { WORK_TYPE_LABELS, WORK_STATE_LABELS, CONTEST_REASONS, type WorkView, type HistoryEntry } from '../../../shared/travaux';
-import { frenchDate, campusDate, campusTime } from '../../../shared/calendar';
-import { api, errorText, openedWork, works, replaceWork, vote, me, canContribute, ui, form, marks, isDone, setDone, setNote, markWorkSeen, section, visibleWorks, label } from '../../scripts/travaux';
-import { highlightCourse } from '../../scripts/travaux';
+import { frenchDate, frenchStamp, campusDate, campusTime } from '../../../shared/calendar';
+import { api, errorText, openedWork, works, replaceWork, vote, me, canContribute, ui, form, marks, isDone, setDone, setNote, markWorkSeen, section, visibleWorks, label, highlightCourse } from '../../scripts/travaux';
 import { date as planningDate, online } from '../../scripts/calendarStore';
 const work = ref<WorkView | undefined>(works.value.find(item => item.id === openedWork.value));
 const history = ref<HistoryEntry[]>([]);
@@ -62,7 +60,7 @@ onMounted(() => window.addEventListener('keydown', keydown));
 onBeforeUnmount(() => window.removeEventListener('keydown', keydown));
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).map(part => part[0]).slice(0, 2).join('').toUpperCase();
 function autoGrow(event: Event) { const area = event.target as HTMLTextAreaElement; area.style.height = 'auto'; area.style.height = area.scrollHeight + 'px'; }
-const stamp = (iso: string) => new Date(iso).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const stamp = frenchStamp;
 </script>
 <template><div class="work-detail-root" :class="{ inline }"><header v-if="inline" class="panel-header"><button v-if="back" class="icon-button quiet" aria-label="Revenir à la journée" @click="openedWork = undefined"><ArrowLeftIcon aria-hidden="true" /></button><h2 tabindex="-1">{{ work?.title ?? 'Travail' }}</h2></header><div v-if="work" class="work-detail" :class="'type-' + work.type">
   <p class="work-detail-tags"><span class="type-tag" :class="'tag-' + work.type">{{ WORK_TYPE_LABELS[work.type] }}<template v-if="work.ds"> · DS</template></span><span v-if="!work.personal" class="pill" :class="'pill-' + work.state">{{ stateText }}</span><span v-if="work.teacherConfirmed" class="pill pill-validated">Confirmé par l’enseignant</span><span v-if="work.personal" class="pill pill-personal">Perso · visible par toi seul</span><span v-if="left && work.state !== 'removed'" class="pill" :class="left.late ? 'pill-late' : left.level >= 2 ? 'pill-soon' : 'pill-neutral'">{{ left.label }}</span></p>

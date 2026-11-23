@@ -102,7 +102,7 @@ La consultation fonctionne avec les services universitaires configurés par déf
 | `src/scripts` | État du planning, IndexedDB, préférences, catalogues et mise à jour PWA |
 | `src/scripts/travaux/` | Travaux côté appareil : `api` (appels, session expirée), `session` (compte gardé hors ligne), `marks` (cases et notes), `outbox` (actions hors ligne par compte), `works` (travaux, brouillons, corrections), `ui` (sections, fenêtres, messages) ; `src/scripts/travaux.ts` les relie |
 | `src/components/travaux/` | Interface des Travaux |
-| `backend/travaux/` | Comptes, travaux, administration, stockage et mails |
+| `backend/travaux/` | `routes` (contrôles communs puis un module par domaine) : `login` (connexion, compte), `works` (travaux, votes, propositions, calendriers), `delegates`, `moderation`, `corrections` ; `common` (documents stockés, état d’un travail selon les votes), `auth`, `admin`, `settings` (mode planning seul), `store`, `mail` |
 | `shared` | Contrats des cours, groupes, dates, recherche et réparation des textes |
 | `backend` | Lecture de CELCAT, normalisation, caches Redis, recherche et suivi des changements |
 | `api` | Points d’entrée des fonctions Vercel |

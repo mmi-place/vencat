@@ -1,10 +1,10 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
 import { randomBytes, randomInt } from 'node:crypto';
-import { store } from './store.js';
 import { settings as globalSettings, saveSettings } from './settings.js';
 import { sendMail, layout } from './mail.js';
 import { HttpError, hash, id, now, sameOrigin, overLimit, addressKey, deviceLabel, adminEmails, activeDelegations, displayName, type User, type Session, type Delegation } from './auth.js';
-import { moderationData, moderationAction, settle, workView, users, history, audit, schoolYearEnd, type Work } from './routes.js';
+import { db, settle, workView, users, history, audit, schoolYearEnd, type Work } from './common.js';
+import { moderationData, moderationAction } from './moderation.js';
 import { normalizeEmail, cleanText, LIMITS, scopeLabel, type WorkState } from '../../shared/travaux.js';
 import { groupById } from '../../shared/selection.js';
 
@@ -13,7 +13,6 @@ import { groupById } from '../../shared/selection.js';
 interface AdminLogin { id: string; email: string; codeHash: string; expiresAt: string; attempts: number }
 interface AdminSession { email: string; createdAt: string; expiresAt: string; device: string }
 const COOKIE = 'vencat_admin';
-const db = () => store();
 const router = express.Router();
 router.use('/admin', sameOrigin, (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 const route = (handler: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) => { handler(req, res).catch(next); };

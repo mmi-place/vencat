@@ -4,7 +4,7 @@ import { ChartBarIcon, ShieldExclamationIcon, UsersIcon, ClipboardDocumentListIc
 import { api, errorText } from '../scripts/travaux';
 import { groupById, groupOptions } from '../../shared/selection';
 import { WORK_TYPE_LABELS, WORK_STATE_LABELS, scopeIncludes, type WorkView } from '../../shared/travaux';
-import { frenchDate } from '../../shared/calendar';
+import { frenchDate, frenchStamp } from '../../shared/calendar';
 
 // Administration: its own sign-in by mail code, a session that ends with the browser session.
 type Tab = 'overview' | 'moderation' | 'accounts' | 'works' | 'corrections' | 'delegates' | 'log';
@@ -116,7 +116,7 @@ const tabs = computed(() => [
   { id: 'delegates' as const, label: 'Délégués', icon: UserGroupIcon },
   { id: 'log' as const, label: 'Journal', icon: ClockIcon },
 ]);
-const day = (iso: string) => new Date(iso).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const day = frenchStamp;
 </script>
 <template>
 <div class="admin-app">

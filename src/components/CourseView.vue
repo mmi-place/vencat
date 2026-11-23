@@ -2,12 +2,11 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import { ClockIcon, MapPinIcon, UserIcon, UserGroupIcon } from '@heroicons/vue/24/outline';
 import type { CourseDTO } from '../../shared/courses';
-import { campusTime, campusDate, frenchDate } from '../../shared/calendar';
+import { campusTime, campusDate, frenchDate, normalizedText } from '../../shared/calendar';
 import { courseColor, colorText, focused, preferences, courseBadges, clock, savedCourses } from '../scripts/calendarStore';
 import { badgeLabels, badgeLevel } from '../../shared/changePresentation';
 import { planningSearch, isSearchMatch } from '../scripts/searchStore';
 import { worksForCourse, unseenWorks, checkCorrection, courseHighlight } from '../scripts/travaux';
-import { normalizedText } from '../../shared/calendar';
 import { WORK_TYPE_LABELS } from '../../shared/travaux';
 import WorkTypeIcon from './travaux/WorkTypeIcon.vue';
 import { FlagIcon } from '@heroicons/vue/24/solid';

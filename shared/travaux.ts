@@ -121,7 +121,6 @@ export function nameFromEmail(email: string): { firstName: string; lastName: str
   const [first = '', ...rest] = local.split(/[._]/).filter(Boolean);
   return { firstName: capital(first), lastName: rest.map(capital).join(' ') };
 }
-export const shortName = (firstName: string, lastName: string) => [firstName, lastName ? lastName[0] + '.' : ''].filter(Boolean).join(' ');
 
 // ---------------------------------------------------------------------------
 // Validation: ≥ 3 👍 and twice as many 👍 as 👎. The author's vote does not count.

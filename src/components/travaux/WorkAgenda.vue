@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { PlusIcon } from '@heroicons/vue/24/outline';
 import WorkCard from './WorkCard.vue';
 import WorkItem from './WorkItem.vue';
-import { isDone, worksByDay, today, travauxDay, focusDay, agendaFocus, stripWeek, wide, lateWorks, form, requireAccount, openedWork, relativeDay, worksLoading } from '../../scripts/travaux';
+import { isDone, worksByDay, today, travauxDay, focusDay, agendaFocus, stripWeek, wide, lateWorks, form, requireAccount, openedWork, worksLoading } from '../../scripts/travaux';
 import { preferences } from '../../scripts/calendarStore';
 import { addDay, frenchDate, mondayOf } from '../../../shared/calendar';
 

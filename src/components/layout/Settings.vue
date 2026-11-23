@@ -10,12 +10,11 @@ import { preferences, loadCalendar, snapshots, history, unseenChanges } from '..
 import { clearCalendarStorage } from '../../scripts/storage';
 import ThemePicker from '../ThemePicker.vue';
 import { effectiveTheme } from '../../scripts/theme';
-import { PaintBrushIcon, ArrowPathIcon, DevicePhoneMobileIcon, ChevronRightIcon, BellIcon, CalendarDaysIcon, PhotoIcon, EyeIcon, AdjustmentsHorizontalIcon, ArrowUpTrayIcon } from '@heroicons/vue/24/outline';
+import { PaintBrushIcon, ArrowPathIcon, DevicePhoneMobileIcon, ChevronRightIcon, BellIcon, CalendarDaysIcon, PhotoIcon, EyeIcon, AdjustmentsHorizontalIcon, ArrowUpTrayIcon, UserCircleIcon, UserGroupIcon } from '@heroicons/vue/24/outline';
 import { backgrounds, backgroundStyle, type Background } from '../../scripts/appearance';
 import { customBackgroundUrl, importBackground, removeBackground } from '../../scripts/customBackground';
 import { accessibility } from '../../scripts/accessibility';
 import { me } from '../../scripts/travaux';
-import { UserCircleIcon, UserGroupIcon } from '@heroicons/vue/24/outline';
 
 export type SettingsPage = 'home' | 'appearance' | 'background' | 'planning' | 'data' | 'accessibility' | 'install';
 const props = defineProps<{ initialPage?: SettingsPage; mobile?: boolean }>();

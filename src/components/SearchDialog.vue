@@ -4,12 +4,11 @@ import { MagnifyingGlassIcon, CalendarDaysIcon, ChevronRightIcon, UserIcon, MapP
 import AccessibleDialog from './AccessibleDialog.vue';
 import { works as allWorks, openedWork, section as appSection, travauxDay, travauxView } from '../scripts/travaux';
 import { WORK_TYPES, WORK_TYPE_LABELS, type WorkType } from '../../shared/travaux';
-import { normalizedText } from '../../shared/calendar';
 import { savedCourses, selection, online, preferences } from '../scripts/calendarStore';
 import { cachedSearchDataset, loadSearchDataset, planningSearch, type PlanningSearch } from '../scripts/searchStore';
 import { searchWindow, rangeTTL, matchesCourse, coursesInWindow, searchFacets, type SearchCriterion, type SearchField, type SearchFilters } from '../../shared/search';
 import type { CourseDTO } from '../../shared/courses';
-import { addDay, campusDate, campusTime, frenchDate, courseKey, isWeekend } from '../../shared/calendar';
+import { addDay, campusDate, campusTime, frenchDate, courseKey, isWeekend, normalizedText } from '../../shared/calendar';
 
 const props = defineProps<{ initial?: SearchCriterion }>();
 const emit = defineEmits<{ close: []; open: [course: CourseDTO]; show: [search: PlanningSearch] }>();

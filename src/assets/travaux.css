@@ -42,14 +42,6 @@
 @media (max-width: 379px) { .mobile-dock .dock-tabs button { padding: 6px 9px; } .mobile-dock .dock-tabs button svg { display: none; } }
 
 /* ---------------------------------------------------------------- Work indicators in the timetable (no extra height) */
-.work-dots { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; vertical-align: middle; }
-.work-dots i { display: block; width: 7px; height: 7px; border-radius: 50%; background: var(--work); }
-.work-dots i.pending { background: transparent; box-shadow: inset 0 0 0 1.5px var(--work); }
-.work-dots-count { margin-left: 3px; font-size: .75rem; font-weight: 800; color: var(--text); }
-.list-day-heading p .work-dots { margin-left: 8px; }
-.timeline-day .header-dots { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); margin: 0; flex-direction: column; gap: 3px; }
-@media (max-width: 767px) { .timeline-day .header-dots { top: auto; bottom: 3px; right: 50%; transform: translateX(50%); flex-direction: row; } }
-.date-text .work-dots { margin-left: 8px; }
 
 /* Course cards: corrected values in place, works in a quiet footer */
 .is-fixed .fixed-value { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0 5px; }
@@ -221,7 +213,6 @@
 .logo-apple::before { content: '17'; font-size: .8rem; }
 .logo-outlook { background: #0a64ad; }
 .logo-office { background: linear-gradient(135deg, #0f6cbd, #4f52b2); }
-.dialog-note { margin-top: 12px; font-size: .82rem; }
 
 /* ---------------------------------------------------------------- Dialogs: centred card on desktop, sheet from the bottom on mobile */
 .app-dialog { border-radius: 22px; box-shadow: var(--shadow); border: 1px solid var(--line); }
@@ -242,10 +233,13 @@
 @media (prefers-reduced-motion: reduce) { .app-dialog[open] { animation: none; } }
 
 /* Fields */
-.app-dialog :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea) { width: 100%; min-height: 48px; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--field); color: var(--text); font: inherit; font-size: 1rem; transition: border-color .15s, box-shadow .15s; }
+.app-dialog :is(input, select, textarea):not([type=checkbox], [type=radio], [type=range]) { width: 100%; min-height: 48px; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--field); color: var(--text); font: inherit; font-size: 1rem; transition: border-color .15s, box-shadow .15s; }
 .app-dialog textarea { min-height: 84px; resize: vertical; line-height: 1.45; }
 .app-dialog :is(input, select, textarea):focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--ring); }
 .app-dialog :is(input, textarea)::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
+/* Fields with a leading icon keep room for it. */
+.app-dialog .search-field input:not([type=checkbox]) { padding-left: 40px; }
+.app-dialog .search-facet select:not([type=checkbox]) { padding-left: 33px; }
 .settings-label { display: grid; gap: 7px; font-size: .85rem; font-weight: 800; color: color-mix(in srgb, var(--text) 85%, var(--muted)); }
 .field-hint { font-size: .78rem; font-weight: 500; color: var(--muted); }
 .check-label { display: flex; gap: 10px; align-items: flex-start; line-height: 1.45; font-size: .92rem; }
@@ -286,7 +280,6 @@
 .work-detail { display: grid; gap: 16px; }
 .work-detail-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .type-tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 8px; font-size: .8rem; font-weight: 900; background: color-mix(in srgb, var(--work) 22%, var(--surface)); color: var(--text); }
-.tag-rendu { --work: var(--rendu); } .tag-eval { --work: var(--eval); } .tag-devoir { --work: var(--devoir); } .tag-projet { --work: var(--projet); }
 .pill { display: inline-block; flex: none; padding: 3px 9px; border-radius: 999px; font-size: .74rem; font-weight: 800; white-space: nowrap; }
 .pill-late { background: var(--alert); color: #fff; }
 .pill-soon { background: #b45309; color: #fff; }
@@ -305,13 +298,6 @@
 .diff { list-style: none; padding: 0 !important; display: grid; gap: 4px; }
 .diff del { color: var(--muted); }
 .inline-icon { width: 14px; height: 14px; display: inline; vertical-align: -2px; stroke: currentColor; fill: none; stroke-width: 2; }
-.work-section { display: grid; gap: 8px; }
-.work-section h3 { font-size: .72rem; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
-.work-fields { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; }
-.work-fields dt { color: var(--muted); font-size: .88rem; }
-.work-info { white-space: pre-wrap; line-height: 1.5; }
-.work-links { list-style: none; display: grid; gap: 6px; }
-.work-links a { display: inline-flex; padding: 8px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); font-weight: 800; color: var(--accent); text-decoration: none; }
 .vote-block { display: grid; gap: 10px; padding: 14px; border-radius: var(--radius); background: color-mix(in srgb, var(--surface) 70%, transparent); border: 1px solid var(--line); }
 .button-row.secondary button { font-size: .86rem; min-height: 40px; }
 .vote-up[aria-pressed=true] { background: color-mix(in srgb, #15803d 35%, var(--surface)); border-color: #2fae74; color: var(--text); }
@@ -416,10 +402,6 @@
 .mod-main { flex: 1 1 220px; min-width: 0; }
 .mod-row select { max-width: 170px; min-height: 40px !important; }
 .mod-log { padding-left: 18px; display: grid; gap: 4px; font-size: .88rem; }
-
-.queue-title { justify-self: start; text-align: left; color: var(--text); font-size: 1rem; }
-.device-list { list-style: none; display: grid; gap: 4px; }
-.device-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .course-travaux { display: grid; gap: 10px; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--line); }
 .course-travaux h3 { font-size: .72rem; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
 .course-work-list { list-style: none; display: grid; gap: 4px; }
@@ -431,8 +413,6 @@
 
 /* Mobile header: the day's works as dots and a number next to the month; the account replaces the clock on narrow phones. */
 @media (max-width: 459px) { .mobile-clock time { display: none; } }
-.date-text .work-dots-count { font-size: .8rem; }
-.work-section .text-action, .work-section .text-button { text-align: left; }
 @media (max-width: 767px) {
   .info-card { padding: 10px 6px 10px 12px; }
   .info-card strong { font-size: .9rem; }
@@ -612,7 +592,6 @@
   .mobile-dock .dock-left .icon-button { width: 46px; height: 46px; }
 }
 @media (max-width: 419px) { .mobile-dock .dock-tabs button svg { display: none; } .mobile-dock .dock-tabs button { padding: 6px 12px; } }
-.add-to-calendar { margin-top: -4px; }
 .toast:not(.visible) { opacity: 0; pointer-events: none; transform: translate(-50%, 10px); }
 .toast:empty { padding: 0; }
 .offline-bar { margin: 0 14px 8px; padding: 8px 12px; border-radius: 12px; font-size: .84rem; font-weight: 700; background: color-mix(in srgb, #d68a1c 16%, var(--surface)); color: var(--text); }

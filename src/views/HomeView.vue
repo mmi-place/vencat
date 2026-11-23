@@ -9,7 +9,6 @@ import GroupPicker from '../components/GroupPicker.vue';
 import ListCalendar from '../components/ListCalendar.vue';
 import CalendarSkeleton from '../components/CalendarSkeleton.vue';
 import ChangesDialog from '../components/ChangesDialog.vue';
-import { todayPlanningDate, mondayOf } from '../../shared/calendar';
 import { type SearchCriterion } from '../../shared/search';
 import SearchDialog from '../components/SearchDialog.vue';
 import { planningSearch, isSearchMatch, type PlanningSearch } from '../scripts/searchStore';
@@ -30,7 +29,7 @@ import { section, toggleSection, ui as travauxUi, form as travauxForm, openedWor
 import { selection, date, view, week, preferences, selectedIds, loading, error, storageError, hasData, missingGroups, lastFetched, online, fallback, loadCalendar, weekCourses, clock, focused, history, unseenChanges, resolveTodayDate, snapshots, showLinkedView } from '../scripts/calendarStore';
 import { readPreference, writePreference, saveHistory } from '../scripts/storage';
 import { groupById, groupByPath, type GroupOption } from '../../shared/selection';
-import { campusDate, campusTime, frenchDate, addDay, validDay, isWeekend } from '../../shared/calendar';
+import { campusDate, campusTime, frenchDate, addDay, validDay, isWeekend, todayPlanningDate, mondayOf } from '../../shared/calendar';
 const route = useRoute(), router = useRouter();
 const settingsPage = ref<SettingsPage>('home');
 function openSettings(page: SettingsPage = 'home') { settingsPage.value = page; settingsOpen.value = true; }

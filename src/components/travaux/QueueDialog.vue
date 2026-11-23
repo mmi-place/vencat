@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { CheckIcon, XMarkIcon, ForwardIcon, ArrowRightIcon } from '@heroicons/vue/24/outline';
+import { CheckIcon, XMarkIcon, ForwardIcon, ArrowRightIcon, ShieldCheckIcon, QuestionMarkCircleIcon } from '@heroicons/vue/24/outline';
 import AccessibleDialog from '../AccessibleDialog.vue';
 import WorkTypeIcon from './WorkTypeIcon.vue';
 import { api, queue, ui, vote, errorText, openedWork, loadQueue, type CorrectionView, type DeclarationView } from '../../scripts/travaux';
-import { ShieldCheckIcon, QuestionMarkCircleIcon } from '@heroicons/vue/24/outline';
 import { WORK_TYPE_LABELS, CONTEST_REASONS, type WorkView } from '../../../shared/travaux';
 import { frenchDate, campusDate, campusTime } from '../../../shared/calendar';
 

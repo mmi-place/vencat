@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue';
 import AccessibleDialog from '../AccessibleDialog.vue';
 import { api, errorText, ui, openedWork } from '../../scripts/travaux';
 import { groupById, groupOptions } from '../../../shared/selection';
+import { frenchStamp } from '../../../shared/calendar';
 interface Queue {
   role: string;
   reports: { id: string; kind: string; targetId: string; title: string; reason: string; by: string; at: string }[];
@@ -22,7 +23,7 @@ async function act(kind: string, id: string, action: string, extra: Record<strin
   try { await api('/travaux/moderation/action', { body: { kind, id, action, reason: reason.value, ...extra } }); status.value = 'Fait.'; reason.value = ''; await load(); }
   catch (error) { status.value = errorText(error); } finally { busy.value = false; }
 }
-const day = (iso: string) => new Date(iso).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const day = frenchStamp;
 const empty = () => !!data.value && !data.value.reports.length && !data.value.delegates.length && !data.value.names.length && !data.value.alerts.length;
 </script>
 <template><AccessibleDialog id="moderation-dialog" title="Modération" wide @close="ui.moderation = false">
