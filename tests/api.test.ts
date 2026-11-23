@@ -27,7 +27,7 @@ test('annual server search validates input, fetches bounded chunks and reuses da
     assert.equal(first.status, 200);
     assert.equal(first.headers.get('cache-control'), 'no-store');
     const result = await first.json() as { courses: unknown[]; ttl: number; start: string; end: string; version: string; facetsVersion: string; facets: { teacher: { value: string }[] } };
-    assert.equal(result.ttl, 1209600); assert.equal(result.start, '2028-09-01'); assert.equal(result.end, '2029-08-31');
+    assert.equal(result.ttl, 604800); assert.equal(result.start, '2028-09-01'); assert.equal(result.end, '2029-08-31');
     assert.equal(result.courses.length, 7); assert.equal(calls, 7);
     assert.equal(result.facets.teacher[0]!.value, 'Jean Dupont');
     const second = await (await fetch(`${base}/search/G1-QJ2DMFYC5987?q=absent&scope=year&date=2028-10-05`)).json() as { courses: unknown[]; version: string; facetsVersion: string };

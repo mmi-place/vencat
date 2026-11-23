@@ -40,13 +40,14 @@ async function stored(id: string, start: string, end: string, ttl: number): Prom
     } catch { /* A Redis outage does not prevent online search. */ }
   }
 }
-export async function searchDataset(id: string, scope: SearchScope, anchor: string, seed?: SearchDataset): Promise<SearchDataset> {
+/** force: fetch CELCAT again even when a valid copy exists (scheduled refresh). */
+export async function searchDataset(id: string, scope: SearchScope, anchor: string, seed?: SearchDataset, force = false): Promise<SearchDataset> {
   const { start, end, ttl } = searchWindow(scope, anchor);
-  return searchDatasetRange(id, start, end, ttl, seed);
+  return searchDatasetRange(id, start, end, ttl, seed, force);
 }
-export async function searchDatasetRange(id: string, start: string, end: string, ttl: number, seed?: SearchDataset): Promise<SearchDataset> {
+export async function searchDatasetRange(id: string, start: string, end: string, ttl: number, seed?: SearchDataset, force = false): Promise<SearchDataset> {
   const key = cacheKey(id, start, end);
-  const saved = await stored(id, start, end, ttl); if (saved) return saved;
+  if (!force) { const saved = await stored(id, start, end, ttl); if (saved) return saved; }
   if (pending.has(key)) return pending.get(key)!;
   const work = (async () => {
     let dataset: SearchDataset;

@@ -7,10 +7,10 @@ const course: CourseDTO = { uid: 'one', start: '2026-10-05T06:00:00Z', end: '202
 
 test('custom search dates choose server TTL automatically and reject invalid coverage', () => {
   assert.equal(rangeTTL('2026-10-01', '2026-10-14'), 600);
-  assert.equal(rangeTTL('2026-10-01', '2026-10-31'), 86400);
-  assert.equal(rangeTTL('2026-10-01', '2026-12-31'), 259200);
-  assert.equal(rangeTTL('2026-10-01', '2027-03-31'), 604800);
-  assert.equal(rangeTTL('2026-09-01', '2027-08-31'), 1209600);
+  assert.equal(rangeTTL('2026-10-01', '2026-10-31'), 43200);
+  assert.equal(rangeTTL('2026-10-01', '2026-12-31'), 86400);
+  assert.equal(rangeTTL('2026-10-01', '2027-03-31'), 259200);
+  assert.equal(rangeTTL('2026-09-01', '2027-08-31'), 604800);
   assert.throws(() => rangeTTL('2026-02-30', '2026-03-01'));
   assert.throws(() => rangeTTL('2026-10-02', '2026-10-01'));
   assert.throws(() => rangeTTL('2026-01-01', '2028-01-01'));
@@ -30,10 +30,10 @@ test('facets represent possible results, exclude their own criterion and preserv
 test('search periods follow calendar boundaries and requested cache lifetimes', () => {
   assert.deepEqual(searchWindow('week', '2026-10-11'), { start: '2026-10-05', end: '2026-10-11', ttl: 600 });
   assert.deepEqual(searchWindow('fortnight', '2026-10-11'), { start: '2026-10-05', end: '2026-10-18', ttl: 600 });
-  assert.deepEqual(searchWindow('month', '2028-02-15'), { start: '2028-02-01', end: '2028-02-29', ttl: 86400 });
-  assert.deepEqual(searchWindow('quarter', '2026-11-15'), { start: '2026-11-01', end: '2027-01-31', ttl: 259200 });
-  assert.deepEqual(searchWindow('semester', '2026-11-15'), { start: '2026-11-01', end: '2027-04-30', ttl: 604800 });
-  assert.deepEqual(searchWindow('year', '2027-08-31'), { start: '2026-09-01', end: '2027-08-31', ttl: 1209600 });
+  assert.deepEqual(searchWindow('month', '2028-02-15'), { start: '2028-02-01', end: '2028-02-29', ttl: 43200 });
+  assert.deepEqual(searchWindow('quarter', '2026-11-15'), { start: '2026-11-01', end: '2027-01-31', ttl: 86400 });
+  assert.deepEqual(searchWindow('semester', '2026-11-15'), { start: '2026-11-01', end: '2027-04-30', ttl: 259200 });
+  assert.deepEqual(searchWindow('year', '2027-08-31'), { start: '2026-09-01', end: '2027-08-31', ttl: 604800 });
   assert.equal(searchWindow('year', '2027-09-01').start, '2027-09-01');
   assert.throws(() => searchWindow('month', '2026-02-30'));
 });

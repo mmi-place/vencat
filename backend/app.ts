@@ -15,6 +15,7 @@ import { issueToken, tokenRequestLimited } from './identity.js';
 import { groupById } from '../shared/selection.js';
 import { travauxRouter } from './travaux/routes.js';
 import { adminRouter } from './travaux/admin.js';
+import { prefetchRouter } from './prefetch.js';
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/api', monitoringRouter);
 app.use('/api', searchRouter);
 app.use('/api', travauxRouter);
 app.use('/api', adminRouter);
+app.use('/api', prefetchRouter);
 
 // ---------------------------------------------------------------------------
 // Errors
