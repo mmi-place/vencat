@@ -5,7 +5,7 @@ import { useMemoryStore, store } from '../backend/travaux/store.js';
 import { sentMails } from '../backend/travaux/mail.js';
 import { resetLimits, type User } from '../backend/travaux/auth.js';
 import app from '../backend/app.js';
-import { voteState, scopeMembers, scopeChoices, checkLink, parisInstant, countdown, isStudentEmail, nameFromEmail, similarWorks, worksToIcs, parseWorkInput, type Vote, type WorkView } from '../shared/travaux.js';
+import { audienceScope, voteState, scopeMembers, scopeChoices, checkLink, parisInstant, countdown, isStudentEmail, nameFromEmail, similarWorks, worksToIcs, parseWorkInput, type Vote, type WorkView } from '../shared/travaux.js';
 import { groupById } from '../shared/selection.js';
 
 useMemoryStore();
@@ -214,4 +214,18 @@ test('a mail code stays valid for a few sign-ins after its first use', async () 
   assert.equal(login.uses, 3);
   await store().put('logins', start.body.requestId, { ...login, firstUsedAt: new Date(Date.now() - 4 * 60000).toISOString() });
   assert.equal((await client()('/auth/verify', { body: { requestId: start.body.requestId, poll: start.body.poll, code: start.body.devCode } })).status, 410);
+});
+
+test('a work linked to a promotion lecture reaches the whole promotion', async () => {
+  const b1 = groupById(B1)!;
+  assert.deepEqual(audienceScope('MMI2', b1), { kind: 'promo', key: 'MMI-2' });
+  assert.deepEqual(audienceScope('MMI2-B', b1), { kind: 'wide', key: 'MMI-2|B' });
+  assert.deepEqual(audienceScope('MMI2-B1', b1), { kind: 'group', key: B1 });
+  assert.equal(audienceScope('MMI1', b1), undefined);
+  resetLimits();
+  const author = await signIn('cm.author@ens.uvsq.fr');
+  const work = await author.browser('/travaux/works', { body: { type: 'rendu', title: 'Rendu du CM', day: '2026-12-02', scope: { kind: 'group', key: B1 }, course: { uid: 'cm-1', start: '2026-12-02T08:00:00.000Z', module: 'R 3.17', summary: 'Economie', type: 'CM', audience: 'MMI2' }, details: { where: '', format: '', mode: '', info: '' }, links: [] } });
+  assert.equal(work.status, 201, JSON.stringify(work.body));
+  assert.deepEqual(work.body.scope, { kind: 'promo', key: 'MMI-2' });
+  assert.ok((await client()(`/travaux/group/${A1}`)).body.some((item: { id: string }) => item.id === work.body.id));
 });

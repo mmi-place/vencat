@@ -8,7 +8,7 @@ import {
 } from './auth.js';
 import {
   parseWorkInput, voteState, tally, requiredUpvotes, scopeIncludes, scopeLabel, scopeMembers, parisInstant, DEFAULT_DUE_TIME, linkDomain, cleanText, LIMITS,
-  WORK_TYPE_LABELS, WORK_STATE_LABELS, worksToIcs, semesterOf, nameFromEmail, voteWeight, checkLink, isWorkType, validTime, validScope,
+  WORK_TYPE_LABELS, WORK_STATE_LABELS, worksToIcs, audienceScope, widerScope, semesterOf, nameFromEmail, voteWeight, checkLink, isWorkType, validTime, validScope,
   type WorkInput, type WorkView, type WorkState, type Vote, type WorkProposalView, type HistoryEntry, type CourseLink, type WorkScope,
 } from '../../shared/travaux.js';
 import { groupById } from '../../shared/selection.js';
@@ -381,6 +381,9 @@ router.post('/travaux/works', route(async (req, res) => {
   const { user } = await requireContributor(req);
   const input = parseWorkInput(req.body);
   if ('error' in input) throw new HttpError(400, input.error);
+  // A work linked to a course reaches everyone attending it (a promotion lecture: the whole promotion).
+  const authorGroup = groupById(user.groupId ?? '');
+  if (!input.personal && input.course && authorGroup) input.scope = widerScope(input.scope, audienceScope(input.course.audience, authorGroup));
   const rights = await powers(user, input.scope);
   if (!input.personal && !rights.member && !rights.moderator && !rights.teacher) throw new HttpError(403, 'Tu ne peux ajouter un travail que pour ton groupe.');
   // Personal works only concern their author: a wider budget, and no validation.
@@ -430,6 +433,8 @@ router.post('/travaux/work/:id/proposal', route(async (req, res) => {
   if (kind === 'edit') {
     const merged = parseWorkInput({ ...work, time: work.time ?? '', ...req.body?.changes });
     if ('error' in merged) throw new HttpError(400, merged.error);
+    const group = groupById(user.groupId ?? '');
+    if (!merged.personal && merged.course && group) merged.scope = widerScope(merged.scope, audienceScope(merged.course.audience, group));
     changes = merged;
     if (!describeChanges(work, changes).length) throw new HttpError(400, 'Aucun changement à proposer.');
   }

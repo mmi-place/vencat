@@ -212,7 +212,7 @@ export function worksForCourse(course: CourseDTO): { work: WorkView; moved: bool
   });
 }
 export const isDs = (course: CourseDTO) => /\b(ds|devoir surveill|contr[ôo]le|examen|partiel|évaluation|evaluation)\b/i.test(`${course.type} ${course.summary}`);
-export const courseLink = (course: CourseDTO): CourseLink => ({ uid: course.uid, start: course.start, module: course.module, summary: course.summary, type: course.type, location: course.location });
+export const courseLink = (course: CourseDTO): CourseLink => ({ uid: course.uid, start: course.start, module: course.module, summary: course.summary, type: course.type, location: course.location, audience: course.group });
 
 // ---------------------------------------------------------------------------
 // Timetable corrections (shown over CELCAT, closed when CELCAT changes the course)

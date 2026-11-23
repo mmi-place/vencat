@@ -1,6 +1,7 @@
 // Travaux: homework, hand-ins, assessments and projects declared by students and checked together.
 // Pure rules shared by the API and the interface (validation, scopes, links, deadlines, ICS).
 import { groupById, groupOptions, type GroupOption } from './selection.js';
+import { GROUP_TO_FEDERATION } from './groups.js';
 import { TIMETABLE_TIME_ZONE } from './courses.js';
 
 export const WORK_TYPES = ['rendu', 'eval', 'devoir', 'projet'] as const;
@@ -35,6 +36,20 @@ export function scopeLabel(scope: WorkScope): string {
   if (scope.kind === 'wide') return `Groupe ${scope.key.split('|')[1] ?? ''}`;
   return scope.key;
 }
+/** Audience of a course from its CELCAT groups ("MMI2" whole promotion, "MMI2-B" wide group, "MMI2-B1" final group). */
+export function audienceScope(audience: string | undefined, group: GroupOption): WorkScope | undefined {
+  const federation = GROUP_TO_FEDERATION[group.id]?.toUpperCase();
+  if (!audience || !federation) return undefined;
+  const tokens = audience.split(/[;,]/).map(token => token.trim().toUpperCase().replace(/\s+/g, ''));
+  const promotion = federation.split('-')[0]!, wide = federation.replace(/\d+$/, '');
+  if (tokens.includes(promotion)) return scopeFor(group, 'promo');
+  if (wide !== federation && tokens.includes(wide)) return scopeFor(group, 'wide');
+  if (tokens.includes(federation)) return scopeFor(group, 'group');
+  return undefined;
+}
+const SCOPE_RANK: Record<ScopeKind, number> = { group: 0, wide: 1, promo: 2 };
+/** The wider of two scopes of the same author. */
+export const widerScope = (a: WorkScope, b?: WorkScope) => b && SCOPE_RANK[b.kind] > SCOPE_RANK[a.kind] ? b : a;
 /** Scope choices offered to an author: the wide group is skipped when it is the final group itself. */
 export function scopeChoices(group: GroupOption): { scope: WorkScope; label: string; detail: string }[] {
   const choices = (['group', 'wide', 'promo'] as ScopeKind[]).map(kind => ({ scope: scopeFor(group, kind), label: '', detail: '' }));
@@ -134,7 +149,8 @@ export const CONTEST_REASONS = ['N’existe pas', 'Mauvaise date', 'Doublon', 'A
 // ---------------------------------------------------------------------------
 // Shapes exchanged with the API
 // ---------------------------------------------------------------------------
-export interface CourseLink { uid: string; start: string; module: string; summary: string; type?: string; location?: string }
+/** audience: CELCAT groups of the course ("MMI2", "MMI2-B"…), so the work reaches everyone attending it. */
+export interface CourseLink { uid: string; start: string; module: string; summary: string; type?: string; location?: string; audience?: string }
 export interface WorkDetails { where: string; format: string; mode: '' | 'seul' | 'groupe'; info: string }
 export interface DsInfo { chapters: string; allowed: string[]; duration: string; advice: string }
 export const DS_ALLOWED = ['Aucun document', 'Calculatrice', 'Notes', 'Documents imprimés', 'Ordinateur'] as const;
@@ -181,7 +197,7 @@ export function parseWorkInput(body: unknown): WorkInput | { error: string } {
   if (value.course) {
     const c = value.course;
     if (typeof c.uid !== 'string' || typeof c.start !== 'string' || !Number.isFinite(Date.parse(c.start))) return { error: 'Cours lié invalide.' };
-    course = { uid: c.uid.slice(0, 200), start: c.start, module: cleanText(c.module, 200), summary: cleanText(c.summary, 200), type: cleanText(c.type, 80), location: cleanText(c.location, 120) };
+    course = { uid: c.uid.slice(0, 200), start: c.start, module: cleanText(c.module, 200), summary: cleanText(c.summary, 200), type: cleanText(c.type, 80), location: cleanText(c.location, 120), audience: cleanText(c.audience, 200) || undefined };
   }
   let ds: DsInfo | undefined;
   if (value.ds) ds = { chapters: cleanText(value.ds.chapters, LIMITS.field), allowed: (Array.isArray(value.ds.allowed) ? value.ds.allowed : []).filter(item => (DS_ALLOWED as readonly string[]).includes(item)), duration: cleanText(value.ds.duration, 60), advice: cleanText(value.ds.advice, LIMITS.field) };
