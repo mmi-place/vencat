@@ -2,8 +2,8 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { ChartBarIcon, ShieldExclamationIcon, UsersIcon, ClipboardDocumentListIcon, MapPinIcon, UserGroupIcon, ClockIcon, ArrowRightOnRectangleIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
 import { api, errorText } from '../scripts/travaux';
-import { groupOptions } from '../../shared/selection';
-import { WORK_TYPE_LABELS, WORK_STATE_LABELS, type WorkView } from '../../shared/travaux';
+import { groupById, groupOptions } from '../../shared/selection';
+import { WORK_TYPE_LABELS, WORK_STATE_LABELS, scopeIncludes, type WorkView } from '../../shared/travaux';
 import { frenchDate } from '../../shared/calendar';
 
 // Administration: its own sign-in by mail code, a session that ends with the browser session.
@@ -18,7 +18,7 @@ interface Overview {
   students: { id: string; name: string; email?: string | null; groupId?: string; readOnlyUntil?: string; banned: boolean; reliability: number; createdAt: string }[];
   log: { id: string; at: string; by: string; action: string; target: string; reason: string }[];
 }
-interface Correction { id: string; group: string; course: { summary: string; start: string; location?: string }; field: string; value: string; author: string; status: string; createdAt: string }
+interface Correction { id: string; groupId: string; group: string; course: { summary: string; start: string; location?: string }; field: string; value: string; author: string; status: string; createdAt: string }
 const session = ref<{ email: string; expiresAt: string }>();
 const checked = ref(false);
 const email = ref(''), code = ref(''), requestId = ref(''), status = ref(''), busy = ref(false);
@@ -59,7 +59,44 @@ async function act(body: Record<string, unknown>, done = 'Fait.') {
 async function workAction(id: string, action: string) { busy.value = true; try { await api(`/admin/work/${id}`, { body: { action, reason: reason.value } }); await load(); } catch (error) { status.value = errorText(error); } finally { busy.value = false; } }
 async function correctionAction(id: string, action: string) { busy.value = true; try { await api(`/admin/correction/${id}`, { body: { action, reason: reason.value } }); await load(); } catch (error) { status.value = errorText(error); } finally { busy.value = false; } }
 const todo = computed(() => data.value ? data.value.reports.length + data.value.delegates.length + data.value.names.length + data.value.alerts.length : 0);
-const accounts = computed(() => (data.value?.students ?? []).filter(item => !query.value || `${item.name} ${item.email ?? ''}`.toLowerCase().includes(query.value.toLowerCase())).slice(0, 150));
+// Sorting (click a column header) and filtering / grouping by promotion or group, for every table.
+const sort = ref<{ key: string; dir: 1 | -1 }>({ key: '', dir: 1 });
+watch(tab, () => { sort.value = { key: '', dir: 1 }; });
+function sortBy(key: string) { sort.value = sort.value.key === key ? { key, dir: sort.value.dir === 1 ? -1 : 1 } : { key, dir: 1 }; }
+const ariaSort = (key: string) => sort.value.key === key ? (sort.value.dir === 1 ? 'ascending' : 'descending') : 'none';
+const arrow = (key: string) => sort.value.key === key ? (sort.value.dir === 1 ? '▲' : '▼') : '↕';
+const collator = new Intl.Collator('fr', { numeric: true, sensitivity: 'base' });
+function sorted<T>(rows: T[], value: Record<string, (row: T) => string | number>): T[] {
+  const get = value[sort.value.key];
+  if (!get) return rows;
+  return [...rows].sort((a, b) => { const x = get(a), y = get(b); return (typeof x === 'number' && typeof y === 'number' ? x - y : collator.compare(String(x), String(y))) * sort.value.dir; });
+}
+const groupFilter = ref(''), groupRows = ref(false);
+const promotions = [...new Set(groupOptions.map(group => group.promotion))];
+const groupLabel = (id?: string) => { const group = groupById(id ?? ''); return group ? `${group.promotion} · ${group.label}` : 'Sans groupe'; };
+const matchesGroup = (groupId?: string) => !groupFilter.value || (groupFilter.value.startsWith('p:') ? groupById(groupId ?? '')?.promotion === groupFilter.value.slice(2) : groupId === groupFilter.value.slice(2));
+function grouped<T>(rows: T[], key: (row: T) => string): { key: string; rows: T[] }[] {
+  if (!groupRows.value) return [{ key: '', rows }];
+  const map = new Map<string, T[]>();
+  for (const row of rows) { const name = key(row); map.set(name, [...(map.get(name) ?? []), row]); }
+  return [...map].sort(([a], [b]) => collator.compare(a, b)).map(([name, list]) => ({ key: name, rows: list }));
+}
+type Student = Overview['students'][number];
+const accounts = computed(() => sorted((data.value?.students ?? []).filter(item => matchesGroup(item.groupId) && (!query.value || `${item.name} ${item.email ?? ''}`.toLowerCase().includes(query.value.toLowerCase()))), {
+  name: (row: Student) => row.name, email: row => row.email ?? '', group: row => groupLabel(row.groupId), reliability: row => row.reliability, state: row => row.banned ? 2 : row.readOnlyUntil ? 1 : 0, created: row => row.createdAt,
+}).slice(0, 400));
+const accountGroups = computed(() => grouped(accounts.value, row => groupLabel(row.groupId)));
+type AdminWork = (typeof works.value)[number];
+const workGroupName = (work: AdminWork) => `${work.promotion ?? ''} · ${work.group}`;
+const workMatches = (work: AdminWork) => !groupFilter.value || (groupFilter.value.startsWith('p:') ? work.promotion === groupFilter.value.slice(2) : scopeIncludes(work.scope, groupFilter.value.slice(2)));
+const workRows = computed(() => sorted(works.value.filter(workMatches), {
+  due: (row: AdminWork) => row.due, type: row => WORK_TYPE_LABELS[row.type], title: row => row.title, group: workGroupName, author: row => row.author, state: row => WORK_STATE_LABELS[row.state], votes: row => row.up - row.down,
+}));
+const workGroups = computed(() => grouped(workRows.value, workGroupName));
+const correctionRows = computed(() => sorted(corrections.value.filter(item => matchesGroup(item.groupId)), {
+  course: (row: Correction) => row.course.start, group: row => row.group, field: row => row.field, author: row => row.author, status: row => row.status,
+}));
+const correctionGroups = computed(() => grouped(correctionRows.value, row => row.group));
 const tabs = computed(() => [
   { id: 'overview' as const, label: 'Vue d’ensemble', icon: ChartBarIcon },
   { id: 'moderation' as const, label: 'Modération', icon: ShieldExclamationIcon, count: todo.value },
@@ -109,24 +146,28 @@ const day = (iso: string) => new Date(iso).toLocaleString('fr-FR', { timeZone: '
         <section v-if="data.alerts.length" class="admin-card"><h2>Alertes de fiabilité</h2><div v-for="item in data.alerts" :key="item.id" class="admin-row"><div><strong>{{ item.name }}</strong><small>{{ item.problems.join(' · ') }}</small></div><button :disabled="busy" @click="act({ kind: 'alert', id: item.id, action: 'mail' }, 'Mail explicatif envoyé.')">Mail explicatif</button><button :disabled="busy" @click="act({ kind: 'alert', id: item.id, action: 'dismiss' })">Classer</button></div></section>
       </template>
       <template v-else-if="data && tab === 'accounts'">
-        <input v-model="query" class="admin-search" placeholder="Rechercher un nom ou une adresse" aria-label="Rechercher un compte">
-        <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Nom</th><th>Adresse</th><th>Groupe</th><th>Fiabilité</th><th>État</th><th>Actions</th></tr></thead><tbody>
-          <tr v-for="person in accounts" :key="person.id"><td>{{ person.name }}</td><td class="muted">{{ person.email }}</td><td><select :value="person.groupId" :aria-label="'Groupe de ' + person.name" :disabled="busy" @change="act({ kind: 'user', id: person.id, action: 'group', groupId: ($event.target as HTMLSelectElement).value })"><option v-for="option in groupOptions" :key="option.id" :value="option.id">{{ option.promotion }} {{ option.label }}</option></select></td><td>{{ person.reliability }}</td><td><span v-if="person.banned" class="pill pill-late">banni</span><span v-else-if="person.readOnlyUntil" class="pill pill-soon">lecture seule</span><span v-else class="muted">actif</span></td>
+        <div class="admin-filters"><select v-model="groupFilter" aria-label="Filtrer par promotion ou groupe"><option value="">Toutes les promotions</option><optgroup v-for="promotion in promotions" :key="promotion" :label="promotion"><option :value="'p:' + promotion">{{ promotion }} · toute la promo</option><option v-for="group in groupOptions.filter(item => item.promotion === promotion)" :key="group.id" :value="'g:' + group.id">{{ promotion }} · {{ group.label }}</option></optgroup></select><label class="check-label admin-group-toggle"><input v-model="groupRows" type="checkbox"> Regrouper par groupe</label><input v-model="query" class="admin-search" placeholder="Rechercher un nom ou une adresse" aria-label="Rechercher un compte"><span class="muted">{{ accounts.length }} compte(s)</span></div>
+        <section v-for="section in accountGroups" :key="section.key" class="admin-group"><h2 v-if="section.key">{{ section.key }} <span class="count">{{ section.rows.length }}</span></h2>
+        <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th :aria-sort="ariaSort('name')"><button class="sort-button" @click="sortBy('name')">Nom<span aria-hidden="true">{{ arrow('name') }}</span></button></th><th :aria-sort="ariaSort('email')"><button class="sort-button" @click="sortBy('email')">Adresse<span aria-hidden="true">{{ arrow('email') }}</span></button></th><th :aria-sort="ariaSort('group')"><button class="sort-button" @click="sortBy('group')">Groupe<span aria-hidden="true">{{ arrow('group') }}</span></button></th><th :aria-sort="ariaSort('reliability')"><button class="sort-button" @click="sortBy('reliability')">Fiabilité<span aria-hidden="true">{{ arrow('reliability') }}</span></button></th><th :aria-sort="ariaSort('state')"><button class="sort-button" @click="sortBy('state')">État<span aria-hidden="true">{{ arrow('state') }}</span></button></th><th>Actions</th></tr></thead><tbody>
+          <tr v-for="person in section.rows" :key="person.id"><td>{{ person.name }}</td><td class="muted">{{ person.email }}</td><td><select :value="person.groupId" :aria-label="'Groupe de ' + person.name" :disabled="busy" @change="act({ kind: 'user', id: person.id, action: 'group', groupId: ($event.target as HTMLSelectElement).value })"><option v-for="option in groupOptions" :key="option.id" :value="option.id">{{ option.promotion }} {{ option.label }}</option></select></td><td>{{ person.reliability }}</td><td><span v-if="person.banned" class="pill pill-late">banni</span><span v-else-if="person.readOnlyUntil" class="pill pill-soon">lecture seule</span><span v-else class="muted">actif</span></td>
             <td class="admin-actions"><button v-if="!person.readOnlyUntil && !person.banned" :disabled="busy" @click="act({ kind: 'user', id: person.id, action: 'readonly' })">Lecture seule 7 j</button><button v-if="!person.banned" class="danger-action" :disabled="busy || !reason" :title="reason ? '' : 'Indique un motif'" @click="act({ kind: 'user', id: person.id, action: 'ban' })">Bannir</button><button v-if="person.readOnlyUntil || person.banned" :disabled="busy" @click="act({ kind: 'user', id: person.id, action: 'lift' })">Lever</button><button :disabled="busy" @click="act({ kind: 'delegate-appoint', id: person.id })">Nommer délégué</button><button class="danger-action" :disabled="busy || !reason" @click="act({ kind: 'user-delete', id: person.id })">Supprimer</button></td></tr>
-        </tbody></table></div>
+        </tbody></table></div></section>
       </template>
       <template v-else-if="tab === 'works'">
-        <div class="admin-filters"><input v-model="workQuery" class="admin-search" placeholder="Titre, groupe, auteur" aria-label="Rechercher un travail"><select v-model="workState" aria-label="État"><option value="">Tous les états</option><option v-for="(label, state) in WORK_STATE_LABELS" :key="state" :value="state">{{ label }}</option></select></div>
-        <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Échéance</th><th>Travail</th><th>Pour</th><th>Auteur</th><th>État</th><th>Votes</th><th>Actions</th></tr></thead><tbody>
-          <tr v-for="work in works" :key="work.id"><td>{{ frenchDate(work.day, { day: 'numeric', month: 'short' }) }} {{ work.time }}</td><td><span class="type-tag" :class="'tag-' + work.type">{{ WORK_TYPE_LABELS[work.type] }}</span> {{ work.title }}</td><td>{{ work.promotion }} · {{ work.group }}</td><td>{{ work.author }}</td><td><span class="pill" :class="'pill-' + work.state">{{ WORK_STATE_LABELS[work.state] }}</span></td><td>{{ Math.floor(work.up) }} 👍 · {{ Math.floor(work.down) }} 👎</td>
+        <div class="admin-filters"><select v-model="groupFilter" aria-label="Filtrer par promotion ou groupe"><option value="">Toutes les promotions</option><optgroup v-for="promotion in promotions" :key="promotion" :label="promotion"><option :value="'p:' + promotion">{{ promotion }} · toute la promo</option><option v-for="group in groupOptions.filter(item => item.promotion === promotion)" :key="group.id" :value="'g:' + group.id">{{ promotion }} · {{ group.label }}</option></optgroup></select><label class="check-label admin-group-toggle"><input v-model="groupRows" type="checkbox"> Regrouper par groupe</label><input v-model="workQuery" class="admin-search" placeholder="Titre, groupe, auteur" aria-label="Rechercher un travail"><select v-model="workState" aria-label="État"><option value="">Tous les états</option><option v-for="(label, state) in WORK_STATE_LABELS" :key="state" :value="state">{{ label }}</option></select><span class="muted">{{ workRows.length }} travail(aux)</span></div>
+        <section v-for="section in workGroups" :key="section.key" class="admin-group"><h2 v-if="section.key">{{ section.key }} <span class="count">{{ section.rows.length }}</span></h2>
+        <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th :aria-sort="ariaSort('due')"><button class="sort-button" @click="sortBy('due')">Échéance<span aria-hidden="true">{{ arrow('due') }}</span></button></th><th :aria-sort="ariaSort('title')"><button class="sort-button" @click="sortBy('title')">Travail<span aria-hidden="true">{{ arrow('title') }}</span></button></th><th :aria-sort="ariaSort('group')"><button class="sort-button" @click="sortBy('group')">Pour<span aria-hidden="true">{{ arrow('group') }}</span></button></th><th :aria-sort="ariaSort('author')"><button class="sort-button" @click="sortBy('author')">Auteur<span aria-hidden="true">{{ arrow('author') }}</span></button></th><th :aria-sort="ariaSort('state')"><button class="sort-button" @click="sortBy('state')">État<span aria-hidden="true">{{ arrow('state') }}</span></button></th><th :aria-sort="ariaSort('votes')"><button class="sort-button" @click="sortBy('votes')">Votes<span aria-hidden="true">{{ arrow('votes') }}</span></button></th><th>Actions</th></tr></thead><tbody>
+          <tr v-for="work in section.rows" :key="work.id"><td>{{ frenchDate(work.day, { day: 'numeric', month: 'short' }) }} {{ work.time }}</td><td><span class="type-tag" :class="'tag-' + work.type">{{ WORK_TYPE_LABELS[work.type] }}</span> {{ work.title }}</td><td>{{ work.promotion }} · {{ work.group }}</td><td>{{ work.author }}</td><td><span class="pill" :class="'pill-' + work.state">{{ WORK_STATE_LABELS[work.state] }}</span></td><td>{{ Math.floor(work.up) }} 👍 · {{ Math.floor(work.down) }} 👎</td>
             <td class="admin-actions"><button v-if="work.state !== 'validated'" :disabled="busy" @click="workAction(work.id, 'validate')">Valider</button><button v-if="work.state !== 'removed'" class="danger-action" :disabled="busy" @click="workAction(work.id, 'remove')">Retirer</button><button v-else :disabled="busy" @click="workAction(work.id, 'restore')">Rétablir</button></td></tr>
-        </tbody></table></div>
+        </tbody></table></div></section>
       </template>
       <template v-else-if="tab === 'corrections'">
-        <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Cours</th><th>Groupe</th><th>Correction</th><th>Par</th><th>État</th><th>Actions</th></tr></thead><tbody>
-          <tr v-for="item in corrections" :key="item.id"><td>{{ item.course.summary }}<br><small class="muted">{{ day(item.course.start) }}</small></td><td>{{ item.group }}</td><td>{{ item.field === 'cancelled' ? 'Annulé' : item.field === 'room' ? `Salle ${item.course.location ?? '?'} → ${item.value}` : item.value }}</td><td>{{ item.author }}</td><td>{{ item.status }}</td>
+        <div class="admin-filters"><select v-model="groupFilter" aria-label="Filtrer par promotion ou groupe"><option value="">Toutes les promotions</option><optgroup v-for="promotion in promotions" :key="promotion" :label="promotion"><option :value="'p:' + promotion">{{ promotion }} · toute la promo</option><option v-for="group in groupOptions.filter(item => item.promotion === promotion)" :key="group.id" :value="'g:' + group.id">{{ promotion }} · {{ group.label }}</option></optgroup></select><label class="check-label admin-group-toggle"><input v-model="groupRows" type="checkbox"> Regrouper par groupe</label><span class="muted">{{ correctionRows.length }} correction(s)</span></div>
+        <section v-for="section in correctionGroups" :key="section.key" class="admin-group"><h2 v-if="section.key">{{ section.key }} <span class="count">{{ section.rows.length }}</span></h2>
+        <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th :aria-sort="ariaSort('course')"><button class="sort-button" @click="sortBy('course')">Cours<span aria-hidden="true">{{ arrow('course') }}</span></button></th><th :aria-sort="ariaSort('group')"><button class="sort-button" @click="sortBy('group')">Groupe<span aria-hidden="true">{{ arrow('group') }}</span></button></th><th :aria-sort="ariaSort('field')"><button class="sort-button" @click="sortBy('field')">Correction<span aria-hidden="true">{{ arrow('field') }}</span></button></th><th :aria-sort="ariaSort('author')"><button class="sort-button" @click="sortBy('author')">Par<span aria-hidden="true">{{ arrow('author') }}</span></button></th><th :aria-sort="ariaSort('status')"><button class="sort-button" @click="sortBy('status')">État<span aria-hidden="true">{{ arrow('status') }}</span></button></th><th>Actions</th></tr></thead><tbody>
+          <tr v-for="item in section.rows" :key="item.id"><td>{{ item.course.summary }}<br><small class="muted">{{ day(item.course.start) }}</small></td><td>{{ item.group }}</td><td>{{ item.field === 'cancelled' ? 'Annulé' : item.field === 'room' ? `Salle ${item.course.location ?? '?'} → ${item.value}` : item.value }}</td><td>{{ item.author }}</td><td>{{ item.status }}</td>
             <td class="admin-actions"><button :disabled="busy" @click="correctionAction(item.id, 'accept')">Valider</button><button class="danger-action" :disabled="busy" @click="correctionAction(item.id, 'reject')">Rejeter</button><button :disabled="busy" @click="correctionAction(item.id, 'close')">Fermer</button></td></tr>
-        </tbody></table></div>
+        </tbody></table></div></section>
       </template>
       <template v-else-if="data && tab === 'delegates'">
         <section class="admin-card"><h2>Mandats en cours</h2><p v-if="!data.activeDelegates.length" class="muted">Aucun délégué.</p><div v-for="item in data.activeDelegates" :key="item.id" class="admin-row"><div><strong>{{ item.name }}</strong><small>{{ item.group }} · jusqu’au {{ item.until ? new Date(item.until).toLocaleDateString('fr-FR') : '—' }}</small></div><button class="danger-action" :disabled="busy" @click="act({ kind: 'delegate-end', id: item.id })">Mettre fin</button></div></section>

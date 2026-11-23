@@ -589,3 +589,14 @@
 .admin-bar i { display: block; height: 10px; border-radius: 5px; background: var(--accent); }
 .admin-bar b { text-align: right; }
 @media (max-width: 860px) { .admin-shell { grid-template-columns: 1fr; } .admin-side { position: static; height: auto; } .admin-main { padding: 16px; } }
+.admin-filters { align-items: center; }
+.admin-group-toggle { font-size: .88rem; font-weight: 700; }
+.admin-group { display: grid; gap: 8px; }
+.admin-group h2 { display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 900; margin-top: 6px; }
+.sort-button { display: inline-flex; align-items: center; gap: 6px; min-height: 0; padding: 0; border: 0; background: transparent; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; cursor: pointer; }
+.sort-button:hover { background: transparent; color: var(--text); }
+.sort-button span { opacity: .55; font-size: .7rem; }
+.admin-table th[aria-sort=ascending], .admin-table th[aria-sort=descending] { color: var(--accent); }
+.admin-table th[aria-sort=ascending] .sort-button span, .admin-table th[aria-sort=descending] .sort-button span { opacity: 1; }
+.admin-filters select { width: auto; max-width: 340px; }
+.admin-filters .admin-search { flex: 1 1 260px; }
