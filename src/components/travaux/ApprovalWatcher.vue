@@ -8,13 +8,16 @@ const pending = ref<Pending>();
 const qr = ref<{ id: string; device: string; number: number }>();
 const status = ref(''), busy = ref(false);
 let timer: ReturnType<typeof setInterval> | undefined;
+// A request already answered (or dismissed) on this device never comes back, even if the answer failed to reach the server.
+const handled = new Set<string>();
 async function check() {
   if (!me.value || document.hidden || pending.value) return;
-  try { const list = await api<Pending[]>('/auth/pending'); pending.value = list[0]; } catch { /* retried later */ }
+  try { const list = await api<Pending[]>('/auth/pending'); pending.value = list.find(item => !handled.has(item.id)); } catch { /* retried later */ }
 }
 async function answer(number?: number) {
   const target = qr.value ? { id: qr.value.id } : pending.value;
   if (!target) return;
+  handled.add(target.id);
   busy.value = true; status.value = '';
   try {
     if (number === undefined) await api('/auth/deny', { body: { requestId: target.id } });
@@ -36,7 +39,7 @@ watch(me, value => { if (value) void check(); }, { immediate: true });
 watch([meLoaded, me, qrRequest], ([loaded, value, link]) => { if (!loaded || !link) return; if (value) qrRequest.value = undefined; void openQr(link.id, link.number); }, { immediate: true });
 </script>
 <template>
-<AccessibleDialog v-if="pending" id="approve-dialog" title="Connexion demandée" @close="pending = undefined">
+<AccessibleDialog v-if="pending" id="approve-dialog" title="Connexion demandée" @close="handled.add(pending.id); pending = undefined">
   <p><strong>{{ pending.device }}</strong> · {{ new Date(pending.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) }}</p>
   <p>Choisis le nombre affiché sur le nouvel appareil. Si tu n’as rien demandé, refuse.</p>
   <div class="number-choices" role="group" aria-label="Nombres"><button v-for="value in pending.choices" :key="value" :disabled="busy" @click="answer(value)">{{ value }}</button></div>

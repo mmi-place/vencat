@@ -167,6 +167,8 @@ router.post('/auth/start', route(async (req, res) => {
   const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   if (!allowedEmail(email)) throw new HttpError(400, 'Utilise ton adresse étudiante, qui se termine par .uvsq.fr (par exemple prenom.nom@ens.uvsq.fr).');
   if (await overLimit('start-ip:' + addressKey(req), 30, 600)) throw new HttpError(429, 'Trop de demandes. Réessaie dans quelques minutes.');
+  // A new request replaces older ones of the same address: a connected device only ever sees one request.
+  for (const previous of (await db().list<Login>('logins')).filter(item => item.email === email && item.status === 'waiting')) await db().delete('logins', previous.id);
   const { login, poll } = newLogin(req, email);
   await db().put('logins', login.id, login);
   const index = await db().get<{ userId: string }>('emails', email);
