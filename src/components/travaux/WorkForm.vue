@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import AccessibleDialog from '../AccessibleDialog.vue';
+import WorkTypeIcon from './WorkTypeIcon.vue';
 import { WORK_TYPES, WORK_TYPE_LABELS, DS_ALLOWED, scopeChoices, similarWorks, checkLink, DEFAULT_DUE_TIME, type WorkInput, type WorkView, type ScopeKind } from '../../../shared/travaux';
 import { campusDate, campusTime, frenchDate, minuteOf } from '../../../shared/calendar';
 import type { CourseDTO } from '../../../shared/courses';
@@ -67,17 +68,17 @@ const scopeKind = (kind: ScopeKind) => choices.value.find(choice => choice.scope
 <template><AccessibleDialog id="work-form" :title="title" :subtitle="request.mode === 'edit' ? 'L’original reste affiché jusqu’au vote.' : 'Ta proposition sera vérifiée par les autres élèves.'" @close="form = undefined">
 <form class="work-form" @submit.prevent="submit">
   <div v-if="request.mode === 'ds'" class="work-box ok">Repris de l’emploi du temps : {{ frenchDate(input.day, { weekday: 'short', day: 'numeric', month: 'short' }) }} · {{ course0 ? campusTime(course0.start) + '–' + campusTime(course0.end) : '' }}<template v-if="course0?.location"> · salle {{ course0.location }}</template></div>
-  <fieldset v-if="request.mode !== 'ds'"><legend>Type</legend><div class="filter-chips"><button v-for="type in WORK_TYPES" :key="type" type="button" :class="'filter-' + type" :aria-pressed="input.type === type" @click="input.type = type">{{ WORK_TYPE_LABELS[type] }}</button></div></fieldset>
-  <label class="settings-label">Titre<input v-model="input.title" required minlength="2" maxlength="120" placeholder="Ex. Rendu maquette Figma"></label>
-  <div class="form-row"><label class="settings-label">Date<input v-model="input.day" type="date" required></label><label class="settings-label">Heure<input v-model="input.time" type="time" :placeholder="DEFAULT_DUE_TIME"><small class="muted">Vide : {{ DEFAULT_DUE_TIME }} par défaut</small></label></div>
-  <fieldset><legend>Pour</legend><div class="filter-chips"><button v-for="choice in choices" :key="choice.scope.key" type="button" :aria-pressed="input.scope.key === choice.scope.key" @click="input.scope = choice.scope">{{ choice.label }}</button></div><small v-if="scopeKind('wide')" class="muted">Par défaut ton sous-groupe. Choisis le groupe large ou la promo si l’annonce concerne plus de monde.</small></fieldset>
-  <label v-if="request.mode !== 'ds'" class="settings-label">Lier à un cours (facultatif)<select v-model="selectedCourse"><option value="">Aucun cours</option><option v-for="course in dayCourses" :key="courseKeyOf(course)" :value="courseKeyOf(course)">{{ course.type !== 'inconnu' ? course.type + ' · ' : '' }}{{ course.summary }} · {{ campusTime(course.start) }}</option></select></label>
+  <fieldset v-if="request.mode !== 'ds'"><legend>Type</legend><div class="choice-row type-choice"><button v-for="type in WORK_TYPES" :key="type" type="button" :class="'type-' + type" :aria-pressed="input.type === type" @click="input.type = type"><WorkTypeIcon :type="type" />{{ WORK_TYPE_LABELS[type] }}</button></div></fieldset>
+  <label class="settings-label">Titre<input v-model="input.title" required minlength="2" maxlength="120" placeholder="Ex. Rendu maquette Figma" autofocus></label>
+  <div class="form-row"><label class="settings-label">Date<input v-model="input.day" type="date" required></label><label class="settings-label">Heure<input v-model="input.time" type="time" :placeholder="DEFAULT_DUE_TIME"><span class="field-hint">Vide : {{ DEFAULT_DUE_TIME }}</span></label></div>
+  <fieldset><legend>Pour qui</legend><div class="choice-row"><button v-for="choice in choices" :key="choice.scope.key" type="button" :aria-pressed="input.scope.key === choice.scope.key" @click="input.scope = choice.scope">{{ choice.label }}</button></div><p v-if="scopeKind('wide')" class="field-hint">Par défaut ton sous-groupe. Groupe large ou promo si l’annonce concerne plus de monde.</p></fieldset>
+  <fieldset v-if="request.mode !== 'ds'"><legend>Lier à un cours <span class="field-hint">(facultatif)</span></legend><div class="course-choices"><button type="button" :aria-pressed="!selectedCourse" @click="selectedCourse = ''">Aucun cours</button><button v-for="course in dayCourses" :key="courseKeyOf(course)" type="button" :aria-pressed="selectedCourse === courseKeyOf(course)" @click="selectedCourse = courseKeyOf(course)"><span class="time">{{ campusTime(course.start) }}</span><span>{{ course.type !== 'inconnu' ? course.type + ' · ' : '' }}{{ course.summary }}</span></button></div><p v-if="!dayCourses.length" class="field-hint">Aucun cours ce jour-là.</p></fieldset>
 
   <div v-if="similar.length" class="work-box warn" role="status"><strong>Ça existe peut-être déjà :</strong><ul class="similar"><li v-for="work in similar" :key="work.id"><span><b>{{ work.title }}</b>, {{ frenchDate(work.day, { weekday: 'short', day: 'numeric' }) }}, proposé par {{ work.author }}</span><button type="button" :disabled="busy" @click="sameAsExisting(work)">C’est celui-là</button></li></ul></div>
 
   <template v-if="input.ds">
     <label class="settings-label">Chapitres<input v-model="input.ds.chapters" maxlength="500" placeholder="Ex. 1 à 4 (DOM, événements)"></label>
-    <fieldset><legend>Autorisé</legend><div class="filter-chips"><button v-for="item in DS_ALLOWED" :key="item" type="button" :aria-pressed="input.ds.allowed.includes(item)" @click="toggleAllowed(item)">{{ item }}</button></div></fieldset>
+    <fieldset><legend>Autorisé</legend><div class="choice-row"><button v-for="item in DS_ALLOWED" :key="item" type="button" :aria-pressed="input.ds.allowed.includes(item)" @click="toggleAllowed(item)">{{ item }}</button></div></fieldset>
     <div class="form-row"><label class="settings-label">Durée<input v-model="input.ds.duration" maxlength="60"></label></div>
     <label class="settings-label">Conseils du prof<textarea v-model="input.ds.advice" rows="2" maxlength="500"></textarea></label>
     <p class="muted">Pas de sujets ni de corrigés : ils seront retirés.</p>
@@ -85,12 +86,12 @@ const scopeKind = (kind: ScopeKind) => choices.value.find(choice => choice.scope
   <details :open="request.mode !== 'create' || !!input.details.where"><summary>Modalités et liens</summary>
     <label class="settings-label">Où rendre<input v-model="input.details.where" maxlength="500" placeholder="Ex. Moodle › UX › Dépôt, par mail, papier"></label>
     <label class="settings-label">Format<input v-model="input.details.format" maxlength="500" placeholder="Ex. PDF, lien Figma en lecture"></label>
-    <fieldset><legend>Travail</legend><div class="filter-chips"><button type="button" :aria-pressed="input.details.mode === ''" @click="input.details.mode = ''">Non précisé</button><button type="button" :aria-pressed="input.details.mode === 'seul'" @click="input.details.mode = 'seul'">Seul</button><button type="button" :aria-pressed="input.details.mode === 'groupe'" @click="input.details.mode = 'groupe'">En groupe</button></div></fieldset>
+    <fieldset><legend>Travail</legend><div class="choice-row"><button type="button" :aria-pressed="input.details.mode === ''" @click="input.details.mode = ''">Non précisé</button><button type="button" :aria-pressed="input.details.mode === 'seul'" @click="input.details.mode = 'seul'">Seul</button><button type="button" :aria-pressed="input.details.mode === 'groupe'" @click="input.details.mode = 'groupe'">En groupe</button></div></fieldset>
     <label class="settings-label">Infos<textarea v-model="input.details.info" rows="3" maxlength="1500"></textarea></label>
-    <label class="settings-label">Liens (un par ligne)<textarea v-model="linksText" rows="2" placeholder="https://…"></textarea><small class="muted">Le domaine est toujours affiché. Raccourcisseurs refusés.<template v-if="me?.newAccount"> Compte récent : tes liens seront cliquables après validation.</template></small></label>
+    <label class="settings-label">Liens (un par ligne)<textarea v-model="linksText" rows="2" placeholder="https://…"></textarea><span class="field-hint">Le domaine est toujours affiché. Raccourcisseurs refusés.<template v-if="me?.newAccount"> Compte récent : tes liens seront cliquables après validation.</template></span></label>
     <p v-for="error in linkErrors" :key="error" class="form-error">{{ error }}</p>
   </details>
   <p v-if="status" class="form-error" role="alert">{{ status }}</p>
-  <div class="button-row end"><button type="button" @click="form = undefined">Annuler</button><button type="submit" class="primary-action" :disabled="busy">{{ request.mode === 'edit' ? 'Proposer la modification' : 'Proposer' }}</button></div>
+  <div class="form-actions"><button type="button" @click="form = undefined">Annuler</button><button type="submit" class="primary-action" :disabled="busy">{{ request.mode === 'edit' ? 'Proposer la modification' : 'Proposer' }}</button></div>
 </form>
 </AccessibleDialog></template>

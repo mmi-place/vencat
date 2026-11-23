@@ -9,7 +9,7 @@ import QueueDialog from './QueueDialog.vue';
 import DelegatesDialog from './DelegatesDialog.vue';
 import ModerationDialog from './ModerationDialog.vue';
 import InfoDialogs from './InfoDialogs.vue';
-import { ui, form, openedWork, me, needsOnboarding, loadMe, launchLinks, loadQueue, loadWorks, loadCorrections, section } from '../../scripts/travaux';
+import { wide, ui, form, openedWork, me, needsOnboarding, loadMe, launchLinks, loadQueue, loadWorks, loadCorrections, section } from '../../scripts/travaux';
 import { online } from '../../scripts/calendarStore';
 // Dialogs of the Travaux section, available from both sections.
 const notice = ref('');
@@ -27,7 +27,7 @@ onMounted(() => { timer = setInterval(() => { if (!document.hidden) { void loadQ
 onBeforeUnmount(() => clearInterval(timer));
 </script>
 <template>
-<WorkDialog v-if="openedWork" />
+<WorkDialog v-if="openedWork && !(wide && section === 'travaux')" />
 <WorkForm v-if="form" :key="(form.mode) + (form.work?.id ?? form.day ?? '')" />
 <LoginDialog v-if="ui.login" />
 <AccountDialog v-if="ui.account && me" />

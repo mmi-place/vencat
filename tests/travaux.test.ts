@@ -82,7 +82,7 @@ test('sign-in, proposals, votes, modifications and the ICS feed', async () => {
   assert.equal((await anonymous('/auth/start', { body: { email: 'lea.martin@ens.uvsq.fr' }, header: false })).status, 403);
   const lea = await signIn('lea.martin@ens.uvsq.fr');
   assert.equal(lea.me.firstName, 'Lea');
-  assert.ok(sentMails.some(mail => mail.to === 'lea.martin@ens.uvsq.fr' && /\d{6}/.test(mail.subject)));
+  assert.ok(sentMails.some(mail => mail.to === "lea.martin@ens.uvsq.fr" && /\d{6}/.test(mail.subject) && !!mail.html));
 
   // Wrong code: attempts are counted.
   const other = client();

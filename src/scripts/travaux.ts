@@ -239,3 +239,21 @@ export function checkCorrection(course: CourseDTO) {
 }
 
 export const emptyInput = (scope: WorkScope, day: string): WorkInput => ({ type: 'rendu', title: '', day, time: '', scope, details: { where: '', format: '', mode: '', info: '' }, links: [] });
+
+// ---------------------------------------------------------------------------
+// Layout: on wide screens Travaux shows the agenda (70 %) and the selected day (30 %), where works open.
+// ---------------------------------------------------------------------------
+const wideQuery = matchMedia('(min-width: 1024px)');
+export const wide = ref(wideQuery.matches);
+wideQuery.addEventListener('change', event => { wide.value = event.matches; });
+/** Ask the agenda to scroll to a day (the nonce repeats the request for the same day). */
+export const agendaFocus = ref<{ day: string; nonce: number }>({ day: campusDate(new Date()), nonce: 0 });
+export function focusDay(day: string, scroll = true) { travauxDay.value = day; if (scroll) agendaFocus.value = { day, nonce: agendaFocus.value.nonce + 1 }; }
+/** Week shown in the week bar: follows the scrolling of the agenda. */
+export const stripWeek = ref(mondayOf(campusDate(new Date())));
+export const infoDismissed = ref(readPreference<boolean>('vencat:travaux-info-dismissed', false));
+watch(infoDismissed, value => writePreference('vencat:travaux-info-dismissed', value));
+export const relativeDay = (day: string, from: string) => {
+  const days = Math.round((Date.parse(day + 'T12:00:00Z') - Date.parse(from + 'T12:00:00Z')) / 86400000);
+  return days === 0 ? 'Aujourd’hui' : days === 1 ? 'Demain' : days === -1 ? 'Hier' : days > 1 ? `Dans ${days} jours` : `Il y a ${-days} jours`;
+};
