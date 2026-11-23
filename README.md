@@ -16,6 +16,45 @@ Vencat est une application de consultation des emplois du temps CELCAT de l’IU
 - Consultation des semaines enregistrées hors connexion et installation comme application web sur mobile. L’interface se met à jour lors du rechargement et au retour dans l’application.
 - Historique local et partagé des changements, présenté comme un centre de notifications groupé par jour : glisser une notification sur le côté (ou Suppr) la supprime, avec possibilité d’annuler ; « Voir le cours » ouvre le jour concerné. Indicateurs non lus dans le menu mobile et cloche rouge sur ordinateur. Sur les cartes, une pastille Nouveau, Déplacé ou Modifié devient de plus en plus visible à 7, 5, 3 puis 1 jour du cours. Il n’y a pas de notifications push sur l’appareil.
 
+## Travaux
+
+Une bascule **Cours | Travaux** (touche **W**) affiche les devoirs, rendus, évaluations et projets de la promotion, déclarés par les étudiants et vérifiés collectivement. La lecture ne demande pas de compte.
+
+- **Planning** : le mois en cases (étiquettes colorées par type, compte à rebours, pointillés tant que la proposition n’est pas validée, « +N » au-delà de 3). Sur mobile, des points sous les jours et la liste du jour choisi.
+- **Liste** : par semaine, retards en tête, case « fait » privée et progression, filtres (type, portée, à confirmer, masquer les faits).
+- **Dans l’emploi du temps** : résumé du jour (« Rendu ×1 · Éval ×2 »), ligne sous le cours lié, pastille « Nouveau devoir », bouton « Ajouter les infos du DS », travaux et corrections dans la fiche d’un cours.
+- **Fiche** : modalités, liens avec leur domaine, auteur, cours lié, votes (Confirmer, Contester avec motif, Proposer une modification, N’existe plus, Signaler), note privée, historique, ←/→.
+- **Validation** : au moins 3 👍 et deux fois plus de 👍 que de 👎, vote de l’auteur exclu ; « probablement correct » après 48 h avec 1 👍 et aucun 👎 ; « contesté » avec au moins 2 👎 majoritaires. Comptes fiables : 1 ou 2 👍. Comptes de moins de 7 jours : votes à moitié, liens inactifs avant validation. Une seule proposition de modification ouverte par travail.
+- **Connexion** : adresse en `.uvsq.fr`, code à 6 chiffres et lien magique par mail (10 minutes, 5 essais, haché), validation sur un appareil déjà connecté en choisissant un nombre parmi trois, ou QR code. Session dans un cookie `HttpOnly` (jeton signé `kind: 'user'`).
+- **Compte** : appareils et déconnexion à distance, groupe modifiable une fois par semestre, correction du nom validée par l’admin, suppression (contributions gardées sous « Ancien étudiant »).
+- **Délégués** (mandat d’un an, validés par l’admin, alerte à 8 soutiens), **modération** (signalements, noms, alertes de fiabilité, lecture seule, bannissement, journal), **corrections d’emploi du temps** certifiées sur l’honneur, affichées par-dessus CELCAT et fermées quand CELCAT change le cours.
+- **Abonnement agenda** : `GET /api/travaux/ics/<groupe>.ics`, rappel la veille.
+
+| Variable | Rôle |
+| --- | --- |
+| `DATABASE_URL` (ou `POSTGRES_URL`) | Postgres Neon du Marketplace Vercel. Sans elle, le développement garde les données dans `.data/travaux.json` |
+| `TOKEN_SECRET` | Obligatoire en production pour signer les sessions (32 caractères minimum) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Serveur SMTP Oracle (nodemailer) |
+| `SMTP_ADMIN_EMAIL`, `SMTP_SENDER_NAME` | Expéditeur approuvé, par exemple `MMI-Place <no-reply@mmi.place>` |
+| `CONTACT_EMAIL` | Adresse de contact (CGU, contestation des sanctions) et `Reply-To` des mails |
+| `ADMIN_EMAILS` | Adresses des administrateurs, séparées par des virgules |
+| `TEACHER_ACCOUNTS` | `true` pour accepter les adresses `@uvsq.fr` (badge « Confirmé par l’enseignant ») |
+| `PUBLIC_URL` | Facultatif : origine utilisée dans les liens des mails et de l’ICS |
+| `MAIL_LOG_ONLY` | Développement : expression des adresses qui reçoivent le mail dans la console (ex. `@test\.uvsq\.fr$`) |
+
+Sans SMTP configuré, le développement affiche les mails dans la console et préremplit le code. Attention aux fichiers `.env` de Docker Compose : `$$` y représente un seul `$`, ce que Node ne traduit pas.
+
+À faire avant la mise en ligne : ajouter l’intégration Neon, renseigner les variables SMTP et `TOKEN_SECRET` sur Vercel, ajouter SPF et DKIM pour `mmi.place`.
+
+| Route | Rôle |
+| --- | --- |
+| `POST /api/auth/start`, `/verify`, `/send-mail`, `/poll`, `/qr`, `/approve`, `/deny`, `/logout` ; `GET /api/auth/me`, `/pending`, `/magic`, `/qr-info` | Connexion |
+| `/api/account/*` | Intégration, appareils, groupe, nom, cases et notes, suppression |
+| `GET /api/travaux/group/:groupId`, `/work/:id`, `/queue` ; `POST /api/travaux/works`, `/work/:id/vote`, `/work/:id/proposal`, `/proposal/:id/vote`, `/work/:id/report`, `/work/:id/moderate` | Travaux |
+| `/api/travaux/delegates/*`, `/api/travaux/moderation*`, `/api/travaux/corrections*` | Délégués, modération, corrections |
+
+Les routes qui modifient des données exigent l’en-tête `X-Requested-With: vencat` et refusent les autres origines.
+
 ## Accessibilité
 
 Dans **Réglages → Accessibilité**, chacun peut renforcer les contrastes, agrandir le texte, choisir un fond uni et réduire les animations. Ces choix sont enregistrés sur l’appareil. Les préférences système de réduction des animations et de contraste renforcé (`prefers-contrast: more`) sont toujours respectées.

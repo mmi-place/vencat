@@ -7,7 +7,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
 	server: {
-		proxy: { '/api': 'http://127.0.0.1:5000' },
+		proxy: { '/api': 'http://127.0.0.1:' + (process.env.PORT || 5000) },
+		// Hosts allowed in development (tunnels): VITE_ALLOWED_HOSTS=example.com,other.com
+		allowedHosts: process.env.VITE_ALLOWED_HOSTS ? process.env.VITE_ALLOWED_HOSTS.split(',') : undefined,
 	},
 	plugins: [
 		vue(),

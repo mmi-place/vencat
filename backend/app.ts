@@ -13,6 +13,7 @@ import { monitoringRouter } from './monitoring.js';
 import { configured, redis } from './storage.js';
 import { issueToken, tokenRequestLimited } from './identity.js';
 import { groupById } from '../shared/selection.js';
+import { travauxRouter } from './travaux/routes.js';
 
 const app = express();
 
@@ -24,10 +25,13 @@ const CELCAT_BASE_URL =
 const CELCAT_EDT_URL =
   process.env.CELCAT_EDT_URL || "https://edt.iut-velizy.uvsq.fr";
 
-app.use(cors());
+app.set('trust proxy', 'loopback');
+// Account routes are same-origin only (cookies); the public timetable API stays open to other sites.
+app.use(/^\/api\/(?!auth|account|travaux)/, cors());
 app.use(express.json({ limit: '16kb' }));
 app.use('/api', monitoringRouter);
 app.use('/api', searchRouter);
+app.use('/api', travauxRouter);
 
 // ---------------------------------------------------------------------------
 // Errors

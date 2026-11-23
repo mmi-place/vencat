@@ -4,6 +4,7 @@ import { wallpaperBackdrop as vWallpaperBackdrop } from '../scripts/wallpaperBac
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import CourseView from './CourseView.vue';
 import NextCourseHint from './NextCourseHint.vue';
+import DaySummary from './travaux/DaySummary.vue';
 import { campusDate, campusTime, minuteOf, frenchDate, layoutDay, calendarWeekDays, courseOccursOn, courseKey } from '../../shared/calendar';
 import { date, week, weekCourses, view, hasData, savedCourses, clock, preferences, visibleHours } from '../scripts/calendarStore';
 const scroll = ref<HTMLElement>();
@@ -43,9 +44,10 @@ watch([() => view.value === 'day' ? date.value + ':day' : week.value + ':week', 
 <div v-if="!layout.flat().length" class="timeline-empty"><p role="status">{{ view === 'day' ? 'Aucun cours prévu ce jour.' : 'Aucun cours prévu cette semaine.' }}</p><NextCourseHint :after="dates[dates.length - 1]!" /></div>
 <div class="timeline" :style="{ '--day-count': dates.length, '--visible-days': view === 'day' ? 1 : 5, '--hour-height': scale * 60 + 'px' }">
   <div v-wallpaper-backdrop class="timeline-corner" aria-hidden="true"><span>h</span></div>
-  <button v-for="day in dates" :key="day" v-wallpaper-backdrop tabindex="-1" class="timeline-day" :class="{ today: day === nowDay }" :aria-label="'Voir le ' + frenchDate(day)" @click="date = day; view = 'day'"><span>{{ frenchDate(day, { weekday: 'short' }) }}</span><strong>{{ frenchDate(day, { day: 'numeric' }) }}</strong></button>
+  <button v-for="day in dates" :key="day" v-wallpaper-backdrop tabindex="-1" class="timeline-day" :class="{ today: day === nowDay }" :aria-label="'Voir le ' + frenchDate(day)" @click="date = day; view = 'day'"><span>{{ frenchDate(day, { weekday: 'short' }) }}</span><strong>{{ frenchDate(day, { day: 'numeric' }) }}</strong><DaySummary v-if="narrow && view === 'week'" :day="day" dot /></button>
   <div v-wallpaper-backdrop class="hour-axis" :style="{ height: span * scale + 'px' }"><span v-for="tick in ticks" :key="tick" :class="{ afternoon: tick >= 780 }" :style="{ top: offset(tick) + 'px' }">{{ String(tick / 60).padStart(2, '0') }}<span class="desktop-hour">:00</span></span></div>
   <section v-for="(day, index) in dates" :key="day" class="timeline-column" :aria-label="frenchDate(day)" :style="{ height: span * scale + 'px' }">
+    <DaySummary v-if="!(narrow && view === 'week')" class="grid-day-summary" :day="day" />
     <div v-if="lunch.end > lunch.start" class="noon-band" :style="{ top: offset(lunch.start) + 'px', height: (lunch.end - lunch.start) * scale + 'px' }" aria-hidden="true"></div>
     <div v-for="tick in ticks" :key="tick" class="hour-rule" :class="{ 'noon-rule': tick === 720 }" :style="{ top: offset(tick) + 'px' }"></div>
     <CourseView v-for="item in layout[index]" :key="courseKey(item.course)" :course="item.course" :short="item.end - item.start <= 60" :style="{ position: 'absolute', top: offset(Math.max(item.start, hours.start)) + 'px', height: Math.max(24, (Math.min(item.end, hours.end) - Math.max(item.start, hours.start)) * scale - 4) + 'px', left: `calc(${item.column / item.columns * 100}% + 2px)`, width: `calc(${100 / item.columns}% - 4px)` }" />

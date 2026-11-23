@@ -2,6 +2,9 @@
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick, useId } from 'vue';
 import { MagnifyingGlassIcon, CalendarDaysIcon, ChevronRightIcon, UserIcon, MapPinIcon, UserGroupIcon, TagIcon, BookOpenIcon, FunnelIcon, XMarkIcon, EyeIcon } from '@heroicons/vue/24/outline';
 import AccessibleDialog from './AccessibleDialog.vue';
+import { works as allWorks, openedWork, section as appSection, travauxDay, travauxView } from '../scripts/travaux';
+import { WORK_TYPES, WORK_TYPE_LABELS, type WorkType } from '../../shared/travaux';
+import { normalizedText } from '../../shared/calendar';
 import { savedCourses, selection, online, preferences } from '../scripts/calendarStore';
 import { cachedSearchDataset, loadSearchDataset, planningSearch, type PlanningSearch } from '../scripts/searchStore';
 import { searchWindow, rangeTTL, matchesCourse, coursesInWindow, searchFacets, type SearchCriterion, type SearchField, type SearchFilters } from '../../shared/search';
@@ -60,6 +63,15 @@ const summary = computed(() => {
   return `${count} résultat${plural}${when}${complete.value ? '' : ' enregistré' + plural}`;
 });
 
+// Works appear in the same search, with a filter by type; "Voir sur le planning" opens their day in Travaux.
+const workType = ref<WorkType | ''>('');
+const workResults = computed(() => {
+  const text = normalizedText(query.value);
+  if (!text && !workType.value) return [];
+  return allWorks.value.filter(work => work.state !== 'removed' && (!workType.value || work.type === workType.value) && (includePast.value || work.day >= today)
+    && (!text || normalizedText([work.title, work.details.where, work.details.info, work.course?.summary ?? '', work.course?.module ?? ''].join(' ')).includes(text))).sort((a, b) => a.due.localeCompare(b.due)).slice(0, 20);
+});
+function showWork(id: string, day: string, open: boolean) { travauxDay.value = day; travauxView.value = 'planning'; appSection.value = 'travaux'; if (open) openedWork.value = id; emit('close'); }
 async function load() {
   if (!selection.value || rangeError.value || !online.value) return;
   const id = selection.value.id, wanted = range.value;
@@ -117,6 +129,11 @@ onBeforeUnmount(() => { if (delay) clearTimeout(delay); window.removeEventListen
       <p v-if="!online" class="muted search-message">Hors ligne : recherche dans les semaines enregistrées.</p>
       <p v-if="error" role="alert" class="notice">{{ error }} <button @click="retry">Réessayer</button></p>
       <div v-if="busy && !results.length" class="search-skeleton" role="status"><span class="sr-only">Chargement des cours de l’année…</span><div v-for="n in 5" :key="n" class="search-skeleton-row"><span></span><span></span></div></div>
+      <section v-if="allWorks.length && (query.trim() || workType)" class="search-day search-works" aria-label="Travaux">
+        <h3 class="search-day-heading">Travaux · {{ workResults.length }}</h3>
+        <div class="filter-chips" role="group" aria-label="Type de travail"><button v-for="type in WORK_TYPES" :key="type" type="button" :class="'filter-' + type" :aria-pressed="workType === type" @click="workType = workType === type ? '' : type">{{ WORK_TYPE_LABELS[type] }}</button></div>
+        <ol class="compact-result-list"><li v-for="work in workResults" :key="work.id" class="work-search-result"><button class="compact-search-result" :class="'type-' + work.type" @click="showWork(work.id, work.day, true)"><span class="result-kind">{{ WORK_TYPE_LABELS[work.type] }}</span><strong>{{ work.title }}</strong><span class="muted">{{ frenchDate(work.day, { weekday: 'short', day: 'numeric', month: 'short' }) }} · {{ work.time }} · {{ work.scopeLabel }}</span></button><button class="text-action" type="button" @click="showWork(work.id, work.day, false)">Voir sur le planning</button></li></ol>
+      </section>
       <section v-for="group in groups" :key="group.day" class="search-day" :aria-label="group.label">
         <h3 class="search-day-heading" :class="{ today: group.day === today }">{{ group.label }}</h3>
         <ol class="compact-result-list"><li v-for="course in group.courses" :key="courseKey(course)"><button class="compact-search-result" aria-haspopup="dialog" :aria-label="`${course.summary}, ${course.type}, ${campusTime(course.start)} à ${campusTime(course.end)}, ${course.location || 'salle non renseignée'}`" @click="emit('open', course)"><span class="result-kind">{{ course.type === 'inconnu' ? 'Cours' : course.type }}</span><strong class="result-title">{{ course.summary }}</strong><span class="result-room">{{ course.location || '—' }}</span><ChevronRightIcon aria-hidden="true" /><span class="result-date">{{ campusTime(course.start) }}–{{ campusTime(course.end) }}</span></button></li></ol>

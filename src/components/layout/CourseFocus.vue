@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, shallowRef, watch } from 'vue';
 import { CalendarDaysIcon, ClockIcon, BookOpenIcon, TagIcon, MapPinIcon, UserIcon, UserGroupIcon, MagnifyingGlassIcon, ChevronLeftIcon, ChevronRightIcon, ArrowRightIcon } from '@heroicons/vue/24/outline';
 import AccessibleDialog from '../AccessibleDialog.vue';
+import CourseTravaux from '../travaux/CourseTravaux.vue';
 import { focused, selection, savedCourses, preferences, courseChanges, courseIdentity } from '../../scripts/calendarStore';
 import { changeBadge, changeDetails, changeHeadline } from '../../../shared/changePresentation';
 import { campusDate, campusTime, frenchDate, courseKey, isWeekend } from '../../../shared/calendar';
@@ -51,5 +52,6 @@ const rows = computed(() => focused.value ? [
   <p v-if="description" class="module-description">{{ description }}</p>
   <div class="course-when"><p><CalendarDaysIcon aria-hidden="true" />{{ frenchDate(campusDate(focused.start)) }}</p><p><ClockIcon aria-hidden="true" />{{ campusTime(focused.start) }}–{{ campusTime(focused.end) }}</p></div>
   <dl class="course-detail-fields"><template v-for="row in rows" :key="row.field"><dt><component :is="row.icon" aria-hidden="true" />{{ row.label }}</dt><dd><button v-for="value in row.values" :key="value" class="detail-search-action" :aria-label="`Rechercher les cours : ${value}`" @click="find(row.field, value)"><span>{{ value }}</span><MagnifyingGlassIcon aria-hidden="true" /></button><span v-if="!row.values.length" class="muted">Non renseigné</span></dd></template></dl>
+  <CourseTravaux :key="courseKey(focused)" :course="focused" />
   <nav v-if="previous || next" class="course-stepper" aria-label="Autres cours"><button :disabled="!previous" :aria-label="previous ? 'Cours précédent : ' + shortLabel(previous) : 'Pas de cours précédent'" @click="focused = previous"><ChevronLeftIcon aria-hidden="true" />Précédent</button><button :disabled="!next" :aria-label="next ? 'Cours suivant : ' + shortLabel(next) : 'Pas de cours suivant'" @click="focused = next"><span>Suivant</span><ChevronRightIcon aria-hidden="true" /></button></nav>
 </div></AccessibleDialog></template>

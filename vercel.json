@@ -17,6 +17,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/(travaux|auth|account)/(.*)",
+      "destination": "/api/$1"
+    },
+    {
       "source": "/((?!api(?:/|$)|assets/|.*\\.[^/]+$).*)",
       "destination": "/index.html"
     }

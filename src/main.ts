@@ -1,4 +1,5 @@
 import './assets/main.css'
+import './assets/travaux.css'
 import '@fontsource-variable/nunito';
 
 import { createApp } from 'vue'

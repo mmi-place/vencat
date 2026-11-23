@@ -8,16 +8,19 @@ const groups = [
   { title: 'Planning', keys: [
     ['← / →', 'Jour ou semaine précédente / suivante (hors cours et groupes de boutons)'], ['Page préc. / Page suiv.', 'Jour ou semaine précédente / suivante'],
     ['T', 'Aujourd’hui'], ['L / J / S', 'Vue Liste / Jour / Semaine'], ['P', 'Aller au cours en cours ou au prochain'],
-    ['/', 'Recherche'], ['G', 'Changer de groupe'], ['C', 'Changements du planning'], ['?', 'Cette aide'],
+    ['W', 'Basculer entre Cours et Travaux'], ['/', 'Recherche'], ['G', 'Changer de groupe'], ['C', 'Changements du planning'], ['?', 'Cette aide'],
   ] },
   { title: 'Sur un cours', keys: [
     ['↑ / ↓', 'Cours précédent / suivant de la journée'], ['← / →', 'Journée voisine, au plus près du même horaire'],
     ['Début / Fin', 'Premier / dernier cours du jour'], ['Ctrl + Début / Fin', 'Premier / dernier cours affiché'],
     ['← / → dans le détail', 'Cours précédent / suivant'],
   ] },
+  { title: 'Travaux', keys: [
+    ['Flèches dans le planning', 'Jour voisin du mois'], ['← / → dans une fiche', 'Travail précédent / suivant'],
+  ] },
   { title: 'Combinaisons toujours actives', keys: [
     ['Alt + Maj + F / G / S', 'Recherche / groupe / réglages'], ['Alt + Maj + A / C / T', 'Accessibilité / changements / aujourd’hui'],
-    ['Alt + Maj + 1 / 2 / 3', 'Vue Liste / Jour / Semaine'], ['Alt + Maj + ← / →', 'Période précédente / suivante'],
+    ['Alt + Maj + 1 / 2 / 3', 'Vue Liste / Jour / Semaine'], ['Alt + Maj + W', 'Cours / Travaux'], ['Alt + Maj + ← / →', 'Période précédente / suivante'],
   ] },
 ] as const;
 </script>
