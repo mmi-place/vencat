@@ -249,3 +249,14 @@ export function worksToIcs(groupLabel: string, works: WorkView[], origin: string
   lines.push('END:VCALENDAR');
   return lines.map(fold).join('\r\n') + '\r\n';
 }
+
+/** One timetable course as an event (location, teachers, reminder 15 minutes before). */
+export function courseToIcs(course: { uid: string; summary: string; type: string; start: string; end: string; location: string; teachers: string[]; module: string }, origin: string, now = new Date()): string {
+  const type = course.type && course.type !== 'inconnu' ? course.type + ' · ' : '';
+  const description = [course.module && course.module !== course.summary ? course.module : '', course.teachers.join(', '), origin].filter(Boolean).join('\n');
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Vencat//Cours//FR', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
+    `UID:${icsText(course.uid + '-' + course.start)}@vencat`, `DTSTAMP:${icsDate(now.toISOString())}`, `DTSTART:${icsDate(new Date(course.start).toISOString())}`, `DTEND:${icsDate(new Date(course.end).toISOString())}`,
+    `SUMMARY:${icsText(type + course.summary)}`, `LOCATION:${icsText(course.location)}`, `DESCRIPTION:${icsText(description)}`,
+    'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsText(type + course.summary)}`, 'TRIGGER:-PT15M', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'];
+  return lines.map(fold).join('\r\n') + '\r\n';
+}

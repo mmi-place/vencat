@@ -270,3 +270,16 @@ test('review fixes: no reliability farming, no personal flip, idempotent creatio
   // Closing a correction needs a member of the group.
   assert.equal((await client()('/travaux/correction/whatever/close', { body: { reason: 'celcat' } })).status, 401);
 });
+
+test('calendar links: group subscription by id or path, single course and work events', async () => {
+  const anonymous = client();
+  for (const file of [`${B1}.ics`, `${B1.toLowerCase()}.ics`, 'mmi-2-b1.ics']) {
+    const answer = await anonymous(`/travaux/ics/${file}`);
+    assert.equal(answer.status, 200, file); assert.match(answer.body, /BEGIN:VCALENDAR/);
+  }
+  const unknown = await fetch(`${base}/travaux/ics/inconnu.ics`);
+  assert.equal(unknown.status, 404); assert.match(await unknown.text(), /Groupe introuvable/);
+  const { courseToIcs } = await import('../shared/travaux.js');
+  const ics = courseToIcs({ uid: 'u1', summary: 'Web, avancé', type: 'TD', start: '2026-12-01T08:00:00.000Z', end: '2026-12-01T10:00:00.000Z', location: 'E57', teachers: ['A. Martin'], module: 'R 3.01' }, 'https://vencat.example');
+  assert.match(ics, /SUMMARY:TD · Web\\, avancé/); assert.match(ics, /LOCATION:E57/); assert.match(ics, /TRIGGER:-PT15M/);
+});

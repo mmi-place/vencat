@@ -8,10 +8,10 @@ import {
 } from './auth.js';
 import {
   parseWorkInput, voteState, tally, requiredUpvotes, scopeIncludes, scopeLabel, scopeMembers, parisInstant, DEFAULT_DUE_TIME, linkDomain, cleanText, LIMITS,
-  WORK_TYPE_LABELS, WORK_STATE_LABELS, worksToIcs, audienceScope, widerScope, semesterOf, nameFromEmail, voteWeight, checkLink, isWorkType, validTime, validScope,
+  WORK_TYPE_LABELS, WORK_STATE_LABELS, worksToIcs, courseToIcs, audienceScope, widerScope, semesterOf, nameFromEmail, voteWeight, checkLink, isWorkType, validTime, validScope,
   type WorkInput, type WorkView, type WorkState, type Vote, type WorkProposalView, type HistoryEntry, type CourseLink, type WorkScope,
 } from '../../shared/travaux.js';
-import { groupById } from '../../shared/selection.js';
+import { groupById, groupOptions } from '../../shared/selection.js';
 
 // ---------------------------------------------------------------------------
 // Stored documents
@@ -366,6 +366,21 @@ router.get('/travaux/group/:groupId', route(async (req, res) => {
   for (const work of works) await settle(work);
   res.json(await Promise.all(works.map(work => workView(work, user, people))));
 }));
+/** One course of the timetable as a calendar event (reminder 15 minutes before). */
+router.get('/travaux/course-event.ics', route(async (req, res) => {
+  const groupId = String(req.query.group ?? ''), uid = String(req.query.uid ?? ''), start = String(req.query.start ?? '');
+  if (!groupExists(groupId) || !uid || !Number.isFinite(Date.parse(start))) throw new HttpError(400, 'Cours introuvable.');
+  const day = new Date(start).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+  const { getCalendar } = await import('../app.js');
+  const monday = (() => { const date = new Date(day + 'T12:00:00Z'); date.setUTCDate(date.getUTCDate() - (date.getUTCDay() + 6) % 7); return date.toISOString().slice(0, 10); })();
+  const sunday = new Date(Date.parse(monday + 'T12:00:00Z') + 6 * 86400000).toISOString().slice(0, 10);
+  const course = (await getCalendar(groupId, monday, sunday)).snapshot.courses.find(item => item.uid === uid && item.start === start);
+  if (!course) throw new HttpError(404, 'Ce cours n’est plus dans l’emploi du temps.');
+  res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+  res.setHeader('Content-Disposition', `inline; filename="${course.summary.normalize('NFD').replace(/[^A-Za-z0-9]+/g, '-').slice(0, 60) || 'cours'}.ics"`);
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.send(courseToIcs(course, origin(req)));
+}));
 /** One work as a calendar event (Apple Calendrier opens the file; reminder the day before). */
 router.get('/travaux/event/:file', route(async (req, res) => {
   const work = await db().get<Work>('works', String(req.params.file).replace(/\.ics$/, ''));
@@ -558,10 +573,16 @@ router.get('/travaux/queue', route(async (req, res) => {
   res.json({ works: pending.sort((a, b) => a.due.localeCompare(b.due)), corrections: open });
 }));
 
+/** Group of a subscription link: its id (G1-…), any case, with or without .ics, or its path (mmi-2-b1). */
+function groupFromFile(file: string) {
+  const name = decodeURIComponent(file).trim().replace(/\.ics$/i, '');
+  return groupById(name) ?? groupOptions.find(group => group.id.toLowerCase() === name.toLowerCase() || group.path.slice(1).replace(/\//g, '-') === name.toLowerCase());
+}
+// Subscription to every work of a group (calendar apps refresh it by themselves).
 router.get('/travaux/ics/:file', route(async (req, res) => {
-  const groupId = String(req.params.file).replace(/\.ics$/, '');
-  const group = groupById(groupId);
-  if (!group) throw new HttpError(404, 'Groupe inconnu.');
+  const group = groupFromFile(String(req.params.file));
+  if (!group) { res.status(404).type('text/plain; charset=utf-8').send('Groupe introuvable : ouvre Vencat, choisis ton groupe, puis Travaux › S’abonner pour copier le bon lien.'); return; }
+  const groupId = group.id;
   const people = await users();
   const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
   const views = await Promise.all((await worksForGroup(groupId)).filter(work => work.day >= since).map(work => workView(work, undefined, people)));

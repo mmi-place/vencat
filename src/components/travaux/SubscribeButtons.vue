@@ -24,10 +24,10 @@ const copied = ref(false);
 async function copy() { try { await navigator.clipboard.writeText(https.value); copied.value = true; setTimeout(() => { copied.value = false; }, 2000); } catch { prompt('Lien d’abonnement', https.value); } }
 </script>
 <template><div class="subscribe">
-  <button class="subscribe-toggle" :aria-expanded="expanded" @click="expanded = !expanded"><CalendarDaysIcon aria-hidden="true" /><span>Ajouter à mon agenda</span><ChevronDownIcon class="chevron" aria-hidden="true" /></button>
+  <button class="subscribe-toggle" :aria-expanded="expanded" @click="expanded = !expanded"><CalendarDaysIcon aria-hidden="true" /><span>S’abonner aux travaux du groupe</span><ChevronDownIcon class="chevron" aria-hidden="true" /></button>
   <div v-if="expanded" class="subscribe-buttons">
     <a v-for="(app, index) in apps" :key="app.id" class="app-button" :href="app.href" :target="app.external ? '_blank' : undefined" :rel="app.external ? 'noopener' : undefined"><span class="app-logo" :class="app.logo" aria-hidden="true">{{ app.logo === 'logo-google' ? 'G' : app.logo === 'logo-apple' ? '' : 'O' }}</span><span><strong>{{ app.label }}<span v-if="index === 0" class="recommended">pour cet appareil</span></strong><small>{{ app.hint }}</small></span></a>
     <button class="app-button" @click="copy"><span class="app-logo" aria-hidden="true"><CheckIcon v-if="copied" /><LinkIcon v-else /></span><span><strong>{{ copied ? 'Lien copié' : 'Copier le lien' }}</strong><small>Autre application</small></span></button>
-    <p class="field-hint">Rappel la veille de chaque travail. Mise à jour toutes les quelques heures.</p>
+    <p class="field-hint">Un abonnement : chaque travail de {{ name.replace('Travaux ', '') }} apparaît dans ton agenda, avec un rappel la veille, et la liste se met à jour toute seule (toutes les quelques heures).</p>
   </div>
 </div></template>
