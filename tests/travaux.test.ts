@@ -283,3 +283,25 @@ test('calendar links: group subscription by id or path, single course and work e
   const ics = courseToIcs({ uid: 'u1', summary: 'Web, avancé', type: 'TD', start: '2026-12-01T08:00:00.000Z', end: '2026-12-01T10:00:00.000Z', location: 'E57', teachers: ['A. Martin'], module: 'R 3.01' }, 'https://vencat.example');
   assert.match(ics, /SUMMARY:TD · Web\\, avancé/); assert.match(ics, /LOCATION:E57/); assert.match(ics, /TRIGGER:-PT15M/);
 });
+
+test('delegates are declared by the elected students and confirmed by the administration', async () => {
+  resetLimits();
+  const student = await signIn('delegue.elu@ens.uvsq.fr');
+  assert.equal((await student.browser('/travaux/delegates/request', { body: { title: 'suppléant', note: 'élu le 2 octobre' } })).status, 201);
+  assert.equal((await student.browser('/travaux/delegates/request', { body: {} })).status, 409);
+  const before = await client()(`/travaux/delegates/${B1}`);
+  assert.equal(before.body.active.some((item: { name: string }) => /Delegue/i.test(item.name)), false, 'not listed before confirmation');
+  process.env.ADMIN_EMAILS = 'chef.admin@gmail.com'; process.env.MAIL_LOG_ONLY = '@gmail\\.com$';
+  const admin = client();
+  const start = await admin('/admin/start', { body: { email: 'chef.admin@gmail.com' } });
+  await admin('/admin/verify', { body: { requestId: start.body.requestId, code: start.body.devCode } });
+  const queue = await admin('/admin/overview');
+  const declaration = queue.body.delegates.find((item: { title: string; note: string }) => item.note === 'élu le 2 octobre');
+  assert.equal(declaration.title, 'suppléant');
+  assert.equal((await admin('/admin/action', { body: { kind: 'delegate', id: declaration.id, action: 'accept' } })).status, 200);
+  const after = await client()(`/travaux/delegates/${B1}`);
+  const listed = after.body.active.find((item: { title: string }) => item.title === 'suppléant');
+  assert.ok(listed); assert.match(listed.until, /-08-31T/);
+  assert.equal((await student.browser('/travaux/delegates/mine', { method: 'DELETE' })).status, 200);
+  delete process.env.ADMIN_EMAILS; delete process.env.MAIL_LOG_ONLY;
+});

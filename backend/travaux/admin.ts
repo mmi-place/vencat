@@ -3,7 +3,7 @@ import { randomBytes, randomInt } from 'node:crypto';
 import { store } from './store.js';
 import { sendMail, layout } from './mail.js';
 import { HttpError, hash, id, now, sameOrigin, overLimit, addressKey, deviceLabel, adminEmails, activeDelegations, displayName, type User, type Session, type Delegation } from './auth.js';
-import { moderationData, moderationAction, settle, workView, users, history, audit, type Work } from './routes.js';
+import { moderationData, moderationAction, settle, workView, users, history, audit, schoolYearEnd, type Work } from './routes.js';
 import { normalizeEmail, cleanText, LIMITS, scopeLabel, type WorkState } from '../../shared/travaux.js';
 import { groupById } from '../../shared/selection.js';
 
@@ -121,7 +121,7 @@ router.post('/admin/action', route(async (req, res) => {
     const user = await db().get<User>('users', String(body.id));
     if (!user?.groupId) throw new HttpError(404, 'Compte introuvable ou sans groupe.');
     if ((await activeDelegations(user.id)).length) throw new HttpError(409, 'Déjà délégué.');
-    const delegation: Delegation = { id: id(), userId: user.id, groupId: user.groupId, status: 'active', supporters: [], createdAt: now(), decidedAt: now(), until: new Date(Date.now() + 365 * 86400000).toISOString() };
+    const delegation: Delegation = { id: id(), userId: user.id, groupId: user.groupId, status: 'active', title: body.title === 'suppléant' ? 'suppléant' : 'titulaire', createdAt: now(), decidedAt: now(), until: schoolYearEnd() };
     await db().put('delegations', delegation.id, delegation);
     await audit(actor, 'délégué:nomination', user.id, reason);
   } else if (body.kind === 'user-delete') {

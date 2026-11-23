@@ -11,7 +11,8 @@ export interface User {
   cguAcceptedAt?: string; reliability: number; staff?: boolean; readOnlyUntil?: string; banned?: { at: string; reason: string }; deletedAt?: string;
 }
 export interface Session { id: string; userId: string; createdAt: string; lastSeen: string; device: string }
-export interface Delegation { id: string; userId: string; groupId: string; status: 'requested' | 'active' | 'refused' | 'ended'; supporters: string[]; createdAt: string; alertedAt?: string; decidedAt?: string; until?: string }
+/** Real class representatives (elected at the IUT) declare themselves; the administration checks and confirms. No vote in Vencat. */
+export interface Delegation { id: string; userId: string; groupId: string; status: 'requested' | 'active' | 'refused' | 'ended'; title?: 'titulaire' | 'suppléant'; note?: string; supporters?: string[]; createdAt: string; alertedAt?: string; decidedAt?: string; until?: string }
 
 export const id = () => randomBytes(16).toString('hex');
 export const hash = (value: string) => createHash('sha256').update(value).digest('hex');

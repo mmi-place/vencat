@@ -11,8 +11,8 @@ type Tab = 'overview' | 'moderation' | 'accounts' | 'works' | 'corrections' | 'd
 interface Overview {
   stats: { accounts: number; active: number; works: number; states: Record<string, number>; newWorks: number; groups: number };
   reports: { id: string; kind: string; targetId: string; title: string; reason: string; by: string; at: string }[];
-  delegates: { id: string; name: string; group: string; supports: number; at: string }[];
-  activeDelegates: { id: string; name: string; group: string; until?: string }[];
+  delegates: { id: string; name: string; email?: string; group: string; title: string; note: string; at: string }[];
+  activeDelegates: { id: string; name: string; group: string; title: string; until?: string }[];
   names: { id: string; before: string; after: string; email?: string; at: string }[];
   alerts: { id: string; name: string; at: string; problems: string[] }[];
   students: { id: string; name: string; email?: string | null; groupId?: string; readOnlyUntil?: string; banned: boolean; reliability: number; createdAt: string }[];
@@ -141,7 +141,7 @@ const day = (iso: string) => new Date(iso).toLocaleString('fr-FR', { timeZone: '
       <template v-else-if="data && tab === 'moderation'">
         <p v-if="!todo" class="muted">Rien à traiter.</p>
         <section v-if="data.reports.length" class="admin-card"><h2>Signalements</h2><div v-for="item in data.reports" :key="item.id" class="admin-row"><div><strong>{{ item.kind === 'delegate' ? 'Délégué : ' : '' }}{{ item.title }}</strong><small>{{ item.reason }} · par {{ item.by }} · {{ day(item.at) }}</small></div><button class="danger-action" :disabled="busy" @click="act({ kind: 'report', id: item.id, action: 'remove' })">{{ item.kind === 'delegate' ? 'Retirer le mandat' : 'Retirer' }}</button><button :disabled="busy" @click="act({ kind: 'report', id: item.id, action: 'dismiss' })">Classer</button></div></section>
-        <section v-if="data.delegates.length" class="admin-card"><h2>Demandes de délégué</h2><div v-for="item in data.delegates" :key="item.id" class="admin-row"><div><strong>{{ item.name }}</strong><small>{{ item.group }} · {{ item.supports }} soutiens · {{ day(item.at) }}</small></div><button class="primary-action" :disabled="busy" @click="act({ kind: 'delegate', id: item.id, action: 'accept' })">Valider</button><button :disabled="busy" @click="act({ kind: 'delegate', id: item.id, action: 'refuse' })">Refuser</button></div></section>
+        <section v-if="data.delegates.length" class="admin-card"><h2>Déclarations de délégué à vérifier</h2><div v-for="item in data.delegates" :key="item.id" class="admin-row"><div><strong>{{ item.name }}</strong><small>{{ item.title }} · {{ item.group }} · {{ item.email }} · {{ day(item.at) }}<template v-if="item.note"> · « {{ item.note }} »</template></small></div><button class="primary-action" :disabled="busy" @click="act({ kind: 'delegate', id: item.id, action: 'accept' })">Confirmer</button><button :disabled="busy" @click="act({ kind: 'delegate', id: item.id, action: 'refuse' })">Refuser</button></div></section>
         <section v-if="data.names.length" class="admin-card"><h2>Corrections de nom</h2><div v-for="item in data.names" :key="item.id" class="admin-row"><div><strong>« {{ item.before }} » → « {{ item.after }} »</strong><small>{{ item.email }}</small></div><button :disabled="busy" @click="act({ kind: 'name', id: item.id, action: 'accept' })">Accepter</button><button :disabled="busy" @click="act({ kind: 'name', id: item.id, action: 'refuse' })">Refuser</button></div></section>
         <section v-if="data.alerts.length" class="admin-card"><h2>Alertes de fiabilité</h2><div v-for="item in data.alerts" :key="item.id" class="admin-row"><div><strong>{{ item.name }}</strong><small>{{ item.problems.join(' · ') }}</small></div><button :disabled="busy" @click="act({ kind: 'alert', id: item.id, action: 'mail' }, 'Mail explicatif envoyé.')">Mail explicatif</button><button :disabled="busy" @click="act({ kind: 'alert', id: item.id, action: 'dismiss' })">Classer</button></div></section>
       </template>
@@ -170,8 +170,8 @@ const day = (iso: string) => new Date(iso).toLocaleString('fr-FR', { timeZone: '
         </tbody></table></div></section>
       </template>
       <template v-else-if="data && tab === 'delegates'">
-        <section class="admin-card"><h2>Mandats en cours</h2><p v-if="!data.activeDelegates.length" class="muted">Aucun délégué.</p><div v-for="item in data.activeDelegates" :key="item.id" class="admin-row"><div><strong>{{ item.name }}</strong><small>{{ item.group }} · jusqu’au {{ item.until ? new Date(item.until).toLocaleDateString('fr-FR') : '—' }}</small></div><button class="danger-action" :disabled="busy" @click="act({ kind: 'delegate-end', id: item.id })">Mettre fin</button></div></section>
-        <p class="muted">Pour nommer un délégué directement : onglet Comptes › Nommer délégué.</p>
+        <section class="admin-card"><h2>Mandats en cours</h2><p v-if="!data.activeDelegates.length" class="muted">Aucun délégué.</p><div v-for="item in data.activeDelegates" :key="item.id" class="admin-row"><div><strong>{{ item.name }}</strong><small>{{ item.title }} · {{ item.group }} · jusqu’au {{ item.until ? new Date(item.until).toLocaleDateString('fr-FR') : '—' }}</small></div><button class="danger-action" :disabled="busy" @click="act({ kind: 'delegate-end', id: item.id })">Mettre fin</button></div></section>
+        <p class="muted">Les délégués élus se déclarent depuis Vencat (Mon compte › Groupe et délégués) ; tu confirmes ici après vérification. Pour enregistrer directement un délégué : onglet Comptes › Nommer délégué.</p>
       </template>
       <template v-else-if="data && tab === 'log'">
         <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Quand</th><th>Qui</th><th>Action</th><th>Motif</th></tr></thead><tbody><tr v-for="item in data.log" :key="item.id"><td>{{ day(item.at) }}</td><td>{{ item.by }}</td><td>{{ item.action }}</td><td class="muted">{{ item.reason }}</td></tr></tbody></table></div>
