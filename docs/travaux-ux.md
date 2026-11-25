@@ -14,7 +14,7 @@ Sources d’inspiration : vue « À venir » de Todoist (liste continue par jour
 - **Barre principale** : logo · onglets Cours / Travaux (pastille) · groupe, recherche, apparence, réglages, cloche, avatar.
 - **Cours** : point(s) de couleur + nombre sur la ligne de date des en-têtes ; sur mobile, puce « 2 travaux » sous la date du jour dans l’en-tête fixe.
 - **Carte de cours** : `~~14:00–16:00~~ 13:30–15:30 ⚑`, `~~I22~~ E58 ⚑`, « Annulé » hachuré ; pied : icône + « Rendu 12:00 ».
-- **Travaux (ordinateur)** : barre de semaine (jours, points, flèches, Aujourd’hui) · filtres en puces · agenda par semaines (5 colonnes) · panneau du jour (liste type Rappels, ajout, fiche intégrée, file à valider, comment ça marche, abonnement).
+- **Travaux (ordinateur)** : barre de semaine (7 jours, points, flèches, Aujourd’hui) · filtres en puces · agenda par semaines (6 colonnes de même largeur : lundi à vendredi, puis « Week-end » avec le samedi au-dessus du dimanche ; la barre de semaine montre les 7 jours) · panneau du jour (liste type Rappels, ajout, fiche intégrée, file à valider, comment ça marche, abonnement).
 - **Travaux (mobile)** : barre de semaine collante, filtres défilants, agenda par jours (en-têtes collants), fiche en feuille du bas.
 - **Liste** : style Rappels, sections Aujourd’hui / Demain / Cette semaine / Semaine prochaine / Plus tard.
 - **Connexion** : ordinateur = QR code à gauche, mail à droite ; mobile = mail puis validation sur l’appareil connecté s’il existe, sinon code par mail ; un seul champ de code.

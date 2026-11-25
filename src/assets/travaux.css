@@ -717,3 +717,17 @@
 .sheet-facts dt { color: var(--muted); font-weight: 700; }
 .sheet-facts dd { margin: 0; }
 .sheet-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; font-size: .9rem; }
+
+/* Agenda columns: Monday to Friday, then « Week-end » with Saturday above Sunday. Six equal columns, so the cards are a little
+   narrower than with five: tighter padding, smaller text, and the long state labels give way when a column is narrow. */
+.agenda-col { display: flex; flex-direction: column; min-width: 0; border-right: 1px solid color-mix(in srgb, var(--line) 70%, transparent); container-type: inline-size; }
+.agenda-col:last-child { border-right: 0; }
+.agenda-col > .agenda-cell { flex: 1 1 auto; border-right: 0; min-width: 0; }
+.agenda-col.we > .agenda-cell { min-height: 56px; padding-bottom: 6px; }
+.agenda-col.we > .agenda-cell + .agenda-cell { border-top: 1px dashed color-mix(in srgb, var(--line) 80%, transparent); }
+.agenda-col.we .agenda-date { text-transform: capitalize; }
+.agenda-col .agenda-cell { padding: 5px 5px 8px; gap: 3px; }
+.agenda-col .work-card { padding: 5px 6px 6px 11px; }
+.agenda-col .work-card strong { font-size: .8rem; overflow-wrap: anywhere; }
+.agenda-col .work-card-top { flex-wrap: wrap; row-gap: 0; font-size: .68rem; }
+@container (max-width: 130px) { .work-card-top .card-state { display: none; } .agenda-date { font-size: .8rem; padding-inline: 6px; } }
