@@ -3,11 +3,10 @@ import { computed } from 'vue';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/vue/24/outline';
 import { arrowNavigation as vArrowNavigation } from '../../scripts/keyboardNavigation';
 import { stripWeek, travauxDay, today, focusDay, worksByDay } from '../../scripts/travaux';
-import { preferences } from '../../scripts/calendarStore';
 import { addDay, frenchDate, mondayOf } from '../../../shared/calendar';
 // Week bar: the days of the week in view, dots where works are due; arrows jump a week.
-const days = computed(() => Array.from({ length: preferences.value.weekend ? 7 : 5 }, (_, index) => addDay(stripWeek.value, index)));
-const title = computed(() => { const end = addDay(stripWeek.value, 4); const sameMonth = stripWeek.value.slice(5, 7) === end.slice(5, 7); return frenchDate(stripWeek.value, sameMonth ? { day: 'numeric' } : { day: 'numeric', month: 'short' }) + ' – ' + frenchDate(end, { day: 'numeric', month: 'long', year: 'numeric' }); });
+const days = computed(() => Array.from({ length: 7 }, (_, index) => addDay(stripWeek.value, index)));
+const title = computed(() => { const end = addDay(stripWeek.value, 6); const sameMonth = stripWeek.value.slice(5, 7) === end.slice(5, 7); return frenchDate(stripWeek.value, sameMonth ? { day: 'numeric' } : { day: 'numeric', month: 'short' }) + ' – ' + frenchDate(end, { day: 'numeric', month: 'long', year: 'numeric' }); });
 function jump(weeks: number) { const target = addDay(stripWeek.value, weeks * 7); stripWeek.value = target; focusDay(target); }
 const thisWeek = computed(() => mondayOf(today.value) === stripWeek.value);
 </script>

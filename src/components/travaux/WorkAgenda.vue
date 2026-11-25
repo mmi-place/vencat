@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { PlusIcon } from '@heroicons/vue/24/outline';
 import WorkCard from './WorkCard.vue';
 import { isDone, worksByDay, today, travauxDay, focusDay, agendaFocus, stripWeek, wide, form, requireAccount, openedWork, worksLoading } from '../../scripts/travaux';
-import { preferences } from '../../scripts/calendarStore';
 import { addDay, frenchDate, mondayOf } from '../../../shared/calendar';
 
 // Continuous agenda from the current week: weeks are added while scrolling down (and up),
@@ -12,10 +11,14 @@ const MAX_WEEKS = 30, STEP = 4;
 const scroller = ref<HTMLElement>(), top = ref<HTMLElement>(), bottom = ref<HTMLElement>();
 const start = mondayOf(today.value);
 const weeks = ref<string[]>(Array.from({ length: 6 }, (_, index) => addDay(start, index * 7)));
-const dayCount = computed(() => preferences.value.weekend ? 7 : 5);
-const daysOf = (week: string) => Array.from({ length: dayCount.value }, (_, index) => addDay(week, index));
+// Five weekday columns and one « Week-end » column holding Saturday above Sunday: always the same six columns, so every
+// week lines up with the header and nothing jumps while weeks load.
+const COLUMNS = 6;
+const daysOf = (week: string) => Array.from({ length: 7 }, (_, index) => addDay(week, index));
+const columnsOf = (week: string) => { const days = daysOf(week); return [...days.slice(0, 5).map(day => [day]), days.slice(5)]; };
+const dayLabel = (day: string, column: string[]) => column.length > 1 ? frenchDate(day, { weekday: 'short', day: 'numeric' }) : day.endsWith('-01') || day === daysOf(mondayOf(day))[0] && mondayOf(day) === weeks.value[0] ? frenchDate(day, { day: 'numeric', month: 'short' }) : frenchDate(day, { day: 'numeric' });
 const weekTitle = (week: string) => {
-  const end = addDay(week, dayCount.value - 1), current = mondayOf(today.value);
+  const end = addDay(week, 6), current = mondayOf(today.value);
   const range = frenchDate(week, { day: 'numeric', month: week.slice(5, 7) === end.slice(5, 7) ? undefined : 'short' }) + ' – ' + frenchDate(end, { day: 'numeric', month: 'long' });
   return { name: week === current ? 'Cette semaine' : week === addDay(current, 7) ? 'Semaine prochaine' : week === addDay(current, -7) ? 'Semaine dernière' : '', range };
 };
@@ -134,7 +137,7 @@ const add = (day: string) => requireAccount(() => { form.value = { mode: 'create
 // Keyboard: ←/→ one day, ↑/↓ one week, Début/Fin the ends of the week; the focus follows (roving tabindex).
 async function dateKey(event: KeyboardEvent, day: string) {
   if (event.altKey || event.ctrlKey || event.metaKey) return;
-  const weekStart = mondayOf(day), last = dayCount.value - 1;
+  const weekStart = mondayOf(day), last = 6;
   const step: Record<string, () => string> = {
     ArrowLeft: () => { let target = addDay(day, -1); while (target < weekStart) target = addDay(weekStart, -7 + last); return target; },
     ArrowRight: () => { const index = (Date.parse(day) - Date.parse(weekStart)) / 86400000; return index >= last ? addDay(weekStart, 7) : addDay(day, 1); },
@@ -156,14 +159,16 @@ function selectDay(day: string) { focusDay(day, false); if (wide.value) openedWo
 <template>
 <div ref="scroller" class="work-agenda desktop" :aria-busy="worksLoading" tabindex="-1">
   <div ref="top" class="agenda-edge" aria-hidden="true"></div>
-  <div class="agenda-table" :style="{ '--columns': dayCount }" role="grid" aria-label="Agenda des travaux">
-    <div class="agenda-head" role="row"><span class="agenda-corner" aria-hidden="true"></span><span v-for="name in ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].slice(0, dayCount)" :key="name" role="columnheader">{{ name }}</span></div>
+  <div class="agenda-table" :style="{ '--columns': COLUMNS }" role="grid" aria-label="Agenda des travaux">
+    <div class="agenda-head" role="row"><span class="agenda-corner" aria-hidden="true"></span><span v-for="name in ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Week-end']" :key="name" role="columnheader">{{ name }}</span></div>
     <div v-for="week in weeks" :key="week" class="agenda-row" :class="{ current: week === mondayOf(today) }" :data-week="week" role="row">
       <span class="agenda-week-label" role="rowheader"><span>{{ weekTitle(week).name || weekTitle(week).range }}</span><b v-if="weekCount(week)" class="count" :title="weekCount(week) + ' à faire'">{{ weekCount(week) }}</b></span>
-      <div v-for="day in daysOf(week)" :key="day" role="gridcell" class="agenda-cell" :data-agenda-day="day" :class="{ today: day === today, past: day < today, selected: day === travauxDay, 'first-of-month': day.endsWith('-01') }" @click="selectDay(day)">
-        <button class="agenda-date" :tabindex="day === travauxDay ? 0 : -1" :aria-pressed="day === travauxDay" @keydown="dateKey($event, day)" :aria-label="frenchDate(day) + ((worksByDay.get(day)?.length ?? 0) ? `, ${worksByDay.get(day)!.length} travaux` : ', rien')" @click.stop="selectDay(day)">{{ day.endsWith('-01') || day === daysOf(week)[0] && week === weeks[0] ? frenchDate(day, { day: 'numeric', month: 'short' }) : frenchDate(day, { day: 'numeric' }) }}</button>
-        <button class="agenda-add icon-button quiet" :aria-label="'Ajouter un travail le ' + frenchDate(day)" @click.stop="add(day)"><PlusIcon aria-hidden="true" /></button>
-        <WorkCard v-for="work in worksByDay.get(day) ?? []" :key="work.id" :work="work" />
+      <div v-for="column in columnsOf(week)" :key="column[0]" class="agenda-col" :class="{ we: column.length > 1 }" role="presentation">
+        <div v-for="day in column" :key="day" role="gridcell" class="agenda-cell" :data-agenda-day="day" :class="{ today: day === today, past: day < today, selected: day === travauxDay, 'first-of-month': day.endsWith('-01') }" @click="selectDay(day)">
+          <button class="agenda-date" :tabindex="day === travauxDay ? 0 : -1" :aria-pressed="day === travauxDay" @keydown="dateKey($event, day)" :aria-label="frenchDate(day) + ((worksByDay.get(day)?.length ?? 0) ? `, ${worksByDay.get(day)!.length} travaux` : ', rien')" @click.stop="selectDay(day)">{{ dayLabel(day, column) }}</button>
+          <button class="agenda-add icon-button quiet" :aria-label="'Ajouter un travail le ' + frenchDate(day)" @click.stop="add(day)"><PlusIcon aria-hidden="true" /></button>
+          <WorkCard v-for="work in worksByDay.get(day) ?? []" :key="work.id" :work="work" />
+        </div>
       </div>
     </div>
   </div>
