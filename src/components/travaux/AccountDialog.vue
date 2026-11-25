@@ -28,6 +28,17 @@ const nav = computed(() => [
   { id: 'privacy' as const, label: 'Données et compte', icon: ShieldCheckIcon },
 ]);
 const titles: Record<Page, string> = { profile: 'Profil', devices: 'Appareils', group: 'Groupe et délégués', agenda: 'Ajouter à mon agenda', privacy: 'Données et compte', scan: 'Connecter un ordinateur' };
+async function exportData() {
+  busy.value = true; status.value = '';
+  try {
+    const response = await fetch('/api/account/export', { credentials: 'same-origin', headers: { 'x-requested-with': 'vencat' } });
+    if (!response.ok) throw new Error('Export impossible pour le moment.');
+    const url = URL.createObjectURL(await response.blob());
+    const link = Object.assign(document.createElement('a'), { href: url, download: 'vencat-mes-donnees.json' });
+    document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
+    status.value = 'Fichier téléchargé.';
+  } catch (error) { status.value = errorText(error); } finally { busy.value = false; }
+}
 async function loadDevices() { try { devices.value = await api<Device[]>('/account/devices'); } catch (error) { status.value = errorText(error); } }
 onMounted(loadDevices);
 watch(page, () => { status.value = ''; if (page.value !== 'scan') stopScan(); });
@@ -124,6 +135,7 @@ const title = computed(() => !wide.value && page.value ? titles[page.value] : 'M
     <template v-else-if="page === 'privacy'">
       <h3 v-if="wide">Données et compte</h3>
       <div class="list-card"><div><span class="row-text"><strong>Ce que Vencat garde</strong><small>{{ me.email }} · ton nom · ton groupe · tes contributions, votes, cases « fait » et notes privées.</small></span></div><button class="row" @click="ui.cgu = true"><span class="row-text"><strong>Conditions et confidentialité</strong><small>Finalité, durée de conservation, tes droits</small></span><ChevronRightIcon class="row-chevron" aria-hidden="true" /></button></div>
+      <div class="list-card"><button class="row" :disabled="busy" @click="exportData"><span class="row-text"><strong>Télécharger mes données</strong><small>Un fichier avec ton compte, tes contributions, tes votes, tes cases « fait », tes notes et tes préférences.</small></span></button></div>
       <form class="list-card danger-zone" @submit.prevent="remove"><div><span class="row-text"><strong>Supprimer mon compte</strong><small>Ton mail et ton nom sont effacés tout de suite. Tes contributions restent, signées « Ancien étudiant ».</small></span></div><div><input v-model="confirmText" autocomplete="off" aria-label="Écris SUPPRIMER pour confirmer" placeholder="Écris SUPPRIMER"><button type="submit" class="danger-action row-action" :disabled="busy || confirmText !== 'SUPPRIMER'">Supprimer</button></div></form>
     </template>
     <p v-if="status" class="form-status" role="status">{{ status }}</p>

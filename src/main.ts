@@ -8,6 +8,8 @@ import router from './router'
 import './scripts/pwa'
 import './scripts/catalogueSync'
 import './scripts/warmup'
+import './scripts/syncPrefs'
+import './scripts/deviceStorage'
 
 const app = createApp(App)
 

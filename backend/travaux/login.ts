@@ -8,8 +8,8 @@ import {
   newSecrets, checkCode, checkMagic, userForEmail, allowedEmail, groupExists, meOf, REUSE_MAX, MAX_ATTEMPTS, type User, type Session,
   type Login,
 } from './auth.js';
-import { cleanText, LIMITS, semesterOf } from '../../shared/travaux.js';
-import { type Marks, type NameRequest, db, route, origin, eraseAccount } from './common.js';
+import { cleanText, semesterOf } from '../../shared/travaux.js';
+import { type NameRequest, db, route, origin, eraseAccount } from './common.js';
 
 // Configuration and sign-in
 const router = express.Router();
@@ -166,7 +166,7 @@ router.post('/account/onboard', route(async (req, res) => {
 }));
 router.get('/account/devices', route(async (req, res) => {
   const { user, session } = await requireUser(req);
-  const sessions = (await db().list<Session>('sessions')).filter(item => item.userId === user.id).sort((a, b) => b.lastSeen.localeCompare(a.lastSeen));
+  const sessions = (await db().find<Session>('sessions', 'userId', user.id)).sort((a, b) => b.lastSeen.localeCompare(a.lastSeen));
   res.json(sessions.map(item => ({ id: item.id, device: item.device, createdAt: item.createdAt, lastSeen: item.lastSeen, current: item.id === session.id })));
 }));
 router.delete('/account/devices/:id', route(async (req, res) => {
@@ -187,7 +187,7 @@ router.post('/account/name', route(async (req, res) => {
   const { user } = await requireUser(req);
   const firstName = cleanText(req.body?.firstName, 60), lastName = cleanText(req.body?.lastName, 60);
   if (!firstName) throw new HttpError(400, 'Prénom manquant.');
-  const open = (await db().list<NameRequest>('names')).find(item => item.userId === user.id && item.status === 'open');
+  const open = (await db().find<NameRequest>('names', 'userId', user.id)).find(item => item.status === 'open');
   const request: NameRequest = { id: open?.id ?? id(), userId: user.id, firstName, lastName, at: now(), status: 'open' };
   await db().put('names', request.id, request);
   await notifyAdmins('important', 'Vencat : demande de changement de nom', `${user.email} demande à s’appeler « ${firstName} ${lastName} ».\nÀ valider dans l’administration (/admin › Modération).`);
@@ -198,17 +198,4 @@ router.delete('/account', route(async (req, res) => {
   await eraseAccount(user);
   clearSessionCookie(req, res);
   res.json({ ok: true });
-}));
-router.get('/account/marks', route(async (req, res) => {
-  const { user } = await requireUser(req);
-  res.json(await db().get<Marks>('marks', user.id) ?? { done: {}, notes: {} });
-}));
-router.put('/account/marks', route(async (req, res) => {
-  const { user } = await requireUser(req);
-  const marks = await db().get<Marks>('marks', user.id) ?? { done: {}, notes: {} };
-  const body = req.body as { done?: Record<string, boolean>; notes?: Record<string, string> };
-  for (const [key, value] of Object.entries(body.done ?? {}).slice(0, 200)) { if (!/^[a-f0-9]{32}$/.test(key)) continue; if (value) marks.done[key] = now(); else delete marks.done[key]; }
-  for (const [key, value] of Object.entries(body.notes ?? {}).slice(0, 200)) { if (!/^[a-f0-9]{32}$/.test(key)) continue; const text = cleanText(value, LIMITS.note); if (text) marks.notes[key] = text; else delete marks.notes[key]; }
-  await db().put('marks', user.id, marks);
-  res.json(marks);
 }));

@@ -176,12 +176,14 @@ export async function eraseAccount(user: User) {
   if (email && sanctioned) await db().put('sanctions', hash(email), { banned: user.banned, readOnlyUntil: user.readOnlyUntil });
   if (email) {
     await db().delete('emails', email);
-    for (const login of (await db().list<{ id: string; email?: string }>('logins')).filter(item => item.email === email)) await db().delete('logins', login.id);
-    for (const item of (await db().list<{ id: string; email?: string }>('feedback')).filter(entry => entry.email === email)) await db().delete('feedback', item.id);
+    for (const login of await db().find<{ id: string }>('logins', 'email', email)) await db().delete('logins', login.id);
+    for (const item of await db().find<{ id: string }>('feedback', 'email', email)) await db().delete('feedback', item.id);
   }
-  for (const item of (await db().list<{ id: string; userId: string }>('sessions')).filter(entry => entry.userId === user.id)) await db().delete('sessions', item.id);
-  for (const item of (await db().list<{ id: string; userId: string }>('names')).filter(entry => entry.userId === user.id)) await db().delete('names', item.id);
+  for (const item of await db().find<{ id: string }>('sessions', 'userId', user.id)) await db().delete('sessions', item.id);
+  for (const item of await db().find<{ id: string }>('names', 'userId', user.id)) await db().delete('names', item.id);
   await db().delete('marks', user.id);
+  await db().delete('prefs', user.id);
+  for (const mark of await db().list<{ k: string }>('marks', user.id + ':')) await db().delete('marks', mark.k);
   await db().put('users', user.id, { id: user.id, email: null, firstName: '', lastName: '', createdAt: user.createdAt, reliability: user.reliability, deletedAt: now(), banned: user.banned, readOnlyUntil: user.readOnlyUntil } satisfies User);
 }
 
