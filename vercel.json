@@ -25,6 +25,10 @@
       "destination": "/api/travaux"
     },
     {
+      "source": "/api/prefetch/touch",
+      "destination": "/api/prefetch"
+    },
+    {
       "source": "/((?!api(?:/|$)|assets/|.*\\.[^/]+$).*)",
       "destination": "/index.html"
     }
