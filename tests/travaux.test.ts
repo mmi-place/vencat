@@ -412,3 +412,13 @@ test('release fixes: inherited keys, sanctions kept after deletion, personal dat
   const resent = await client()('/auth/send-mail', { body: { requestId: login.body.requestId, poll: login.body.poll } });
   assert.ok(resent.body.expiresAt > first);
 });
+
+test('NOTIFY_EMAILS gives the starting lists, until an administrator saves one', async () => {
+  const { recipients } = await import('../backend/travaux/notify.js');
+  const saved = process.env.NOTIFY_EMAILS;
+  process.env.NOTIFY_EMAILS = 'Un@exemple.fr, deux@exemple.fr';
+  try {
+    assert.deepEqual(await recipients('reports'), ['un@exemple.fr', 'deux@exemple.fr']);
+    assert.deepEqual(await recipients('feedback'), ['equipe@gmail.com'], 'a saved list wins');
+  } finally { if (saved === undefined) delete process.env.NOTIFY_EMAILS; else process.env.NOTIFY_EMAILS = saved; }
+});

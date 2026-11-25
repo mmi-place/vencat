@@ -11,7 +11,9 @@ export const TOPICS = {
 export type Topic = keyof typeof TOPICS;
 export const isTopic = (value: unknown): value is Topic => typeof value === 'string' && Object.prototype.hasOwnProperty.call(TOPICS, value);
 
-export async function recipients(topic: Topic) { return (await settings()).notifyEmails?.[topic] ?? []; }
+/** Starting lists (NOTIFY_EMAILS, comma separated) until an administrator saves a list for a topic; a saved empty list means nobody. */
+export const defaultRecipients = () => (process.env.NOTIFY_EMAILS ?? '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
+export async function recipients(topic: Topic) { return (await settings()).notifyEmails?.[topic] ?? defaultRecipients(); }
 /** Mails the people of the topic. Never throws: a failing mail must not break the action that triggered it. */
 export async function notifyAdmins(topic: Topic, subject: string, text: string, replyTo?: string) {
   let to: string[] = [];

@@ -2,7 +2,7 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import { randomBytes, randomInt } from 'node:crypto';
 import { settings as globalSettings, freshSettings, saveSettings } from './settings.js';
 import { sendMail, layout } from './mail.js';
-import { notifyAdmins, TOPICS, isTopic, type Topic } from './notify.js';
+import { notifyAdmins, defaultRecipients, TOPICS, isTopic, type Topic } from './notify.js';
 import type { Feedback } from './feedback.js';
 import { HttpError, hash, id, now, sameOrigin, overLimit, addressKey, deviceLabel, adminEmails, activeDelegations, displayName, type User, type Session, type Delegation } from './auth.js';
 import { db, settle, workView, users, history, audit, schoolYearEnd, eraseAccount, type Work } from './common.js';
@@ -98,7 +98,7 @@ router.post('/admin/settings', route(async (req, res) => {
   await notifyAdmins('important', `Vencat : mode planning seul ${planningOnly ? 'activé' : 'désactivé'}`, `${session.email} a ${planningOnly ? 'activé' : 'désactivé'} le mode planning seul.${message ? `\nMessage affiché : ${message}` : ''}`);
   res.json(await globalSettings());
 }));
-const notificationsView = async () => ({ topics: await Promise.all((Object.keys(TOPICS) as Topic[]).map(async id => ({ id, ...TOPICS[id], emails: (await freshSettings()).notifyEmails?.[id] ?? [] }))) });
+const notificationsView = async () => ({ topics: await Promise.all((Object.keys(TOPICS) as Topic[]).map(async id => ({ id, ...TOPICS[id], emails: (await freshSettings()).notifyEmails?.[id] ?? defaultRecipients() }))) });
 router.get('/admin/notifications', route(async (req, res) => { await requireAdmin(req); res.json(await notificationsView()); }));
 router.post('/admin/notifications', route(async (req, res) => {
   const session = await requireAdmin(req);
