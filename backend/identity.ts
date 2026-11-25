@@ -1,3 +1,5 @@
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Request } from 'express';
 import { configured, redis } from './storage.js';
@@ -61,3 +63,46 @@ export async function tokenRequestLimited(req: Request): Promise<boolean> {
   if (!configured()) return false;
   return await count(`vencat:rate:token:${address(req)}:${window()}`) > LIMITS.tokens;
 }
+
+// ---------------------------------------------------------------------------
+// Account sessions (Travaux): the same signed format with `kind: 'user'`. The payload only carries
+// the session identifier; the session itself (account, device) is stored server side and can be revoked.
+// ---------------------------------------------------------------------------
+export interface SessionPayload { v: 1; kind: 'user'; id: string; iat: number }
+export const SESSION_MAX_AGE_S = 180 * 86400;
+let developmentSecret: string | undefined;
+function persistentDevelopmentSecret() {
+  const file = resolve(process.cwd(), '.data/dev-token-secret');
+  try { const saved = readFileSync(file, 'utf8').trim(); if (saved.length >= 32) return saved; } catch { /* first start */ }
+  const value = randomBytes(32).toString('hex');
+  if (process.env.NODE_ENV !== 'test' && !process.env.NODE_TEST_CONTEXT) { try { mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, value, { mode: 0o600 }); } catch { /* memory only */ } }
+  return value;
+}
+/** TOKEN_SECRET in production. In development a random secret is generated so sign-in works out of the box. */
+function sessionSecret() {
+  const configured = secret();
+  if (configured) return configured;
+  if (process.env.NODE_ENV === 'production') throw new Error('TOKEN_SECRET doit être configuré pour les comptes.');
+  // Kept in .data so that a restart of the development server does not sign everyone out.
+  return developmentSecret ??= persistentDevelopmentSecret();
+}
+const signSession = (body: string) => createHmac('sha256', sessionSecret()).update('session:' + body).digest('base64url');
+export function issueSessionToken(id: string, now = Date.now()) {
+  const payload: SessionPayload = { v: 1, kind: 'user', id, iat: Math.floor(now / 1000) };
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  return `${body}.${signSession(body)}`;
+}
+export function verifySessionToken(token: unknown, now = Date.now()): SessionPayload | undefined {
+  if (typeof token !== 'string' || token.length > 300) return undefined;
+  const [body, signature, extra] = token.split('.');
+  if (!body || !signature || extra !== undefined) return undefined;
+  const expected = Buffer.from(signSession(body)), given = Buffer.from(signature);
+  if (expected.length !== given.length || !timingSafeEqual(expected, given)) return undefined;
+  try {
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString()) as SessionPayload;
+    const age = now / 1000 - payload.iat;
+    if (payload.v !== 1 || payload.kind !== 'user' || !/^[a-f0-9]{32}$/.test(payload.id) || age < -300 || age > SESSION_MAX_AGE_S) return undefined;
+    return payload;
+  } catch { return undefined; }
+}
+export const hashedAddress = address;

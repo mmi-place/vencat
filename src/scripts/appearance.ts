@@ -1,12 +1,13 @@
 export const backgrounds = [
-  { id: 'unified', label: 'Nuit', category: 'Uni', background: '#020618' },
+  { id: 'unified', label: 'Nuit', category: 'Uni', background: '#020511' },
+  { id: 'classic', label: 'Classique', category: 'Uni', background: '#020618' },
   { id: 'slate', label: 'Ardoise', category: 'Uni', background: '#14181e' },
   { id: 'forest', label: 'Forêt', category: 'Image', background: 'linear-gradient(#0206188c, #02061899), url(/background.jpg) center / cover' },
   { id: 'winter', label: 'Lumières d’hiver', category: 'Image', background: 'linear-gradient(#0206188c, #02061899), url(/noel.jpg) center / cover' },
   { id: 'lake', label: 'Lac alpin', category: 'Image', background: 'linear-gradient(#0206188c, #02061899), url(/backgrounds/lake.jpg) center / cover' },
   { id: 'ocean', label: 'Océan', category: 'Image', background: 'linear-gradient(#0206188c, #02061899), url(/backgrounds/ocean.jpg) center / cover' },
   { id: 'hills', label: 'Collines', category: 'Image', background: 'linear-gradient(#0206188c, #02061899), url(/backgrounds/hills.jpg) center / cover' },
-  { id: 'custom', label: 'Mon image', category: 'Image', background: '#020618' },
+  { id: 'custom', label: 'Mon image', category: 'Image', background: '#020511' },
   { id: 'graphite', label: 'Graphite', category: 'Dégradé', background: 'linear-gradient(145deg, #202732, #070b14 80%)' },
   { id: 'dusk', label: 'Crépuscule', category: 'Dégradé', background: 'linear-gradient(155deg, #25203c, #101326 55%, #090e18)' },
   { id: 'sage', label: 'Sauge', category: 'Dégradé', background: 'linear-gradient(145deg, #24342f, #101a19 60%, #080e15)' },
@@ -28,7 +29,7 @@ export const themes = [
   { id: 'system', label: 'Appareil', description: 'Suit le thème du système' },
 ] as const;
 const lightBackgrounds: Record<Background, string> = {
-  unified: '#f4f5f8', slate: '#e8edf2',
+  unified: '#f4f5f8', classic: '#f4f5f8', slate: '#e8edf2',
   forest: 'linear-gradient(#ffffffa3, #ffffffb3), url(/background.jpg) center / cover',
   winter: 'linear-gradient(#ffffffa3, #ffffffb3), url(/noel.jpg) center / cover',
   lake: 'linear-gradient(#ffffffa3, #ffffffb3), url(/backgrounds/lake.jpg) center / cover',

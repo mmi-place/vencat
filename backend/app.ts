@@ -13,6 +13,10 @@ import { monitoringRouter } from './monitoring.js';
 import { configured, redis } from './storage.js';
 import { issueToken, tokenRequestLimited } from './identity.js';
 import { groupById } from '../shared/selection.js';
+import { travauxRouter } from './travaux/routes.js';
+import { adminRouter } from './travaux/admin.js';
+import { prefetchRouter } from './prefetch.js';
+import { recordSnapshot } from './changes.js';
 
 const app = express();
 
@@ -24,10 +28,15 @@ const CELCAT_BASE_URL =
 const CELCAT_EDT_URL =
   process.env.CELCAT_EDT_URL || "https://edt.iut-velizy.uvsq.fr";
 
-app.use(cors());
+app.set('trust proxy', 'loopback');
+// Account routes are same-origin only (cookies); the public timetable API stays open to other sites.
+app.use(/^\/api\/(?!auth|account|travaux|admin)/, cors());
 app.use(express.json({ limit: '16kb' }));
 app.use('/api', monitoringRouter);
 app.use('/api', searchRouter);
+app.use('/api', travauxRouter);
+app.use('/api', adminRouter);
+app.use('/api', prefetchRouter);
 
 // ---------------------------------------------------------------------------
 // Errors
@@ -63,9 +72,10 @@ async function fetchViaPost(
   federationId: string,
   start: string,
   end: string,
+  fresh = false,
 ): Promise<{ events: CalendarEvent[]; fetchedAt: string }> {
   const cacheKey = `post_${federationId}_${start}_${end}`;
-  const cached = cache.get<{ events: CalendarEvent[]; fetchedAt: string }>(cacheKey);
+  const cached = fresh ? undefined : cache.get<{ events: CalendarEvent[]; fetchedAt: string }>(cacheKey);
   if (cached) return cached;
 
   const body = new URLSearchParams({
@@ -138,11 +148,12 @@ async function fetchViaIcal(
   return { events, fetchedAt: stored.fetchedAt };
 }
 
-export async function getCalendar(groupId: string, start: string, end: string): Promise<{ snapshot: Snapshot; events: CalendarEvent[] }> {
+/** fresh: skip every cache (scheduled change detection). Each real read of a week feeds the change detection. */
+export async function getCalendar(groupId: string, start: string, end: string, fresh = false): Promise<{ snapshot: Snapshot; events: CalendarEvent[] }> {
   // Durable short-window cache is shared across Vercel instances, not tied to a visitor.
   const shortWindow = (Date.parse(end) - Date.parse(start)) / 86400000 <= 13;
   const key = `vencat:calendar:${groupId}:${start}:${end}`;
-  if (shortWindow && configured()) {
+  if (shortWindow && configured() && !fresh) {
     try {
       const raw = await redis<string | null>('GET', key);
       const saved = raw ? JSON.parse(raw) as { snapshot: Snapshot; events: CalendarEvent[] } : undefined;
@@ -156,9 +167,11 @@ export async function getCalendar(groupId: string, start: string, end: string): 
   let data: { events: CalendarEvent[]; fetchedAt: string };
   let source: Snapshot['source'] = 'post';
   const federation = GROUP_TO_FEDERATION[groupId];
-  try { if (!federation) throw new Error('Unknown federation'); data = await fetchViaPost(federation, start, end); }
+  try { if (!federation) throw new Error('Unknown federation'); data = await fetchViaPost(federation, start, end, fresh); }
   catch { source = 'ical'; data = await fetchViaIcal(groupId, new Date(start), new Date(end)); }
   const result = { events: data.events, snapshot: { version: 1 as const, groupId, start, end, source, fetchedAt: data.fetchedAt, courses: data.events.map(event => event.course) } };
+  // Change detection happens here, on the server, for every read of a week (ignored when already compared).
+  try { await recordSnapshot(result.snapshot); } catch (error) { console.error('[changements]', error instanceof Error ? error.message : error); }
   if (shortWindow && configured()) {
     try { await redis('SET', key, JSON.stringify(result), 'EX', Math.max(1, Math.floor((Date.parse(data.fetchedAt) + 600000 - Date.now()) / 1000))); } catch { /* Keep the per-instance fallback. */ }
   }

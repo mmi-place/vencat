@@ -10,14 +10,15 @@ import { preferences, loadCalendar, snapshots, history, unseenChanges } from '..
 import { clearCalendarStorage } from '../../scripts/storage';
 import ThemePicker from '../ThemePicker.vue';
 import { effectiveTheme } from '../../scripts/theme';
-import { PaintBrushIcon, ArrowPathIcon, DevicePhoneMobileIcon, ChevronRightIcon, BellIcon, CalendarDaysIcon, PhotoIcon, EyeIcon, AdjustmentsHorizontalIcon, ArrowUpTrayIcon } from '@heroicons/vue/24/outline';
+import { PaintBrushIcon, ArrowPathIcon, DevicePhoneMobileIcon, ChevronRightIcon, BellIcon, CalendarDaysIcon, PhotoIcon, EyeIcon, AdjustmentsHorizontalIcon, ArrowUpTrayIcon, UserCircleIcon, UserGroupIcon } from '@heroicons/vue/24/outline';
 import { backgrounds, backgroundStyle, type Background } from '../../scripts/appearance';
 import { customBackgroundUrl, importBackground, removeBackground } from '../../scripts/customBackground';
 import { accessibility } from '../../scripts/accessibility';
+import { me } from '../../scripts/travaux';
 
 export type SettingsPage = 'home' | 'appearance' | 'background' | 'planning' | 'data' | 'accessibility' | 'install';
 const props = defineProps<{ initialPage?: SettingsPage; mobile?: boolean }>();
-const emit = defineEmits<{ close: []; changes: []; date: [] }>();
+const emit = defineEmits<{ close: []; changes: []; date: []; group: []; account: []; login: [] }>();
 // Opened directly on a page (Appearance or Background buttons, shortcuts): no way back to the menu is needed.
 const root = props.initialPage ?? 'home';
 const page = ref<SettingsPage>(root);
@@ -42,7 +43,7 @@ async function clearCopies() { try { await clearCalendarStorage(); snapshots.val
 </script>
 <template><AccessibleDialog id="settings-dialog" :title="titles[page]" :back="page !== root" :wide="page === 'background' || page === 'appearance'" @back="page = 'home'" @close="emit('close')">
 <nav v-if="page === 'home'" class="settings-menu" aria-label="Catégories des réglages">
-  <template v-if="mobile"><button @click="emit('changes')"><BellIcon aria-hidden="true" /><span><strong>Changements du planning<span v-if="unseenChanges.length" class="menu-notice-dot"></span></strong><small>{{ unseenChanges.length ? unseenChanges.length + ' non lus' : 'Consulter les modifications' }}</small></span><ChevronRightIcon aria-hidden="true" /></button><button @click="emit('date')"><CalendarDaysIcon aria-hidden="true" /><span><strong>Choisir une date</strong><small>Aller à une journée ou une semaine</small></span><ChevronRightIcon aria-hidden="true" /></button></template>
+  <template v-if="mobile"><button @click="emit('changes')"><BellIcon aria-hidden="true" /><span><strong>Changements du planning<span v-if="unseenChanges.length" class="menu-notice-dot"></span></strong><small>{{ unseenChanges.length ? unseenChanges.length + ' non lus' : 'Consulter les modifications' }}</small></span><ChevronRightIcon aria-hidden="true" /></button><button @click="emit('date')"><CalendarDaysIcon aria-hidden="true" /><span><strong>Choisir une date</strong><small>Aller à une journée ou une semaine</small></span><ChevronRightIcon aria-hidden="true" /></button><button @click="me ? emit('account') : emit('login')"><UserCircleIcon aria-hidden="true" /><span><strong>{{ me ? 'Mon compte' : 'Se connecter' }}</strong><small>{{ me ? me.firstName + ' · appareils, groupe, QR code' : 'Proposer et voter sur les travaux' }}</small></span><ChevronRightIcon aria-hidden="true" /></button><button class="menu-group" @click="emit('group')"><UserGroupIcon aria-hidden="true" /><span><strong>Changer de groupe</strong><small>Filière, promotion et groupe affichés</small></span><ChevronRightIcon aria-hidden="true" /></button></template>
   <button @click="page = 'appearance'"><PaintBrushIcon aria-hidden="true" /><span><strong>Apparence</strong><small>Thème, couleurs des cours et détail des cartes</small></span><ChevronRightIcon aria-hidden="true" /></button>
   <button @click="page = 'background'"><PhotoIcon aria-hidden="true" /><span><strong>Fond</strong><small>Votre image, couleurs unies, dégradés et motifs</small></span><ChevronRightIcon aria-hidden="true" /></button>
   <button @click="page = 'planning'"><AdjustmentsHorizontalIcon aria-hidden="true" /><span><strong>Planning</strong><small>Vue à l’ouverture et week-end</small></span><ChevronRightIcon aria-hidden="true" /></button>

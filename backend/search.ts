@@ -40,13 +40,14 @@ async function stored(id: string, start: string, end: string, ttl: number): Prom
     } catch { /* A Redis outage does not prevent online search. */ }
   }
 }
-export async function searchDataset(id: string, scope: SearchScope, anchor: string, seed?: SearchDataset): Promise<SearchDataset> {
+/** force: fetch CELCAT again even when a valid copy exists (scheduled refresh). */
+export async function searchDataset(id: string, scope: SearchScope, anchor: string, seed?: SearchDataset, force = false): Promise<SearchDataset> {
   const { start, end, ttl } = searchWindow(scope, anchor);
-  return searchDatasetRange(id, start, end, ttl, seed);
+  return searchDatasetRange(id, start, end, ttl, seed, force);
 }
-export async function searchDatasetRange(id: string, start: string, end: string, ttl: number, seed?: SearchDataset): Promise<SearchDataset> {
+export async function searchDatasetRange(id: string, start: string, end: string, ttl: number, seed?: SearchDataset, force = false): Promise<SearchDataset> {
   const key = cacheKey(id, start, end);
-  const saved = await stored(id, start, end, ttl); if (saved) return saved;
+  if (!force) { const saved = await stored(id, start, end, ttl); if (saved) return saved; }
   if (pending.has(key)) return pending.get(key)!;
   const work = (async () => {
     let dataset: SearchDataset;
@@ -68,10 +69,6 @@ export async function searchDatasetRange(id: string, start: string, end: string,
     return dataset;
   })();
   pending.set(key, work); try { return await work; } finally { pending.delete(key); }
-}
-export async function warmSearchCaches(id: string, anchor: string) {
-  const seed = await searchDataset(id, 'year', anchor);
-  for (const scope of ['semester', 'quarter', 'month', 'fortnight', 'week'] as const) await searchDataset(id, scope, anchor, seed);
 }
 export const searchRouter = Router();
 // Earliest start and latest end of the school year, reusing the cached annual dataset.
@@ -101,10 +98,7 @@ searchRouter.get('/search/:groupId', async (req, res, next) => {
     if (typeof value === 'string') filters[field] = value;
   }
   try {
-    if (configured()) {
-      if (await rateLimited(req)) return res.status(429).json({ error: 'Trop de recherches. Réessayez dans quelques minutes.' });
-      await redis('SADD', 'vencat:monitored', id);
-    }
+    if (configured() && await rateLimited(req)) return res.status(429).json({ error: 'Trop de recherches. Réessayez dans quelques minutes.' });
     const dataset = await searchDatasetRange(id, range.start, range.end, range.ttl);
     let courses = dataset.courses;
     // Keep the current two weeks fresh without resetting the lifetime of the annual archive.

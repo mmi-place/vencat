@@ -11,11 +11,19 @@
   },
   "crons": [
     {
+      "path": "/api/prefetch",
+      "schedule": "0 1 * * *"
+    },
+    {
       "path": "/api/monitor",
       "schedule": "0 5 * * *"
     }
   ],
   "rewrites": [
+    {
+      "source": "/api/(travaux|auth|account|admin)/(.*)",
+      "destination": "/api/travaux"
+    },
     {
       "source": "/((?!api(?:/|$)|assets/|.*\\.[^/]+$).*)",
       "destination": "/index.html"
@@ -55,6 +63,27 @@
         {
           "key": "Cache-Control",
           "value": "no-cache, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(self), microphone=(), geolocation=(), payment=()"
         }
       ]
     }

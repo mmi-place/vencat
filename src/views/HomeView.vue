@@ -9,7 +9,6 @@ import GroupPicker from '../components/GroupPicker.vue';
 import ListCalendar from '../components/ListCalendar.vue';
 import CalendarSkeleton from '../components/CalendarSkeleton.vue';
 import ChangesDialog from '../components/ChangesDialog.vue';
-import { todayPlanningDate, mondayOf } from '../../shared/calendar';
 import { type SearchCriterion } from '../../shared/search';
 import SearchDialog from '../components/SearchDialog.vue';
 import { planningSearch, isSearchMatch, type PlanningSearch } from '../scripts/searchStore';
@@ -20,14 +19,23 @@ import { accessibility } from '../scripts/accessibility';
 import { arrowNavigation as vArrowNavigation } from '../scripts/keyboardNavigation';
 import AccessibleDialog from '../components/AccessibleDialog.vue';
 import KeyboardHelp from '../components/KeyboardHelp.vue';
+import SectionSwitch from '../components/travaux/SectionSwitch.vue';
+import SectionTabs from '../components/travaux/SectionTabs.vue';
+import AccountButton from '../components/travaux/AccountButton.vue';
+import FeedbackDialog from '../components/FeedbackDialog.vue';
+import { ChatBubbleLeftEllipsisIcon } from '@heroicons/vue/24/outline';
+import WorkDots from '../components/travaux/WorkDots.vue';
+import TravauxPanel from '../components/travaux/TravauxPanel.vue';
+import TravauxRoot from '../components/travaux/TravauxRoot.vue';
+import { section, toggleSection, ui as travauxUi, form as travauxForm, openedWork, requireAccount, travauxDay, wide as travauxWide, planningOnly, config as travauxConfig } from '../scripts/travaux';
 import { selection, date, view, week, preferences, selectedIds, loading, error, storageError, hasData, missingGroups, lastFetched, online, fallback, loadCalendar, weekCourses, clock, focused, history, unseenChanges, resolveTodayDate, snapshots, showLinkedView } from '../scripts/calendarStore';
-import { readPreference, writePreference } from '../scripts/storage';
+import { readPreference, writePreference, saveHistory } from '../scripts/storage';
 import { groupById, groupByPath, type GroupOption } from '../../shared/selection';
-import { campusDate, campusTime, frenchDate, addDay, validDay, isWeekend } from '../../shared/calendar';
+import { campusDate, campusTime, frenchDate, addDay, validDay, isWeekend, todayPlanningDate, mondayOf } from '../../shared/calendar';
 const route = useRoute(), router = useRouter();
 const settingsPage = ref<SettingsPage>('home');
 function openSettings(page: SettingsPage = 'home') { settingsPage.value = page; settingsOpen.value = true; }
-const settingsOpen = ref(false), pickerOpen = ref(false), changesOpen = ref(false);
+const settingsOpen = ref(false), pickerOpen = ref(false), changesOpen = ref(false), feedbackOpen = ref(false);
 const routeError = ref('');
 const searchInitial = ref<SearchCriterion>();
 const modesOpen = ref(false), dateOpen = ref(false), searchOpen = ref(false);
@@ -65,6 +73,11 @@ let launching = true, ownRoute = '';
 const linkView = (value: unknown) => ['day', 'jour'].includes(String(value)) ? 'day' as const : ['week', 'semaine', 'grid'].includes(String(value)) ? 'week' as const : ['list', 'liste'].includes(String(value)) ? 'list' as const : undefined;
 let navigationGeneration = 0;
 const resolvingDate = ref(false);
+function rememberedGroup() {
+  let remembered = readPreference<string>('vencat:group', '');
+  if (!remembered) { try { remembered = localStorage.getItem('group_id') ?? ''; } catch { /* storage blocked */ } }
+  return groupById(remembered);
+}
 async function applyRoute() {
   // URLs written by the app itself only mirror its state: nothing to recompute.
   // Consumed once, so a later real navigation (Back) to the same URL is applied.
@@ -72,15 +85,16 @@ async function applyRoute() {
   ownRoute = '';
   const current = ++navigationGeneration;
   const query = launching && standalone ? {} : route.query;
+  // The installed app always starts from the root: some systems (iOS) reopen the page where it was installed,
+  // so at launch the address is ignored and the last chosen group opens instead.
+  const fromRoot = launching && standalone && route.path !== '/' && !!rememberedGroup();
   launching = false;
   resolvingDate.value = false;
   routeError.value = '';
   let group = groupByPath(route.path);
-  if (route.path === '/') {
-    let remembered = readPreference<string>('vencat:group', '');
-    if (!remembered) { try { remembered = localStorage.getItem('group_id') ?? ''; } catch { /* storage blocked */ } }
-    group = groupById(remembered);
-    if (group) { router.replace({ path: group.path, query }); return; }
+  if (route.path === '/' || fromRoot) {
+    group = rememberedGroup();
+    if (group) { if (group.path !== route.path || Object.keys(route.query).length) { router.replace({ path: group.path, query }); return; } }
   } else if (!group) routeError.value = 'Ce lien ne correspond pas à un groupe. Choisissez votre filière, votre promotion et votre groupe.';
   const explicitDate = typeof query.date === 'string' && validDay(query.date) ? query.date : undefined;
   let targetDate = explicitDate ? visibleDay(explicitDate) : campusDate(new Date());
@@ -145,23 +159,28 @@ async function goToday() {
   if (current === navigationGeneration) date.value = target;
 }
 
-// The shared history changes at most once a day: ask at most every ten minutes, unless the panel is opened.
+// The history is detected on the server at each read of CELCAT: ask at most every two minutes (at once when the panel opens).
+// It is kept on the device for offline reading.
 const changesCheckedAt = new Map<string, number>();
 async function refreshSharedChanges(force = false) {
   if (!online.value || !selection.value) return;
   const selected = selectedIds.value.join();
-  const ids = selectedIds.value.filter(id => force || Date.now() - (changesCheckedAt.get(id) ?? 0) > 10 * 60_000);
+  const ids = selectedIds.value.filter(id => force || Date.now() - (changesCheckedAt.get(id) ?? 0) > 2 * 60_000);
   if (!ids.length) return;
   ids.forEach(id => changesCheckedAt.set(id, Date.now()));
   const results = await Promise.allSettled(ids.map(async id => { const response = await fetch(`/api/changes/${id}`); if (!response.ok) { changesCheckedAt.delete(id); throw new Error(); } return await response.json(); }));
   if (selected !== selectedIds.value.join()) return;
+  results.forEach((item, index) => { if (item.status === 'fulfilled' && Array.isArray(item.value)) void saveHistory(ids[index]!, item.value).catch(() => undefined); });
   const data = results.flatMap(item => item.status === 'fulfilled' && Array.isArray(item.value) ? item.value : []);
   history.value = [...new Map([...data, ...history.value].map(item => [item.id, item])).values()].sort((a, b) => b.detectedAt.localeCompare(a.detectedAt));
 }
+// The refresh button reads CELCAT again, then fetches the changes the server just detected.
+async function refreshAll() { await loadCalendar(true); await refreshSharedChanges(true); }
 async function openChanges() { changesOpen.value = true; await refreshSharedChanges(true); }
 function closeChanges() { changesOpen.value = false; }
 const helpOpen = ref(false);
-const dialogOpen = () => searchOpen.value || modesOpen.value || dateOpen.value || settingsOpen.value || pickerOpen.value || changesOpen.value || helpOpen.value || !!focused.value;
+// A work shown in the side panel (wide Travaux) is not a dialog: shortcuts stay available.
+const dialogOpen = () => Object.values(travauxUi.value).some(Boolean) || !!travauxForm.value || (!!openedWork.value && !(travauxWide.value && section.value === 'travaux')) || searchOpen.value || modesOpen.value || dateOpen.value || settingsOpen.value || pickerOpen.value || changesOpen.value || feedbackOpen.value || helpOpen.value || !!focused.value;
 const typing = (target: EventTarget | null) => !!(target as HTMLElement | null)?.closest?.('input, select, textarea, [contenteditable]');
 // The current course, or the next one: entry point of the planning for the keyboard.
 const entryCourse = () => document.querySelector<HTMLElement>('.timeline-stage .course[tabindex="0"]') ?? document.querySelector<HTMLElement>('.timeline-stage .course');
@@ -169,7 +188,8 @@ const entryCourse = () => document.querySelector<HTMLElement>('.timeline-stage .
 const singleKeys: Record<string, () => void> = {
   '/': toggleSearch, '?': () => { helpOpen.value = true; }, t: () => void today(), g: () => { pickerOpen.value = true; },
   l: () => { view.value = 'list'; }, j: () => { view.value = 'day'; }, s: () => { view.value = 'week'; },
-  c: () => void openChanges(), p: () => entryCourse()?.focus(),
+  c: () => void openChanges(), p: () => entryCourse()?.focus(), w: () => { if (!planningOnly.value) toggleSection(); },
+  n: () => planningOnly.value || requireAccount(() => { travauxForm.value = { mode: 'create', day: travauxDay.value >= campusDate(new Date()) ? travauxDay.value : campusDate(new Date()) }; }),
 };
 function showKeys(event: KeyboardEvent | FocusEvent) {
   const visible = event instanceof KeyboardEvent && event.key === 'Alt' && event.type === 'keydown' && accessibility.value.shortcuts && !dialogOpen();
@@ -180,8 +200,10 @@ function keydown(event: KeyboardEvent) {
   const target = event.target as HTMLElement | null, plain = !event.ctrlKey && !event.metaKey && !event.altKey;
   if (event.key === 'Escape' && planningSearch.value) { event.preventDefault(); closePlanningSearch(); return; }
   // Previous / next period: Page Up / Down anywhere, arrows outside button groups, courses and scrolling areas.
-  if (plain && (event.key === 'PageUp' || event.key === 'PageDown')) { event.preventDefault(); move(event.key === 'PageDown' ? 1 : -1); return; }
-  if (plain && !event.shiftKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !target?.closest?.('[role="group"], [role="region"], .course')) { event.preventDefault(); move(event.key === 'ArrowRight' ? 1 : -1); return; }
+  // In Travaux, the arrows belong to the month grid: the timetable date does not move behind it.
+  const inTravaux = section.value === 'travaux';
+  if (!inTravaux && plain && (event.key === 'PageUp' || event.key === 'PageDown')) { event.preventDefault(); move(event.key === 'PageDown' ? 1 : -1); return; }
+  if (!inTravaux && plain && !event.shiftKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !target?.closest?.('[role="group"], [role="region"], .course')) { event.preventDefault(); move(event.key === 'ArrowRight' ? 1 : -1); return; }
   if (!accessibility.value.shortcuts || event.repeat) return;
   if (event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey) {
     const actions: Record<string, () => void> = {
@@ -189,7 +211,7 @@ function keydown(event: KeyboardEvent) {
       KeyS: () => openSettings(),
       KeyA: () => openSettings('accessibility'),
       KeyC: () => void openChanges(), KeyT: () => void today(),
-      KeyP: () => entryCourse()?.focus(),
+      KeyP: () => entryCourse()?.focus(), KeyW: () => { if (!planningOnly.value) toggleSection(); },
       ArrowLeft: () => move(-1), ArrowRight: () => move(1),
       Digit1: () => view.value = 'list', Digit2: () => view.value = 'day', Digit3: () => view.value = 'week',
     };
@@ -212,41 +234,46 @@ onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.
 <a class="skip-link" href="#planning">Aller au planning</a>
 <div class="app-shell" :class="{ 'calendar-app': selection }">
   <nav class="app-nav" :class="{ 'onboarding-nav': !selection }" aria-label="Navigation principale">
-    <div class="brand-row"><a class="brand" href="/" @click.prevent="router.push('/')"><img src="../assets/logo.svg" width="26" height="26" alt=""><span>Vencat</span></a><button v-if="selection" class="icon-button quiet" :disabled="loading || !online" aria-label="Actualiser les cours" @click="loadCalendar(true)"><ArrowPathIcon aria-hidden="true" :class="{ refreshing: loading }" /></button></div>
-    <div v-if="selection" class="desktop-actions"><button data-key="G" class="group-button" aria-haspopup="dialog" :aria-expanded="pickerOpen" :aria-controls="pickerOpen ? 'group-dialog' : undefined" @click="pickerOpen = true">{{ groupLabel }}</button><button class="icon-button quiet" aria-haspopup="dialog" :aria-expanded="searchOpen" :aria-controls="searchOpen ? 'search-dialog' : undefined" data-key="/" aria-label="Rechercher un cours" @click="toggleSearch"><MagnifyingGlassIcon aria-hidden="true" /></button><button class="icon-button quiet" aria-label="Apparence : thème et couleurs des cours" aria-haspopup="dialog" :aria-expanded="settingsOpen && settingsPage === 'appearance'" @click="openSettings('appearance')"><PaintBrushIcon aria-hidden="true" /></button><button class="icon-button quiet" aria-label="Fond de l’application" aria-haspopup="dialog" :aria-expanded="settingsOpen && settingsPage === 'background'" @click="openSettings('background')"><PhotoIcon aria-hidden="true" /></button><button class="icon-button quiet" aria-label="Réglages" aria-haspopup="dialog" :aria-expanded="settingsOpen" :aria-controls="settingsOpen ? 'settings-dialog' : undefined" @click="openSettings()"><Cog6ToothIcon aria-hidden="true" /></button><button class="icon-button quiet" :class="{ 'unread-bell': unseenChanges.length }" :aria-label="unseenChanges.length ? 'Changements du planning non lus' : 'Changements du planning'" data-key="C" aria-haspopup="dialog" :aria-expanded="changesOpen" :aria-controls="changesOpen ? 'changes-dialog' : undefined" @click="openChanges"><BellSolidIcon aria-hidden="true" v-if="unseenChanges.length" /><BellIcon aria-hidden="true" v-else /></button></div>
+    <div class="brand-row"><a class="brand" href="/" @click.prevent="router.push('/')"><img src="../assets/logo.svg" width="26" height="26" alt=""><span>Vencat</span><sup class="beta-badge">BÊTA</sup></a><button class="icon-button quiet feedback-button" aria-haspopup="dialog" aria-label="Signaler un bug ou donner un avis (bêta)" title="Un bug, une idée ? Dis-le-nous" @click="feedbackOpen = true"><ChatBubbleLeftEllipsisIcon aria-hidden="true" /></button><button v-if="selection" class="icon-button quiet" :disabled="loading || !online" aria-label="Actualiser les cours" @click="refreshAll"><ArrowPathIcon aria-hidden="true" :class="{ refreshing: loading }" /></button></div>
+    <SectionTabs v-if="selection && !planningOnly" />
+    <div v-if="selection" class="desktop-actions"><button data-key="G" class="group-button" aria-haspopup="dialog" :aria-expanded="pickerOpen" :aria-controls="pickerOpen ? 'group-dialog' : undefined" @click="pickerOpen = true">{{ groupLabel }}</button><button class="icon-button quiet" aria-haspopup="dialog" :aria-expanded="searchOpen" :aria-controls="searchOpen ? 'search-dialog' : undefined" data-key="/" aria-label="Rechercher un cours" @click="toggleSearch"><MagnifyingGlassIcon aria-hidden="true" /></button><button class="icon-button quiet" aria-label="Apparence : thème et couleurs des cours" aria-haspopup="dialog" :aria-expanded="settingsOpen && settingsPage === 'appearance'" @click="openSettings('appearance')"><PaintBrushIcon aria-hidden="true" /></button><button class="icon-button quiet" aria-label="Fond de l’application" aria-haspopup="dialog" :aria-expanded="settingsOpen && settingsPage === 'background'" @click="openSettings('background')"><PhotoIcon aria-hidden="true" /></button><button class="icon-button quiet" aria-label="Réglages" aria-haspopup="dialog" :aria-expanded="settingsOpen" :aria-controls="settingsOpen ? 'settings-dialog' : undefined" @click="openSettings()"><Cog6ToothIcon aria-hidden="true" /></button><button class="icon-button quiet" :class="{ 'unread-bell': unseenChanges.length }" :aria-label="unseenChanges.length ? 'Changements du planning non lus' : 'Changements du planning'" data-key="C" aria-haspopup="dialog" :aria-expanded="changesOpen" :aria-controls="changesOpen ? 'changes-dialog' : undefined" @click="openChanges"><BellSolidIcon aria-hidden="true" v-if="unseenChanges.length" /><BellIcon aria-hidden="true" v-else /></button><AccountButton v-if="!planningOnly" /></div>
   </nav>
   <p v-if="routeError" role="alert" class="notice">{{ routeError }}</p>
+  <p v-if="planningOnly && selection" class="planning-only-banner" role="status">{{ travauxConfig.message }}</p>
   <main v-if="resolvingDate && !selection" id="planning" tabindex="-1" class="onboarding"><p role="status">Chargement du planning…</p></main>
   <main v-else-if="!selection" id="planning" tabindex="-1" class="onboarding"><h1>Quel est votre groupe ?</h1><p class="intro">Choisissez votre filière, votre promotion puis votre groupe pour retrouver votre emploi du temps.</p><GroupPicker @select="selectGroup" /><p class="muted">Votre choix sera mémorisé sur cet appareil. Vous pourrez le modifier à tout moment.</p></main>
-  <main v-else id="planning" tabindex="-1" class="planning"><h1 class="sr-only">Planning de {{ groupLabel }}</h1>
+  <main v-else id="planning" tabindex="-1" class="planning" :class="{ 'travaux-mode': section === 'travaux' }"><template v-if="section === 'cours'"><h1 class="sr-only">Planning de {{ groupLabel }}</h1>
     <p id="course-keyboard-help" class="sr-only">Tab pour atteindre les cours. Flèches haut et bas pour parcourir une journée, gauche et droite pour changer de colonne. Début et Fin pour le premier et le dernier cours. Entrée pour les détails, Échap pour revenir au planning.</p>
     <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ groupLabel }} · {{ daily ? frenchDate(date) : 'Semaine du ' + frenchDate(week) }} · {{ view === 'list' ? 'Liste' : view === 'day' ? 'Jour' : 'Semaine' }}</p>
     <header class="planning-header">
-      <button class="date-heading" aria-haspopup="dialog" :aria-expanded="dateOpen" :aria-controls="dateOpen ? 'date-dialog' : undefined" :aria-label="frenchDate(date) + ' · Choisir une date'" @click="dateOpen = true"><span class="date-number" :class="{ today: date === campusDate(clock) }">{{ frenchDate(date, { day: 'numeric' }) }}</span><span class="date-text"><span class="date-weekday">{{ frenchDate(date, { weekday: 'long' }) }}</span><span>{{ frenchDate(date, { month: 'long', year: 'numeric' }) }}</span></span></button>
+      <button class="date-heading" aria-haspopup="dialog" :aria-expanded="dateOpen" :aria-controls="dateOpen ? 'date-dialog' : undefined" :aria-label="frenchDate(date) + ' · Choisir une date'" @click="dateOpen = true"><span class="date-number" :class="{ today: date === campusDate(clock) }">{{ frenchDate(date, { day: 'numeric' }) }}</span><span class="date-text"><span class="date-weekday">{{ frenchDate(date, { weekday: 'long' }) }}</span><span>{{ frenchDate(date, { month: 'long', year: 'numeric' }) }}<WorkDots v-if="daily" :day="date" inline /></span></span></button>
     <div class="week-navigation"><button class="icon-button quiet" :aria-label="daily ? 'Jour précédent' : 'Semaine précédente'" @click="move(-1)"><ArrowLeftIcon aria-hidden="true" /></button><button class="period-label" @click="dateOpen = true">{{ daily ? frenchDate(date, { weekday: 'short', day: 'numeric', month: 'short' }) : frenchDate(week, { day: 'numeric', month: 'short' }) + ' – ' + frenchDate(addDay(week, 6), { day: 'numeric', month: 'short' }) }}<span class="sr-only"> · Choisir une date</span></button><button class="icon-button quiet" :aria-label="daily ? 'Jour suivant' : 'Semaine suivante'" @click="move(1)"><ArrowRightIcon aria-hidden="true" /></button><button data-key="T" class="desktop-today" :disabled="onToday" @click="today">Aujourd’hui</button></div>
-      <div class="mobile-clock"><time :datetime="clock.toISOString()">{{ campusTime(clock) }}</time><button class="icon-button" :disabled="loading || !online" aria-label="Actualiser les cours" @click="loadCalendar(true)"><ArrowPathIcon aria-hidden="true" :class="{ refreshing: loading }" /></button></div>
+      <div class="mobile-clock"><AccountButton v-if="!planningOnly" compact /><time :datetime="clock.toISOString()">{{ campusTime(clock) }}</time><button class="icon-button" :disabled="loading || !online" aria-label="Actualiser les cours" @click="refreshAll"><ArrowPathIcon aria-hidden="true" :class="{ refreshing: loading }" /></button></div>
       <div class="desktop-view-controls"><div v-arrow-navigation role="group" class="view-switch" aria-label="Vue du planning"><button data-key="L" :aria-pressed="view === 'list'" @click="view = 'list'">Liste</button><button data-key="J" :aria-pressed="view === 'day'" @click="view = 'day'">Jour</button><button data-key="S" :aria-pressed="view === 'week'" @click="view = 'week'">Semaine</button></div><div v-arrow-navigation role="group" class="view-switch" aria-label="Détail des cartes"><button :aria-pressed="preferences.density === 'compact'" @click="preferences.density = 'compact'">Compact</button><button :aria-pressed="preferences.density === 'full'" @click="preferences.density = 'full'">Complet</button></div></div>
     </header>
 
     <div v-if="planningSearch" class="planning-search" role="region" aria-label="Résultats de recherche sur le planning"><MagnifyingGlassIcon aria-hidden="true" /><p><strong>{{ planningSearch.label }}</strong><span>{{ periodMatches }} ici · {{ planningSearch.count }} au total</span></p><button class="icon-button quiet" :disabled="!previousResult" :aria-label="'Résultat précédent' + (previousResult ? ', ' + frenchDate(previousResult) : '')" @click="moveToResult(-1)"><ArrowLeftIcon aria-hidden="true" /></button><button class="icon-button quiet" :disabled="!nextResult" :aria-label="'Résultat suivant' + (nextResult ? ', ' + frenchDate(nextResult) : '')" @click="moveToResult(1)"><ArrowRightIcon aria-hidden="true" /></button><button class="text-action" @click="toggleSearch">Modifier</button><button class="icon-button quiet" aria-label="Quitter la recherche sur le planning" @click="closePlanningSearch"><XMarkIcon aria-hidden="true" /></button><p class="sr-only" role="status">{{ searchNotice }}</p></div>
     <div v-if="!online || fallback" class="sync-status" role="status" aria-live="polite"><span v-if="!online">Hors ligne{{ lastFetched ? ' · copie du ' + new Date(lastFetched).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' }) : ' · aucune copie disponible' }}</span><span v-else-if="fallback">Planning de secours</span></div>
-    <p v-if="error" role="alert" class="notice">{{ error }} <button :disabled="loading || !online" @click="loadCalendar(true)">Réessayer</button></p><p v-if="storageError" role="alert" class="notice">{{ storageError }}</p>
+    <p v-if="error" role="alert" class="notice">{{ error }} <button :disabled="loading || !online" @click="refreshAll">Réessayer</button></p><p v-if="storageError" role="alert" class="notice">{{ storageError }}</p>
     <p v-if="missingGroups.length && !loading" class="notice">Cette semaine n’est pas enregistrée pour {{ groupLabel }}. {{ online ? 'Actualisez pour la charger.' : 'Reconnectez-vous pour la charger.' }}</p>
     <CalendarSkeleton v-if="loading && !hasData" :daily="daily" :list="view === 'list'" />
     <div v-if="hasData || weekCourses.length" class="timeline-stage" :aria-busy="loading" @touchstart.passive="startSwipe" @touchend.passive="finishSwipe" @click.capture="interceptClick"><ListCalendar v-if="view === 'list'" :daily="daily" /><CalendarGrid v-else ref="calendar" /></div>
-    <div class="mobile-overlays"><button v-if="!onToday" class="floating-today" @click="today"><ClockIcon aria-hidden="true" />Aujourd’hui</button>
+    </template><TravauxPanel v-else />
+    <div class="mobile-overlays"><button v-if="!onToday && section === 'cours'" class="floating-today" @click="today"><ClockIcon aria-hidden="true" />Aujourd’hui</button>
     <InstallPrompt class="mobile-install" /></div>
-    <nav class="mobile-dock" aria-label="Commandes du planning"><div class="dock-left"><button class="icon-button" :aria-label="unseenChanges.length ? 'Ouvrir le menu, ' + unseenChanges.length + ' changements non lus' : 'Ouvrir le menu'" aria-haspopup="dialog" :aria-expanded="settingsOpen" :aria-controls="settingsOpen ? 'settings-dialog' : undefined" @click="openSettings()"><Bars3Icon aria-hidden="true" /><span v-if="unseenChanges.length" class="changes-dot"></span></button><button data-key="G" class="group-button" aria-haspopup="dialog" :aria-expanded="pickerOpen" :aria-controls="pickerOpen ? 'group-dialog' : undefined" @click="pickerOpen = true">{{ groupLabel }}</button></div><div class="dock-right"><button class="icon-button" aria-haspopup="dialog" :aria-expanded="searchOpen" :aria-controls="searchOpen ? 'search-dialog' : undefined" data-key="/" aria-label="Rechercher un cours" @click="toggleSearch"><MagnifyingGlassIcon aria-hidden="true" /></button><button class="icon-button" aria-label="Choisir la vue et le détail des cartes" aria-haspopup="dialog" :aria-expanded="modesOpen" :aria-controls="modesOpen ? 'views-dialog' : undefined" @click="modesOpen = true"><ListBulletIcon aria-hidden="true" v-if="view === 'list'" /><CalendarDaysIcon aria-hidden="true" v-else-if="view === 'day'" /><ViewColumnsIcon aria-hidden="true" v-else /></button></div></nav>
+    <nav class="mobile-dock" aria-label="Commandes du planning"><div class="dock-left"><button class="icon-button" :aria-label="unseenChanges.length ? 'Ouvrir le menu, ' + unseenChanges.length + ' changements non lus' : 'Ouvrir le menu'" aria-haspopup="dialog" :aria-expanded="settingsOpen" :aria-controls="settingsOpen ? 'settings-dialog' : undefined" @click="openSettings()"><Bars3Icon aria-hidden="true" /><span v-if="unseenChanges.length" class="changes-dot"></span></button><button data-key="G" class="group-button" aria-haspopup="dialog" :aria-expanded="pickerOpen" :aria-controls="pickerOpen ? 'group-dialog' : undefined" @click="pickerOpen = true">{{ groupLabel }}</button></div><SectionSwitch v-if="!planningOnly" /><div class="dock-right"><button class="icon-button" aria-haspopup="dialog" :aria-expanded="searchOpen" :aria-controls="searchOpen ? 'search-dialog' : undefined" data-key="/" aria-label="Rechercher un cours" @click="toggleSearch"><MagnifyingGlassIcon aria-hidden="true" /></button><button v-if="section === 'cours'" class="icon-button" aria-label="Choisir la vue et le détail des cartes" aria-haspopup="dialog" :aria-expanded="modesOpen" :aria-controls="modesOpen ? 'views-dialog' : undefined" @click="modesOpen = true"><ListBulletIcon aria-hidden="true" v-if="view === 'list'" /><CalendarDaysIcon aria-hidden="true" v-else-if="view === 'day'" /><ViewColumnsIcon aria-hidden="true" v-else /></button></div></nav>
   </main>
   <footer v-if="!selection" class="app-footer"><AuthorCredits /></footer>
 </div>
 <SearchDialog v-if="searchOpen" :initial="searchInitial" @close="searchOpen = false" @open="focused = $event" @show="showSearch" />
 <CourseFocus v-if="focused" @close="focused = undefined" @search="searchFromCourse" />
-<Settings v-if="settingsOpen" :initial-page="settingsPage" :mobile="narrow" @close="settingsOpen = false" @changes="settingsOpen = false; openChanges()" @date="settingsOpen = false; dateOpen = true" />
+<Settings v-if="settingsOpen" :initial-page="settingsPage" :mobile="narrow" @close="settingsOpen = false" @changes="settingsOpen = false; openChanges()" @date="settingsOpen = false; dateOpen = true" @group="settingsOpen = false; pickerOpen = true" @account="settingsOpen = false; travauxUi.account = true" @login="settingsOpen = false; travauxUi.login = true" />
 <AccessibleDialog id="group-dialog" v-if="pickerOpen" title="Changer de groupe" @close="pickerOpen = false"><GroupPicker :initial="selection" @select="selectGroup" /></AccessibleDialog>
 <AccessibleDialog id="views-dialog" v-if="modesOpen" title="Affichage" @close="modesOpen = false"><section class="settings-section"><h3>Vue du planning</h3><div v-arrow-navigation role="group" class="view-switch"><button data-key="L" :aria-pressed="view === 'list'" @click="view = 'list'">Liste</button><button data-key="J" :aria-pressed="view === 'day'" @click="view = 'day'">Jour</button><button data-key="S" :aria-pressed="view === 'week'" @click="view = 'week'">Semaine</button></div><p class="muted">Liste affiche une journée sur petit écran et la semaine sur grand écran.</p><h3>Informations des cartes</h3><div v-arrow-navigation role="group" class="view-switch"><button :aria-pressed="preferences.density === 'compact'" @click="preferences.density = 'compact'">Compact</button><button :aria-pressed="preferences.density === 'full'" @click="preferences.density = 'full'">Complet</button></div><p class="muted">Compact : titre, horaires, salle et type. Complet : enseignants et groupe en plus. Touchez un cours pour retrouver tous ses détails.</p><button @click="modesOpen = false">Revenir au planning</button></section></AccessibleDialog>
 <AccessibleDialog id="date-dialog" v-if="dateOpen" title="Choisir une date" @close="dateOpen = false"><label class="settings-label">Date du planning<input type="date" :value="date" @change="event => { const value = (event.target as HTMLInputElement).value; if (validDay(value)) { date = visibleDay(value); dateOpen = false; } }"></label><button class="date-today" @click="today(); dateOpen = false">Revenir à aujourd’hui</button></AccessibleDialog>
 <AccessibleDialog id="help-dialog" v-if="helpOpen" title="Raccourcis clavier" wide @close="helpOpen = false"><KeyboardHelp /></AccessibleDialog>
+<TravauxRoot />
+<FeedbackDialog v-if="feedbackOpen" :group="groupLabel" @close="feedbackOpen = false" />
 <ChangesDialog v-if="changesOpen" @close="closeChanges" @goto="day => { closeChanges(); date = visibleDay(day); }" />
 
 </template>

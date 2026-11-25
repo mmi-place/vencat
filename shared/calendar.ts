@@ -16,6 +16,8 @@ export const campusTime = (value: Date | string) => campusClock.format(new Date(
 export const validDay = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
 export const addDay = (value: string, days: number) => { const date = new Date(value + 'T12:00:00Z'); date.setUTCDate(date.getUTCDate() + days); return date.toISOString().slice(0, 10); };
 export const mondayOf = (value: string) => addDay(value, -((new Date(value + 'T12:00:00Z').getUTCDay() + 6) % 7));
+/** Moment of an action (« 23 nov., 14:05 », Paris time). */
+export const frenchStamp = (iso: string) => formatter('fr-FR', { timeZone: TIMETABLE_TIME_ZONE, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 export const frenchDate = (value: string, options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) => formatter('fr-FR', { ...options, timeZone: 'UTC' }).format(new Date(value + 'T12:00:00Z'));
 export const minuteOf = (value: string) => { const [h, m] = campusTime(value).split(':').map(Number); return h! * 60 + m!; };
 export const normalizedText = (value: string) => repairText(value).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();

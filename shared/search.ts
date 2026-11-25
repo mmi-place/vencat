@@ -4,10 +4,10 @@ import type { CourseDTO } from './courses.js';
 export const searchScopes = [
   { id: 'week', label: '1 semaine', ttl: 600 },
   { id: 'fortnight', label: '2 semaines', ttl: 600 },
-  { id: 'month', label: '1 mois', ttl: 86400 },
-  { id: 'quarter', label: '3 mois', ttl: 259200 },
-  { id: 'semester', label: '6 mois', ttl: 604800 },
-  { id: 'year', label: 'Année scolaire', ttl: 1209600 },
+  { id: 'month', label: '1 mois', ttl: 43200 },
+  { id: 'quarter', label: '3 mois', ttl: 86400 },
+  { id: 'semester', label: '6 mois', ttl: 259200 },
+  { id: 'year', label: 'Année scolaire', ttl: 604800 },
 ] as const;
 export type SearchScope = typeof searchScopes[number]['id'];
 export function searchWindow(scope: SearchScope, anchor: string) {
@@ -37,7 +37,7 @@ export interface SearchCriterion { field: SearchField; value: string }
 export function rangeTTL(start: string, end: string) {
   const days = (Date.parse(end) - Date.parse(start)) / 86400000 + 1;
   if (!validDay(start) || !validDay(end) || days < 1 || days > 366) throw new Error('Invalid search range');
-  return days <= 14 ? 600 : days <= 31 ? 86400 : days <= 93 ? 259200 : days <= 184 ? 604800 : 1209600;
+  return days <= 14 ? 600 : days <= 31 ? 43200 : days <= 93 ? 86400 : days <= 184 ? 259200 : 604800;
 }
 export function courseValues(course: CourseDTO, field: SearchField) {
   const values = field === 'teacher' ? course.teachers : field === 'room' ? course.rooms?.length ? course.rooms : [course.location] : field === 'group' ? (course.group ?? '').split('; ') : [course[field]];

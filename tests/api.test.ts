@@ -27,7 +27,7 @@ test('annual server search validates input, fetches bounded chunks and reuses da
     assert.equal(first.status, 200);
     assert.equal(first.headers.get('cache-control'), 'no-store');
     const result = await first.json() as { courses: unknown[]; ttl: number; start: string; end: string; version: string; facetsVersion: string; facets: { teacher: { value: string }[] } };
-    assert.equal(result.ttl, 1209600); assert.equal(result.start, '2028-09-01'); assert.equal(result.end, '2029-08-31');
+    assert.equal(result.ttl, 604800); assert.equal(result.start, '2028-09-01'); assert.equal(result.end, '2029-08-31');
     assert.equal(result.courses.length, 7); assert.equal(calls, 7);
     assert.equal(result.facets.teacher[0]!.value, 'Jean Dupont');
     const second = await (await fetch(`${base}/search/G1-QJ2DMFYC5987?q=absent&scope=year&date=2028-10-05`)).json() as { courses: unknown[]; version: string; facetsVersion: string };
@@ -82,39 +82,25 @@ test('short planning windows are persisted in Redis and keep their original fres
 
 test('device notification endpoints are removed and monitoring remains protected', async () => {
   const config = await (await fetch(`${base}/history/config`)).json() as { sharedHistory: boolean };
-  assert.equal(config.sharedHistory, false);
+  assert.equal(config.sharedHistory, true);
   assert.equal((await fetch(`${base}/notifications/config`)).status, 404);
   assert.equal((await fetch(`${base}/monitor`)).status, 401);
   assert.equal((await fetch(`${base}/notifications/subscription`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 404);
 });
 
-test('Vercel Marketplace KV credentials activate history and authenticate Redis reads', async () => {
-  const names = ['KV_REST_API_URL', 'KV_REST_API_TOKEN', 'UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'] as const;
-  const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
-  for (const name of names) delete process.env[name];
-  process.env.KV_REST_API_URL = 'https://redis.test';
-  process.env.KV_REST_API_TOKEN = 'test-only-token';
-  let reads = 0;
-  globalThis.fetch = async (input, init) => {
-    if (String(input) !== 'https://redis.test') return originalFetch(input, init);
-    assert.equal((init?.headers as Record<string, string>).Authorization, 'Bearer test-only-token');
-    const command = JSON.parse(String(init?.body));
-    if (command[0] === 'SADD') { assert.deepEqual(command, ['SADD', 'vencat:monitored', 'G1-QJ2DMFYC5987']); return Response.json({ result: 1 }); }
-    assert.deepEqual(command, ['GET', 'vencat:history:G1-QJ2DMFYC5987']);
-    reads++;
-    return Response.json({ result: '[]' });
-  };
-  try {
-    const config = await (await fetch(`${base}/history/config`)).json() as { sharedHistory: boolean };
-    assert.equal(config.sharedHistory, true);
-    const response = await fetch(`${base}/changes/G1-QJ2DMFYC5987`);
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), []);
-    assert.equal(reads, 1);
-  } finally {
-    globalThis.fetch = originalFetch;
-    for (const name of names) { if (previous[name] === undefined) delete process.env[name]; else process.env[name] = previous[name]; }
-  }
+test('changes are detected on the server and served the same to everyone', async () => {
+  const { recordSnapshot } = await import('../backend/changes.js');
+  const course = (location: string) => ({ uid: 'c1', type: 'TD', summary: 'Web', start: '2030-01-07T08:00:00.000Z', end: '2030-01-07T10:00:00.000Z', teachers: ['A'], location, module: 'R 1.01', source: 'post' as const });
+  const snapshot = (location: string, fetchedAt: string) => ({ version: 1 as const, groupId: 'G1-QJ2DMFYC5987', start: '2030-01-07', end: '2030-01-13', source: 'post' as const, fetchedAt, courses: [course(location)] });
+  assert.equal((await recordSnapshot(snapshot('E57', '2030-01-01T08:00:00.000Z'))).length, 0, 'first read: baseline only');
+  assert.equal((await recordSnapshot(snapshot('E57', '2030-01-01T08:00:00.000Z'))).length, 0, 'same read: ignored');
+  const changes = await recordSnapshot(snapshot('E58', '2030-01-01T09:00:00.000Z'));
+  assert.equal(changes.length, 1); assert.deepEqual(changes[0]!.fields, ['Salle']);
+  const served = await (await fetch(`${base}/changes/G1-QJ2DMFYC5987`)).json() as { id: string }[];
+  assert.ok(served.some(item => item.id === changes[0]!.id));
+  // A week that suddenly empties needs two reads before it counts.
+  assert.equal((await recordSnapshot({ ...snapshot('E58', '2030-01-01T10:00:00.000Z'), courses: [] })).length, 0);
+  assert.equal((await recordSnapshot({ ...snapshot('E58', '2030-01-01T11:00:00.000Z'), courses: [] })).length, 1);
 });
 
 test('POST normalization through the shared API contract and backend cache', async () => {
