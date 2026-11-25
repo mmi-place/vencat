@@ -22,7 +22,7 @@
   "rewrites": [
     {
       "source": "/api/(travaux|auth|account|admin)/(.*)",
-      "destination": "/api/$1"
+      "destination": "/api/travaux"
     },
     {
       "source": "/((?!api(?:/|$)|assets/|.*\\.[^/]+$).*)",
