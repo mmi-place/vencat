@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { fmtVotes } from '../../../shared/travaux';
 import { onMounted, ref } from 'vue';
 import AccessibleDialog from '../AccessibleDialog.vue';
 import { api, errorText, ui, openedWork } from '../../scripts/travaux';
@@ -34,7 +35,7 @@ const empty = () => !!data.value && !data.value.proposals.length && !data.value.
   <template v-if="tab === 'queue'">
     <p v-if="empty()" class="muted">Rien à traiter.</p>
     <section v-if="data.proposals.length" class="mod-proposals" aria-label="Propositions à valider"><h3>Propositions à valider <span class="count">{{ data.proposals.length }}</span></h3>
-      <div v-for="item in data.proposals" :key="item.id" class="mod-row"><span class="mod-main"><button class="text-action" @click="openedWork = item.workId">« {{ item.title }} »</button><span class="muted"> · {{ item.kind === 'delete' ? 'suppression' : 'modification' }} proposée par {{ item.author }} · {{ Math.floor(item.up) }} 👍 {{ Math.floor(item.down) }} 👎 · {{ day(item.at) }}</span>
+      <div v-for="item in data.proposals" :key="item.id" class="mod-row"><span class="mod-main"><button class="text-action" @click="openedWork = item.workId">« {{ item.title }} »</button><span class="muted"> · {{ item.kind === 'delete' ? 'suppression' : 'modification' }} proposée par {{ item.author }} · {{ fmtVotes(item.up) }} 👍 {{ fmtVotes(item.down) }} 👎 · {{ day(item.at) }}</span>
         <span v-if="item.kind === 'delete'" class="muted">Motif : {{ item.reason }}</span><ul v-else class="diff"><li v-for="change in item.changes" :key="change.field"><span class="muted">{{ change.label }} :</span> <del>{{ change.before }}</del> → <strong>{{ change.after }}</strong></li></ul></span>
         <span class="mod-actions"><button class="primary-action" :disabled="busy" @click="act('proposal', item.id, 'accept')">Valider sans les votes</button><button :disabled="busy" @click="act('proposal', item.id, 'reject')">Refuser</button></span></div></section>
     <div v-for="item in data.reports" :key="item.id" class="mod-row"><span class="pill pill-late">signalement</span><span class="mod-main"><button v-if="item.kind === 'work'" class="text-action" @click="openedWork = item.targetId">« {{ item.title }} »</button><template v-else>{{ item.kind === 'delegate' ? 'Délégué ' : '' }}{{ item.title }}</template><br><small class="muted">{{ item.reason }} · par {{ item.by }} · {{ day(item.at) }}</small></span><button :disabled="busy" @click="act('report', item.id, 'remove')">{{ item.kind === 'delegate' ? 'Retirer le mandat' : 'Retirer' }}</button><button :disabled="busy" @click="act('report', item.id, 'dismiss')">Classer</button></div>
