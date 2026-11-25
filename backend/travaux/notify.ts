@@ -9,7 +9,7 @@ export const TOPICS = {
   important: { label: 'Important', description: 'Déclaration de délégué à vérifier, demande de changement de nom, alerte sur un compte, mode « planning seul » activé ou coupé.' },
 } as const;
 export type Topic = keyof typeof TOPICS;
-export const isTopic = (value: unknown): value is Topic => typeof value === 'string' && Object.hasOwn(TOPICS, value);
+export const isTopic = (value: unknown): value is Topic => typeof value === 'string' && Object.prototype.hasOwnProperty.call(TOPICS, value);
 
 export async function recipients(topic: Topic) { return (await settings()).notifyEmails?.[topic] ?? []; }
 /** Mails the people of the topic. Never throws: a failing mail must not break the action that triggered it. */

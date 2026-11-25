@@ -137,7 +137,7 @@ router.post('/admin/work/:id', route(async (req, res) => {
   if (!work || work.personal) throw new HttpError(404, 'Travail introuvable.');
   const action = String(req.body?.action ?? ''), reason = cleanText(req.body?.reason, LIMITS.reason), actor = 'admin:' + session.email;
   const states: Record<string, WorkState | undefined> = { validate: 'validated', remove: 'removed', restore: undefined };
-  if (!Object.hasOwn(states, action)) throw new HttpError(400, 'Action inconnue.');
+  if (!Object.prototype.hasOwnProperty.call(states, action)) throw new HttpError(400, 'Action inconnue.');
   work.forced = states[action] as Work['forced']; work.updatedAt = now();
   // The state follows from settle() (validate) or is set here (remove, restore), so reliability is handled once, in one place.
   if (action !== 'validate') work.state = states[action] ?? 'pending';

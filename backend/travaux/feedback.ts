@@ -15,7 +15,7 @@ const CONTEXT_KEYS = ['page', 'groupe', 'version', 'navigateur', 'écran', 'comp
 const router = express.Router();
 router.post('/travaux/feedback', route(async (req, res) => {
   if (await overLimit('feedback:' + addressKey(req), 5, 3600)) throw new HttpError(429, 'Trop de messages envoyés. Réessaie dans un moment.');
-  const kind = (typeof req.body?.kind === 'string' && Object.hasOwn(FEEDBACK_KINDS, req.body.kind) ? req.body.kind : 'other') as FeedbackKind;
+  const kind = (typeof req.body?.kind === 'string' && Object.prototype.hasOwnProperty.call(FEEDBACK_KINDS, req.body.kind) ? req.body.kind : 'other') as FeedbackKind;
   const message = cleanText(req.body?.message, 2000);
   if (message.length < 5) throw new HttpError(400, 'Décris ton retour en quelques mots.');
   const rawEmail = typeof req.body?.email === 'string' ? normalizeEmail(req.body.email) : '';
