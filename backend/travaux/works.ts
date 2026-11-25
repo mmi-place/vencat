@@ -8,7 +8,7 @@ import {
 import { groupById, groupOptions } from '../../shared/selection.js';
 import {
   type Work, type Proposal, type Report, type Correction, db, route, origin, users, history, audit, problem, adjustReliability, votesOf,
-  powers, settle, workView, describeChanges, loadWork, castVote, correctionView,
+  powers, settle, workView, describeChanges, loadWork, castVote, correctionView, applyProposal, decideProposal,
 } from './common.js';
 
 // Works
@@ -123,23 +123,6 @@ router.post('/travaux/work/:id/proposal', route(async (req, res) => {
   else { await db().put('proposals', proposal.id, proposal); work.proposalId = proposal.id; work.updatedAt = now(); await db().put('works', work.id, work); await history(work.id, user.id, kind === 'delete' ? 'suppression proposée' : 'modification proposée', reason || describeChanges(work, changes).map(change => `${change.label} : ${change.before} → ${change.after}`).join(' · ')); }
   res.status(201).json(await workView(await loadWork(work.id), user, await users()));
 }));
-async function applyProposal(work: Work, proposal: Proposal, by: string) {
-  proposal.status = 'accepted'; proposal.closedAt = now();
-  await db().put('proposals', proposal.id, proposal);
-  work.proposalId = undefined; work.updatedAt = now();
-  if (proposal.kind === 'delete') {
-    work.forced = 'removed'; work.state = 'removed'; work.removedReason = proposal.reason;
-    if (!work.personal && /n.existe pas/i.test(proposal.reason ?? '')) { await adjustReliability(work.authorId, -2); await problem(work.authorId, 'travail retiré car faux', work.title); }
-    await history(work.id, by, 'retiré', proposal.reason);
-  } else {
-    const detail = describeChanges(work, proposal.changes).map(change => `${change.label} : ${change.before} → ${change.after}`).join(' · ');
-    Object.assign(work, proposal.changes);
-    if (!proposal.changes.time) work.time = undefined;
-    await history(work.id, by, 'modification validée', detail);
-  }
-  if (!work.personal && proposal.authorId !== work.authorId) await adjustReliability(proposal.authorId, proposal.kind === 'edit' ? 0.5 : 0.2);
-  await db().put('works', work.id, work);
-}
 router.post('/travaux/proposal/:id/vote', route(async (req, res) => {
   const { user } = await requireContributor(req);
   const proposal = await db().get<Proposal>('proposals', String(req.params.id));
@@ -157,6 +140,17 @@ router.post('/travaux/proposal/:id/vote', route(async (req, res) => {
     work.proposalId = undefined; await db().put('works', work.id, work);
     await history(work.id, user.id, proposal.kind === 'delete' ? 'suppression refusée' : 'modification refusée');
   }
+  res.json(await workView(await loadWork(work.id), user, await users()));
+}));
+// Delegates of the group (and the administration) settle a proposal without waiting for the 3 votes.
+router.post('/travaux/proposal/:id/decide', route(async (req, res) => {
+  const { user } = await requireContributor(req);
+  const proposal = await db().get<Proposal>('proposals', String(req.params.id));
+  if (!proposal || proposal.status !== 'open') throw new HttpError(404, 'Proposition fermée.');
+  const work = await loadWork(proposal.workId);
+  if (!(await powers(user, work.scope)).moderator) throw new HttpError(403, 'Réservé aux délégué(e)s et à l’administration.');
+  if (req.body?.action !== 'accept' && req.body?.action !== 'reject') throw new HttpError(400, 'Action inconnue.');
+  await decideProposal(work, proposal, user.id, req.body.action === 'accept');
   res.json(await workView(await loadWork(work.id), user, await users()));
 }));
 router.post('/travaux/work/:id/report', route(async (req, res) => {

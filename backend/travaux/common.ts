@@ -184,3 +184,35 @@ export async function eraseAccount(user: User) {
   await db().delete('marks', user.id);
   await db().put('users', user.id, { id: user.id, email: null, firstName: '', lastName: '', createdAt: user.createdAt, reliability: user.reliability, deletedAt: now(), banned: user.banned, readOnlyUntil: user.readOnlyUntil } satisfies User);
 }
+
+/** A proposal accepted (votes or moderation): the change is applied, the work and its author are updated. */
+export async function applyProposal(work: Work, proposal: Proposal, by: string) {
+  proposal.status = 'accepted'; proposal.closedAt = now();
+  await db().put('proposals', proposal.id, proposal);
+  work.proposalId = undefined; work.updatedAt = now();
+  if (proposal.kind === 'delete') {
+    work.forced = 'removed'; work.state = 'removed'; work.removedReason = proposal.reason;
+    if (!work.personal && /n.existe pas/i.test(proposal.reason ?? '')) { await adjustReliability(work.authorId, -2); await problem(work.authorId, 'travail retiré car faux', work.title); }
+    await history(work.id, by, 'retiré', proposal.reason);
+  } else {
+    const detail = describeChanges(work, proposal.changes).map(change => `${change.label} : ${change.before} → ${change.after}`).join(' · ');
+    Object.assign(work, proposal.changes);
+    if (!proposal.changes.time) work.time = undefined;
+    await history(work.id, by, 'modification validée', detail);
+  }
+  if (!work.personal && proposal.authorId !== work.authorId) await adjustReliability(proposal.authorId, proposal.kind === 'edit' ? 0.5 : 0.2);
+  await db().put('works', work.id, work);
+}
+/** Moderation bypasses the 3 votes: accept applies the proposal, reject closes it. `by` is an account or "admin:<address>". */
+export async function decideProposal(work: Work, proposal: Proposal, by: string, accept: boolean) {
+  const admin = by.startsWith('admin:');
+  if (accept) {
+    await applyProposal(work, proposal, by);
+    await history(work.id, by, admin ? 'proposition validée par l’administration' : 'proposition validée par un(e) délégué(e)', 'sans attendre les votes');
+  } else {
+    proposal.status = 'rejected'; proposal.closedAt = now(); await db().put('proposals', proposal.id, proposal);
+    work.proposalId = undefined; work.updatedAt = now(); await db().put('works', work.id, work);
+    await history(work.id, by, admin ? 'proposition refusée par l’administration' : 'proposition refusée par un(e) délégué(e)');
+  }
+  await audit(by, 'proposition:' + (accept ? 'accept' : 'reject'), proposal.id, work.title);
+}
