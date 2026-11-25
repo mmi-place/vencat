@@ -3,7 +3,7 @@ import { readPreference, writePreference } from './storage';
 import { selection, online } from './calendarStore';
 import { api, errorText, isNetworkError, onUnauthorized, ApiError } from './travaux/api';
 import { me, setMe, userKey, loadMe, canContribute, onSignedOut, planningOnly } from './travaux/session';
-import { marks, loadMarks, marksKey, cancelNoteTimers } from './travaux/marks';
+import { loadMarks, marksKey, cancelNoteTimers } from './travaux/marks';
 import { outbox, myOutbox, enqueue, dropOutbox, clearOutbox } from './travaux/outbox';
 import { works, loadWorks, showCached, replaceWork, clearWorksCaches, loadCorrections, corrections } from './travaux/works';
 import { ui, notify, section, form, openedWork } from './travaux/ui';
@@ -83,7 +83,6 @@ export async function flushOutbox() {
       try {
         const result = await api<unknown>(item.path, { method: item.method, body: item.body });
         if (item.kind === 'create' && item.localId && result && typeof result === 'object' && 'id' in result) replaceWork(result as WorkView, item.localId);
-        if (item.kind === 'marks' && result && typeof result === 'object' && 'done' in result) marks.value = result as typeof marks.value;
         dropOutbox([item.id]); sent++;
       } catch (error) {
         if (isNetworkError(error)) break;

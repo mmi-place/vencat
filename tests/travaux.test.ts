@@ -145,7 +145,10 @@ test('sign-in, proposals, votes, modifications and the ICS feed', async () => {
   assert.match(ics.body, /TRIGGER:-P1D/);
 
   // Private marks and account deletion keep contributions under "Ancien étudiant".
-  assert.deepEqual(Object.keys((await lea.browser('/account/marks', { method: 'PUT', body: { done: { [work.body.id]: true }, notes: { [work.body.id]: 'Demander le format' } } })).body.done), [work.body.id]);
+  assert.equal((await lea.browser('/account/marks', { method: 'PUT', body: { done: { [work.body.id]: true }, notes: { [work.body.id]: 'Demander le format' } } })).status, 200);
+  const kept = (await lea.browser('/account/marks')).body;
+  assert.deepEqual(Object.keys(kept.done), [work.body.id]);
+  assert.equal(kept.notes[work.body.id], 'Demander le format');
   assert.equal((await lea.browser('/account', { method: 'DELETE' })).status, 200);
   assert.equal((await lea.browser('/auth/me')).body.me, null);
   assert.equal((await anonymous(`/travaux/work/${work.body.id}`)).body.work.author, 'Ancien étudiant');
@@ -452,4 +455,36 @@ test('moderation settles a proposal without the 3 votes: administration and dele
   assert.equal((await admin('/admin/action', { body: { kind: 'proposal', id: second.body.proposal.id, action: 'reject' } })).status, 200);
   assert.equal((await store().get<{ title: string }>('works', work.id))!.title, 'Rendu corrigé');
   assert.equal((await store().get<{ status: string }>('proposals', second.body.proposal.id))!.status, 'rejected');
+});
+
+test('marks: one document per mark, the sync only adds, removals stay removed, old format migrated', async () => {
+  resetLimits();
+  const phone = await signIn('marks.sync@ens.uvsq.fr');
+  const laptop = await phone.browser('/auth/me').then(() => phone);
+  const ids = ['a', 'b', 'c', 'd'].map(letter => letter.repeat(32).replace(/[^a-f]/g, 'e'));
+  const [first, second, third, fourth] = ids as [string, string, string, string];
+  // Quick taps at the same time on the same account never overwrite each other.
+  await Promise.all([first, second, third].map(id => phone.browser('/account/marks', { method: 'PUT', body: { done: { [id]: true } } })));
+  assert.deepEqual(Object.keys((await phone.browser('/account/marks')).body.done).sort(), [first, second, third].sort());
+  // A removal leaves a tombstone: an old device that still has the mark cannot bring it back.
+  await phone.browser('/account/marks', { method: 'PUT', body: { done: { [second]: false } } });
+  const old = new Date(Date.now() - 3600_000).toISOString();
+  const merged = (await phone.browser('/account/marks', { method: 'PUT', body: { merge: { done: { [second]: old, [fourth]: old }, notes: { [first]: 'note locale' } } } })).body;
+  assert.equal(merged.done[second], undefined, 'removed elsewhere, stays removed');
+  assert.ok(merged.done[fourth], 'a mark only on this device is added');
+  assert.ok(merged.done[first] && merged.done[third], 'nothing existing is destroyed');
+  assert.equal(merged.notes[first], 'note locale');
+  // A merge never overwrites what the account already has.
+  const again = (await phone.browser('/account/marks', { method: 'PUT', body: { merge: { notes: { [first]: 'autre texte' } } } })).body;
+  assert.equal(again.notes[first], 'note locale');
+  // Marks of the old format (one document per account) are migrated.
+  const user = (await store().list<User>('users')).find(item => item.email === 'marks.sync@ens.uvsq.fr')!;
+  const legacyId = 'f'.repeat(32);
+  await store().put('marks', user.id, { done: { [legacyId]: new Date().toISOString() }, notes: {} });
+  const migrated = (await laptop.browser('/account/marks')).body;
+  assert.ok(migrated.done[legacyId] && migrated.done[first]);
+  assert.equal(await store().get('marks', user.id), undefined, 'the old document is gone');
+  // Deleting the account removes every mark.
+  await laptop.browser('/account', { method: 'DELETE' });
+  assert.equal((await store().list('marks', user.id + ':')).length, 0);
 });

@@ -182,6 +182,7 @@ export async function eraseAccount(user: User) {
   for (const item of (await db().list<{ id: string; userId: string }>('sessions')).filter(entry => entry.userId === user.id)) await db().delete('sessions', item.id);
   for (const item of (await db().list<{ id: string; userId: string }>('names')).filter(entry => entry.userId === user.id)) await db().delete('names', item.id);
   await db().delete('marks', user.id);
+  for (const mark of await db().list<{ k: string }>('marks', user.id + ':')) await db().delete('marks', mark.k);
   await db().put('users', user.id, { id: user.id, email: null, firstName: '', lastName: '', createdAt: user.createdAt, reliability: user.reliability, deletedAt: now(), banned: user.banned, readOnlyUntil: user.readOnlyUntil } satisfies User);
 }
 
