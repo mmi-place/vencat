@@ -1,7 +1,7 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import { store } from './store.js';
 import { notifyAdmins } from './notify.js';
-import { HttpError, id, now, hash, overLimit, roleOf, displayName, shortDisplayName, type User, type Delegation } from './auth.js';
+import { HttpError, id, now, hash, overLimit, activeDelegations, roleOf, displayName, shortDisplayName, type User, type Delegation } from './auth.js';
 import {
   voteState, tally, requiredUpvotes, scopeLabel, scopeMembers, parisInstant, DEFAULT_DUE_TIME, linkDomain, cleanText, LIMITS, WORK_TYPE_LABELS,
   voteWeight, type WorkInput, type WorkView, type WorkState, type Vote, type WorkProposalView, type CourseLink, type WorkScope,
@@ -58,7 +58,17 @@ export async function adjustReliability(userId: string, delta: number) {
   user.reliability = Math.round((user.reliability + delta) * 10) / 10;
   await db().put('users', user.id, user);
 }
-export const votesOf = async (targetId: string) => Object.fromEntries((await db().list<VoteDoc>('votes', targetId + ':')).map(vote => [vote.userId, vote])) as Record<string, VoteDoc>;
+/** Validated delegates vote with a full weight whatever the age of their account (kept 10 s per instance: read at every vote count). */
+let delegateIds: { at: number; ids: Set<string> } | undefined;
+const delegateUsers = async () => {
+  if (!delegateIds || Date.now() - delegateIds.at > 10_000) delegateIds = { at: Date.now(), ids: new Set((await activeDelegations()).map(item => item.userId)) };
+  return delegateIds.ids;
+};
+export const votesOf = async (targetId: string) => {
+  const delegates = await delegateUsers();
+  // Votes cast before the mandate was confirmed (weight 0.5) count fully from then on.
+  return Object.fromEntries((await db().list<VoteDoc>('votes', targetId + ':')).map(vote => [vote.userId, delegates.has(vote.userId) ? { ...vote, weight: Math.max(vote.weight, 1) } : vote])) as Record<string, VoteDoc>;
+};
 
 /** Rights of a person on a scope: delegates of a group in the scope and admins act directly. */
 export async function powers(user: User | undefined, scope: WorkScope) {
@@ -150,7 +160,9 @@ export async function castVote(user: User, targetId: string, value: unknown, rea
   if (value === 0) { await db().delete('votes', key); return; }
   const text = cleanText(reason, LIMITS.reason);
   if (value === -1 && !text) throw new HttpError(400, 'Indique pourquoi tu contestes.');
-  const vote: VoteDoc = { targetId, userId: user.id, value, reason: value === -1 ? text : undefined, at: now(), weight: voteWeight(user.createdAt) };
+  // Validated delegates and administrators vote with a full weight; the others with the weight of their account's age.
+  const { role } = await roleOf(user);
+  const vote: VoteDoc = { targetId, userId: user.id, value, reason: value === -1 ? text : undefined, at: now(), weight: role === 'delegate' || role === 'admin' ? 1 : voteWeight(user.createdAt) };
   await db().put('votes', key, vote);
 }
 

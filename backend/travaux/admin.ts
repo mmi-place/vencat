@@ -5,13 +5,14 @@ import { sendMail, layout } from './mail.js';
 import { notifyAdmins, defaultRecipients, TOPICS, isTopic, type Topic } from './notify.js';
 import type { Feedback } from './feedback.js';
 import { HttpError, hash, id, now, sameOrigin, overLimit, addressKey, deviceLabel, adminEmails, activeDelegations, displayName, type User, type Session, type Delegation } from './auth.js';
-import { db, settle, workView, users, history, audit, schoolYearEnd, eraseAccount, type Work } from './common.js';
+import { db, settle, workView, users, history, audit, schoolYearEnd, eraseAccount, votesOf, type Work } from './common.js';
 import { moderationData, moderationAction } from './moderation.js';
 import { normalizeEmail, cleanText, LIMITS, scopeLabel, type WorkState } from '../../shared/travaux.js';
 import { groupById } from '../../shared/selection.js';
 
 // Administration on /admin: separate from student accounts, signed in by a mail code only,
-// for the addresses of ADMIN_EMAILS. The session lasts as long as the browser session (no Max-Age), 12 h at most.
+// for the addresses of ADMIN_EMAILS. The session survives leaving the app or closing the browser (persistent cookie), for 3 days at most.
+const ADMIN_SESSION_MS = 3 * 24 * 3600_000;
 interface AdminLogin { id: string; email: string; codeHash: string; expiresAt: string; attempts: number }
 interface AdminSession { email: string; createdAt: string; expiresAt: string; device: string }
 const COOKIE = 'vencat_admin';
@@ -61,10 +62,10 @@ router.post('/admin/verify', route(async (req, res) => {
     login.attempts++; await db().put('adminLogins', login.id, login); throw new HttpError(400, 'Code incorrect.'); }
   await db().delete('adminLogins', login.id);
   const token = randomBytes(32).toString('base64url');
-  const session: AdminSession = { email: login.email, createdAt: now(), expiresAt: new Date(Date.now() + 12 * 3600000).toISOString(), device: deviceLabel(req) };
+  const session: AdminSession = { email: login.email, createdAt: now(), expiresAt: new Date(Date.now() + ADMIN_SESSION_MS).toISOString(), device: deviceLabel(req) };
   await db().put('adminSessions', hash(token), session);
-  // No Max-Age: the browser forgets it when the session ends.
-  res.append('Set-Cookie', `${COOKIE}=${token}; Path=/api/admin; HttpOnly; SameSite=Strict${secure(req) ? '; Secure' : ''}`);
+  // Persistent cookie: a browser (iOS above all) forgets a session cookie as soon as the app is left.
+  res.append('Set-Cookie', `${COOKIE}=${token}; Path=/api/admin; HttpOnly; SameSite=Strict; Max-Age=${ADMIN_SESSION_MS / 1000}${secure(req) ? '; Secure' : ''}`);
   await audit('admin:' + login.email, 'connexion administration', login.email);
   res.json({ email: login.email });
 }));
@@ -130,6 +131,20 @@ router.get('/admin/works', route(async (req, res) => {
   const list = (await db().list<Work>('works')).filter(work => !work.personal && (!state || work.state === state) && (!q || `${work.title} ${work.details.where} ${scopeLabel(work.scope)} ${displayName(people.get(work.authorId))}`.toLowerCase().includes(q)))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 200);
   res.json(await Promise.all(list.map(async work => ({ ...(await workView(work, undefined, people)), group: scopeLabel(work.scope), promotion: work.scope.kind === 'group' ? groupById(work.scope.key)?.promotion : work.scope.key.split('|')[0] }))));
+}));
+// Full sheet of a work for the administration: the work as students see it, the votes with names, the proposal and the history.
+router.get('/admin/work/:id', route(async (req, res) => {
+  await requireAdmin(req);
+  const work = await db().get<Work>('works', String(req.params.id));
+  if (!work || work.personal) throw new HttpError(404, 'Travail introuvable.');
+  const people = await users();
+  const entries = (await db().list<{ at: string; by: string; action: string; detail?: string }>('history', work.id + ':')).sort((a, b) => a.at.localeCompare(b.at));
+  const votes = Object.values(await votesOf(work.id));
+  res.json({
+    work: await workView(await settle(work), undefined, people),
+    voters: votes.map(vote => ({ name: displayName(people.get(vote.userId)), value: vote.value, weight: vote.weight, reason: vote.reason })),
+    history: entries.map(entry => ({ at: entry.at, by: entry.by === 'system' ? 'Vencat' : entry.by.startsWith('admin:') ? 'Administration' : displayName(people.get(entry.by)), action: entry.action, detail: entry.detail })),
+  });
 }));
 router.post('/admin/work/:id', route(async (req, res) => {
   const session = await requireAdmin(req);
