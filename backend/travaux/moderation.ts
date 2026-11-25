@@ -1,11 +1,11 @@
 import express, {  } from 'express';
 import { sendMail } from './mail.js';
-import { HttpError, now, requireUser, groupExists, roleOf, displayName, activeDelegations, type User, type Session, type Delegation } from './auth.js';
+import { HttpError, now, requireUser, groupExists, roleOf, displayName, activeDelegations, isNewAccount, type User, type Session, type Delegation } from './auth.js';
 import { scopeMembers, cleanText, tally, LIMITS } from '../../shared/travaux.js';
 import { groupById } from '../../shared/selection.js';
 import {
   type Work, type Proposal, type Report, type NameRequest, type Problem, type Audit, type Alert, db, route, users, history, audit, problem, loadWork,
-  answerCounts, schoolYearEnd, describeChanges, decideProposal, votesOf,
+  answerCounts, schoolYearEnd, describeChanges, decideProposal, votesOf, resetFullWeightCache,
 } from './common.js';
 
 // Moderation queue (admin: everything; delegates: reports in their groups)
@@ -25,6 +25,7 @@ export async function moderationData(admin: boolean, delegateGroups: string[]) {
   const inMyGroups = (work?: Work) => admin || (!!work && scopeMembers(work.scope).some(group => delegateGroups.includes(group.id)));
   const reports = (await db().list<Report>('reports')).filter(item => item.status === 'open' && !(item.target.kind === 'work' && works.get(item.target.id)?.personal) && (admin || (item.target.kind === 'work' && inMyGroups(works.get(item.target.id)))));
   const problems = await db().list<Problem>('problems');
+  const delegations = await activeDelegations();
   // Proposals still waiting for their votes: moderation can settle them at once.
   const proposals = await Promise.all((await db().list<Proposal>('proposals')).filter(item => item.status === 'open' && works.get(item.workId) && !works.get(item.workId)!.personal && inMyGroups(works.get(item.workId))).map(async item => {
     const work = works.get(item.workId)!, t = tally(await votesOf(item.id), item.authorId);
@@ -38,7 +39,7 @@ export async function moderationData(admin: boolean, delegateGroups: string[]) {
     activeDelegates: admin ? (await activeDelegations()).map(item => ({ id: item.id, name: displayName(people.get(item.userId)), group: `${groupById(item.groupId)?.promotion} ${groupById(item.groupId)?.label}`, title: item.title ?? 'titulaire', until: item.until })) : [],
     names: admin ? (await db().list<NameRequest>('names')).filter(item => item.status === 'open').map(item => ({ id: item.id, before: displayName(people.get(item.userId)), after: [item.firstName, item.lastName].filter(Boolean).join(' '), email: people.get(item.userId)?.email, at: item.at })) : [],
     alerts: admin ? (await db().list<Alert>('alerts')).filter(item => item.status === 'open').map(item => ({ id: item.id, userId: item.userId, name: displayName(people.get(item.userId)), at: item.at, problems: problems.filter(entry => entry.userId === item.userId && Date.parse(entry.at) > Date.now() - 7 * 86400000).map(entry => `${entry.kind} : ${entry.detail}`) })) : [],
-    students: [...people.values()].filter(person => !person.deletedAt && (admin || (person.groupId && delegateGroups.includes(person.groupId)))).map(person => ({ id: person.id, name: displayName(person), email: admin ? person.email : undefined, groupId: person.groupId, readOnlyUntil: person.readOnlyUntil, banned: !!person.banned, reliability: person.reliability, createdAt: person.createdAt })),
+    students: [...people.values()].filter(person => !person.deletedAt && (admin || (person.groupId && delegateGroups.includes(person.groupId)))).map(person => ({ trusted: !!person.trusted, newAccount: isNewAccount(person), delegateOf: delegations.filter(item => item.userId === person.id).map(item => item.groupId), id: person.id, name: displayName(person), email: admin ? person.email : undefined, groupId: person.groupId, readOnlyUntil: person.readOnlyUntil, banned: !!person.banned, reliability: person.reliability, createdAt: person.createdAt })),
     log: admin ? (await db().list<Audit>('audit')).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 60).map(item => ({ ...item, by: actor(item.by) })) : [],
     role: admin ? 'admin' : 'delegate',
   };
@@ -105,6 +106,8 @@ export async function moderationAction(actorId: string, admin: boolean, delegate
     if (!person) throw new HttpError(404, 'Compte introuvable.');
     if (!admin && !(person.groupId && delegateGroups.includes(person.groupId))) throw new HttpError(403, 'Hors de ta portée.');
     if (action === 'group') { if (!groupExists(req.body?.groupId)) throw new HttpError(400, 'Groupe inconnu.'); person.groupId = req.body.groupId; }
+    else if (action === 'trust' && admin) person.trusted = now();
+    else if (action === 'untrust' && admin) person.trusted = undefined;
     else if (action === 'readonly' && admin) {
       person.readOnlyUntil = new Date(Date.now() + 7 * 86400000).toISOString();
       if (person.email) await sendMail({ to: person.email, subject: 'Vencat : compte en lecture seule pendant 7 jours', text: explanation(person.firstName, `Ton compte passe en lecture seule pendant 7 jours. ${reason}`, contact) }).catch(() => undefined);
@@ -116,5 +119,6 @@ export async function moderationAction(actorId: string, admin: boolean, delegate
     else throw new HttpError(400, 'Action inconnue.');
     await db().put('users', person.id, person);
   } else throw new HttpError(400, 'Action inconnue.');
+  if (kind === 'delegate' || kind === 'user') resetFullWeightCache();
   await audit(actorId, `${kind}:${action}`, targetId, reason);
 }
