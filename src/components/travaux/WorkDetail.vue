@@ -4,7 +4,7 @@ import AddToCalendar from './AddToCalendar.vue';
 import { CheckCircleIcon, PencilIcon, MapPinIcon, DocumentTextIcon, UserGroupIcon, UserIcon, LinkIcon, BookOpenIcon, CheckBadgeIcon, ClockIcon, HandThumbUpIcon, HandThumbDownIcon, LightBulbIcon, AcademicCapIcon, ChevronLeftIcon, ChevronRightIcon, FlagIcon, PencilSquareIcon, TrashIcon, ArrowRightIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline';
 import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/vue/24/solid';
 withDefaults(defineProps<{ inline?: boolean; back?: boolean }>(), { back: true });
-import { WORK_TYPE_LABELS, WORK_STATE_LABELS, CONTEST_REASONS, type WorkView, type HistoryEntry } from '../../../shared/travaux';
+import { fmtVotes, WORK_TYPE_LABELS, WORK_STATE_LABELS, CONTEST_REASONS, type WorkView, type HistoryEntry } from '../../../shared/travaux';
 import { frenchDate, frenchStamp, campusDate, campusTime } from '../../../shared/calendar';
 import { api, errorText, openedWork, works, replaceWork, vote, me, canContribute, ui, form, marks, isDone, setDone, setNote, markWorkSeen, section, visibleWorks, label, highlightCourse } from '../../scripts/travaux';
 import { date as planningDate, online } from '../../scripts/calendarStore';
@@ -19,7 +19,7 @@ async function refresh(id = openedWork.value) {
 }
 watch(openedWork, id => { work.value = works.value.find(item => item.id === id); history.value = []; status.value = ''; contesting.value = deleting.value = reporting.value = false; void refresh(id); }, { immediate: true });
 const left = computed(() => work.value ? label(work.value) : undefined);
-const stateText = computed(() => !work.value ? '' : work.value.state === 'pending' ? `À confirmer · ${Math.floor(work.value.up)}/${work.value.required}` : WORK_STATE_LABELS[work.value.state]);
+const stateText = computed(() => !work.value ? '' : work.value.state === 'pending' ? `À confirmer · ${fmtVotes(work.value.up)}/${work.value.required}` : WORK_STATE_LABELS[work.value.state]);
 const moderator = computed(() => !!work.value?.voters);
 function needAccount() { if (!me.value) { ui.value.login = true; return true; } if (!canContribute.value) { status.value = me.value.banned ? 'Compte banni.' : me.value.readOnlyUntil ? 'Compte en lecture seule pour le moment.' : 'Termine la création de ton compte.'; return true; } return false; }
 async function run(action: () => Promise<WorkView | undefined | void>, done = '') {
@@ -31,7 +31,15 @@ async function run(action: () => Promise<WorkView | undefined | void>, done = ''
 const confirm = () => { if (needAccount() || !work.value) return; const id = work.value.id; void run(() => vote(`/travaux/work/${id}/vote`, { value: work.value!.myVote === 1 ? 0 : 1 })); };
 function contest(choice: string) { if (!work.value) return; const id = work.value.id; const text = choice === 'Autre' ? reason.value.trim() : choice + (detail.value.trim() ? ' : ' + detail.value.trim() : ''); if (!text) { status.value = 'Indique le motif.'; return; } contesting.value = false; void run(() => vote(`/travaux/work/${id}/vote`, { value: -1, reason: text }), 'Contestation enregistrée.'); }
 const withdraw = () => { if (!work.value) return; const id = work.value.id; void run(() => vote(`/travaux/work/${id}/vote`, { value: 0 }), 'Vote retiré.'); };
-const voteProposal = (value: 1 | -1) => { if (needAccount() || !work.value?.proposal) return; const id = work.value.proposal.id; void run(() => vote(`/travaux/proposal/${id}/vote`, value === -1 ? { value, reason: 'Modification refusée' } : { value })); };
+const voteProposal = (value: 1 | -1) => {
+  if (needAccount() || !work.value?.proposal) return;
+  const id = work.value.proposal.id;
+  // A second click on the same vote cancels it, like the confirm / contest buttons.
+  if (work.value.proposal.myVote === value) { void run(() => vote(`/travaux/proposal/${id}/vote`, { value: 0 })); return; }
+  void run(() => vote(`/travaux/proposal/${id}/vote`, value === -1 ? { value, reason: 'Modification refusée' } : { value }));
+};
+// Delegates and administrators settle a proposal without waiting for the 3 votes.
+const decideProposal = (action: 'accept' | 'reject') => { if (!work.value?.proposal) return; const id = work.value.proposal.id; void run(() => api<WorkView>(`/travaux/proposal/${id}/decide`, { body: { action } }), action === 'accept' ? 'Proposition validée.' : 'Proposition refusée.'); };
 function proposeDelete() { if (!work.value || !reason.value.trim()) { status.value = 'Indique pourquoi.'; return; } const id = work.value.id, text = reason.value.trim(); deleting.value = false; void run(() => api<WorkView>(`/travaux/work/${id}/proposal`, { body: { kind: 'delete', reason: text } }), 'Proposition envoyée : le travail reste visible pendant le vote.'); }
 function report() { if (!work.value) return; const id = work.value.id, text = reason.value.trim() || 'Contenu inapproprié'; reporting.value = false; void run(async () => { await api(`/travaux/work/${id}/report`, { body: { reason: text } }); }, 'Signalement envoyé. Merci.'); }
 const moderate = (action: 'validate' | 'remove' | 'restore', falseWork = false) => { if (!work.value) return; const id = work.value.id; void run(() => api<WorkView>(`/travaux/work/${id}/moderate`, { body: { action, reason: reason.value.trim(), false: falseWork } })); };
@@ -78,8 +86,10 @@ const stamp = frenchStamp;
     <strong>{{ work.proposal.kind === 'delete' ? 'Suppression proposée' : 'Modification proposée' }} par {{ work.proposal.author }}</strong>
     <p v-if="work.proposal.kind === 'delete'">« {{ work.proposal.reason }} »</p>
     <ul v-else class="diff"><li v-for="change in work.proposal.changes" :key="change.field"><span class="muted">{{ change.label }} :</span> <del>{{ change.before }}</del> <ArrowRightIcon aria-hidden="true" class="inline-icon" /><span class="sr-only">devient</span> <strong>{{ change.after }}</strong></li></ul>
-    <p class="muted">{{ Math.floor(work.proposal.up) }} 👍 · {{ Math.floor(work.proposal.down) }} 👎</p>
-    <div v-if="!work.proposal.mine" class="button-row"><button :aria-pressed="work.proposal.myVote === 1" :disabled="busy" @click="voteProposal(1)">👍 Valider {{ work.proposal.kind === 'delete' ? 'la suppression' : 'la modif' }}</button><button :aria-pressed="work.proposal.myVote === -1" :disabled="busy" @click="voteProposal(-1)">👎 Refuser</button></div>
+    <p class="muted">{{ fmtVotes(work.proposal.up) }} 👍 · {{ fmtVotes(work.proposal.down) }} 👎</p>
+    <div v-if="!work.proposal.mine" class="button-row proposal-votes"><button class="proposal-vote up" :aria-pressed="work.proposal.myVote === 1" :disabled="busy" :title="work.proposal.myVote === 1 ? 'Tu as validé (cliquer pour annuler)' : ''" @click="voteProposal(1)">👍 Valider {{ work.proposal.kind === 'delete' ? 'la suppression' : 'la modif' }}</button><button class="proposal-vote down" :aria-pressed="work.proposal.myVote === -1" :disabled="busy" :title="work.proposal.myVote === -1 ? 'Tu as refusé (cliquer pour annuler)' : ''" @click="voteProposal(-1)">👎 Refuser</button></div>
+    <p v-if="work.proposal.myVote" class="my-vote" role="status">{{ work.proposal.myVote === 1 ? '✅ Tu as validé cette proposition.' : '❌ Tu as refusé cette proposition.' }} <span class="muted">Clique à nouveau pour annuler ton vote.</span></p>
+    <div v-if="moderator" class="button-row proposal-decide"><button class="primary-action" :disabled="busy" @click="decideProposal('accept')">Valider sans les votes</button><button :disabled="busy" @click="decideProposal('reject')">Refuser sans les votes</button></div>
     <p v-else class="muted">Ta proposition attend l’avis des autres.</p>
   </div>
 
@@ -107,12 +117,13 @@ const stamp = frenchStamp;
   <p v-if="work.local" class="work-box warn">En attente d’envoi : ce travail sera proposé dès le retour du réseau.</p>
   <div v-else-if="work.personal" class="button-row personal-actions"><button @click="edit"><PencilSquareIcon aria-hidden="true" />Modifier</button><button class="danger-action" :disabled="busy" @click="removeOwn"><TrashIcon aria-hidden="true" />Supprimer</button></div>
   <div v-else-if="work.state !== 'removed'" class="vote-block">
-    <p v-if="work.mine" class="muted">Tu as proposé ce travail : ton vote ne compte pas. {{ Math.floor(work.up) }} 👍 · {{ Math.floor(work.down) }} 👎</p>
+    <p v-if="work.mine" class="muted">Tu as proposé ce travail : ton vote ne compte pas. {{ fmtVotes(work.up) }} 👍 · {{ fmtVotes(work.down) }} 👎</p>
+    <p v-else-if="work.myVote" class="my-vote" role="status">{{ work.myVote === 1 ? '✅ Tu as confirmé ce travail.' : '❌ Tu l’as contesté.' }} <span class="muted">Clique à nouveau pour annuler ton vote.</span></p>
     <!-- One row: the vote (wide), then the rare actions as icons. -->
     <div class="action-bar" role="group" aria-label="Actions sur ce travail">
       <template v-if="!work.mine">
-        <button class="vote-button up" :aria-pressed="work.myVote === 1" :disabled="busy" :aria-label="`Confirmer, ${Math.floor(work.up)} confirmation(s)`" :title="work.myVote === 1 ? 'Tu as confirmé (cliquer pour annuler)' : 'Confirmer : c’est juste'" @click="confirm"><HandThumbUpIcon aria-hidden="true" /><span v-if="work.up >= 1" class="vote-count" aria-hidden="true">{{ Math.floor(work.up) }}</span></button>
-        <button class="vote-button down" :aria-pressed="work.myVote === -1" :aria-expanded="contesting" :disabled="busy" :aria-label="work.myVote === -1 ? 'Retirer ma contestation' : `Contester, ${Math.floor(work.down)} contestation(s)`" :title="work.myVote === -1 ? 'Retirer ma contestation' : 'Contester : c’est faux'" @click="work.myVote === -1 ? withdraw() : startContest()"><HandThumbDownIcon aria-hidden="true" /><span v-if="work.down >= 1" class="vote-count" aria-hidden="true">{{ Math.floor(work.down) }}</span></button>
+        <button class="vote-button up" :aria-pressed="work.myVote === 1" :disabled="busy" :aria-label="`Confirmer, ${fmtVotes(work.up)} confirmation(s)`" :title="work.myVote === 1 ? 'Tu as confirmé (cliquer pour annuler)' : 'Confirmer : c’est juste'" @click="confirm"><HandThumbUpIcon aria-hidden="true" /><span v-if="work.up > 0" class="vote-count" aria-hidden="true">{{ fmtVotes(work.up) }}</span></button>
+        <button class="vote-button down" :aria-pressed="work.myVote === -1" :aria-expanded="contesting" :disabled="busy" :aria-label="work.myVote === -1 ? 'Retirer ma contestation' : `Contester, ${fmtVotes(work.down)} contestation(s)`" :title="work.myVote === -1 ? 'Retirer ma contestation' : 'Contester : c’est faux'" @click="work.myVote === -1 ? withdraw() : startContest()"><HandThumbDownIcon aria-hidden="true" /><span v-if="work.down > 0" class="vote-count" aria-hidden="true">{{ fmtVotes(work.down) }}</span></button>
       </template>
       <button class="square-action" :disabled="busy || !!work.proposal" :aria-label="work.proposal ? 'Proposer une modification (une proposition est déjà en cours)' : 'Proposer une modification'" :title="work.proposal ? 'Une proposition est déjà en cours' : 'Proposer une modification'" @click="edit"><PencilSquareIcon aria-hidden="true" /></button>
       <button class="square-action" :disabled="busy || !!work.proposal" :aria-expanded="deleting" :aria-label="work.proposal ? 'N’existe plus (une proposition est déjà en cours)' : 'N’existe plus : proposer la suppression'" :title="work.proposal ? 'Une proposition est déjà en cours' : 'N’existe plus'" @click="needAccount() || (reason = 'N’existe pas', deleting = !deleting, reporting = false, contesting = false)"><TrashIcon aria-hidden="true" /></button>

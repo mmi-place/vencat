@@ -130,6 +130,8 @@ export type WorkState = 'pending' | 'validated' | 'probable' | 'contested' | 're
 export const WORK_STATE_LABELS: Record<WorkState, string> = { pending: 'À confirmer', validated: 'Validé', probable: 'Probablement correct', contested: 'Contesté', removed: 'Retiré' };
 export interface Vote { value: 1 | -1; reason?: string; at: string; weight: number }
 export const NEW_ACCOUNT_DAYS = 7;
+/** Votes shown as they count: a vote of an account under 7 days weighs 0.5, so 0.5 is shown as « 0,5 », never rounded to 0. */
+export const fmtVotes = (value: number) => Number.isInteger(value) ? String(value) : value.toFixed(1).replace('.', ',');
 export const voteWeight = (accountCreatedAt: string, now = Date.now()) => now - Date.parse(accountCreatedAt) < NEW_ACCOUNT_DAYS * 86400000 ? 0.5 : 1;
 /** 👍 needed by the author's reliability. */
 export const requiredUpvotes = (authorReliability: number) => authorReliability >= 10 ? 1 : authorReliability >= 5 ? 2 : 3;

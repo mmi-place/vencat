@@ -1,11 +1,11 @@
 import express, {  } from 'express';
 import { sendMail } from './mail.js';
 import { HttpError, now, requireUser, groupExists, roleOf, displayName, activeDelegations, type User, type Session, type Delegation } from './auth.js';
-import { scopeMembers, cleanText, LIMITS } from '../../shared/travaux.js';
+import { scopeMembers, cleanText, tally, LIMITS } from '../../shared/travaux.js';
 import { groupById } from '../../shared/selection.js';
 import {
-  type Work, type Report, type NameRequest, type Problem, type Audit, type Alert, db, route, users, history, audit, problem, loadWork,
-  answerCounts, schoolYearEnd,
+  type Work, type Proposal, type Report, type NameRequest, type Problem, type Audit, type Alert, db, route, users, history, audit, problem, loadWork,
+  answerCounts, schoolYearEnd, describeChanges, decideProposal, votesOf,
 } from './common.js';
 
 // Moderation queue (admin: everything; delegates: reports in their groups)
@@ -25,8 +25,14 @@ export async function moderationData(admin: boolean, delegateGroups: string[]) {
   const inMyGroups = (work?: Work) => admin || (!!work && scopeMembers(work.scope).some(group => delegateGroups.includes(group.id)));
   const reports = (await db().list<Report>('reports')).filter(item => item.status === 'open' && !(item.target.kind === 'work' && works.get(item.target.id)?.personal) && (admin || (item.target.kind === 'work' && inMyGroups(works.get(item.target.id)))));
   const problems = await db().list<Problem>('problems');
+  // Proposals still waiting for their votes: moderation can settle them at once.
+  const proposals = await Promise.all((await db().list<Proposal>('proposals')).filter(item => item.status === 'open' && works.get(item.workId) && !works.get(item.workId)!.personal && inMyGroups(works.get(item.workId))).map(async item => {
+    const work = works.get(item.workId)!, t = tally(await votesOf(item.id), item.authorId);
+    return { id: item.id, workId: work.id, title: work.title, kind: item.kind, author: displayName(people.get(item.authorId)), reason: item.reason, changes: describeChanges(work, item.changes), up: t.up, down: t.down, at: item.createdAt };
+  }));
   const actor = (id: string) => id.startsWith('admin:') ? (admin ? id.slice(6) : 'Administration') : displayName(people.get(id));
   return {
+    proposals: proposals.sort((a, b) => a.at.localeCompare(b.at)),
     reports: reports.map(item => ({ id: item.id, kind: item.target.kind, targetId: item.target.id, title: item.target.kind === 'work' ? works.get(item.target.id)?.title ?? 'Travail' : item.target.kind === 'delegate' ? displayName(people.get(item.target.id)) : item.target.id, reason: item.reason, by: displayName(people.get(item.by)), at: item.at })),
     delegates: admin ? (await db().list<Delegation>('delegations')).filter(item => item.status === 'requested').map(item => ({ id: item.id, name: displayName(people.get(item.userId)), email: people.get(item.userId)?.email ?? undefined, group: `${groupById(item.groupId)?.promotion} ${groupById(item.groupId)?.label}`, title: item.title ?? 'titulaire', note: item.note ?? '', electedOn: item.electedOn, answers: answerCounts(item), at: item.createdAt })) : [],
     activeDelegates: admin ? (await activeDelegations()).map(item => ({ id: item.id, name: displayName(people.get(item.userId)), group: `${groupById(item.groupId)?.promotion} ${groupById(item.groupId)?.label}`, title: item.title ?? 'titulaire', until: item.until })) : [],
@@ -51,6 +57,15 @@ export async function moderationAction(actorId: string, admin: boolean, delegate
   const { kind, action } = req.body ?? {};
   const targetId = String(req.body?.id ?? ''), reason = cleanText(req.body?.reason, LIMITS.reason);
   const contact = process.env.CONTACT_EMAIL || '';
+  if (kind === 'proposal') {
+    if (action !== 'accept' && action !== 'reject') throw new HttpError(400, 'Action inconnue.');
+    const proposal = await db().get<Proposal>('proposals', targetId);
+    if (!proposal || proposal.status !== 'open') throw new HttpError(404, 'Proposition fermée.');
+    const work = await loadWork(proposal.workId);
+    if (!admin && !scopeMembers(work.scope).some(group => delegateGroups.includes(group.id))) throw new HttpError(403, 'Hors de ta portée.');
+    await decideProposal(work, proposal, actorId, action === 'accept');
+    return;
+  }
   if (kind === 'report') {
     const report = await db().get<Report>('reports', targetId);
     if (!report) throw new HttpError(404, 'Signalement introuvable.');

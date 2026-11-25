@@ -701,3 +701,12 @@
 .feedback-inbox { display: grid; gap: 12px; list-style: none; padding: 0; margin: 0; }
 .feedback-inbox li { padding-bottom: 10px; border-bottom: 1px solid var(--line); }
 .feedback-inbox p { margin: 4px 0; white-space: pre-wrap; }
+
+/* Proposal votes: the chosen vote is highlighted like the confirm / contest buttons, and written out. */
+.proposal-votes { display: flex; gap: 8px; }
+.proposal-votes .proposal-vote { flex: 1 1 0; }
+.proposal-vote.up[aria-pressed=true] { background: color-mix(in srgb, #15803d 35%, var(--surface)); border-color: #2fae74; color: var(--text); }
+.proposal-vote.down[aria-pressed=true] { background: color-mix(in srgb, #b91c1c 30%, var(--surface)); border-color: #e05a5a; color: var(--text); }
+.my-vote { margin: 6px 0 0; font-weight: 700; font-size: .9rem; }
+.proposal-decide { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.mod-proposals h3 { display: flex; align-items: center; gap: 8px; font-size: 1rem; margin: 8px 0; }

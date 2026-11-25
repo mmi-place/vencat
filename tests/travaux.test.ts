@@ -422,3 +422,34 @@ test('NOTIFY_EMAILS gives the starting lists, until an administrator saves one',
     assert.deepEqual(await recipients('feedback'), ['equipe@gmail.com'], 'a saved list wins');
   } finally { if (saved === undefined) delete process.env.NOTIFY_EMAILS; else process.env.NOTIFY_EMAILS = saved; }
 });
+
+test('moderation settles a proposal without the 3 votes: administration and delegates, not students', async () => {
+  resetLimits();
+  process.env.ADMIN_EMAILS = 'chef.admin@gmail.com';
+  process.env.MAIL_LOG_ONLY = '@gmail\\.com$';
+  const author = await signIn('bypass.author@ens.uvsq.fr');
+  const proposer = await signIn('bypass.prop@ens.uvsq.fr');
+  const student = await signIn('bypass.other@ens.uvsq.fr');
+  const body = { type: 'rendu', title: 'Rendu à corriger', day: '2026-12-08', scope: { kind: 'group', key: B1 }, details: { where: '', format: '', mode: '', info: '' }, links: [], clientId: 'client-bypass-1' };
+  const work = (await author.browser('/travaux/works', { body })).body;
+  const edit = await proposer.browser(`/travaux/work/${work.id}/proposal`, { body: { kind: 'edit', changes: { title: 'Rendu corrigé' }, reason: 'Faute de frappe' } });
+  assert.equal(edit.status, 201, JSON.stringify(edit.body));
+  const proposalId = edit.body.proposal.id as string;
+  // A student cannot settle it.
+  assert.equal((await student.browser(`/travaux/proposal/${proposalId}/decide`, { body: { action: 'accept' } })).status, 403);
+  // The administration sees it in its queue and accepts it at once.
+  const admin = client();
+  const start = await admin('/admin/start', { body: { email: 'chef.admin@gmail.com' } });
+  await admin('/admin/verify', { body: { requestId: start.body.requestId, code: start.body.devCode } });
+  const queue = (await admin('/admin/overview')).body.proposals as { id: string; title: string }[];
+  assert.ok(queue.some(item => item.id === proposalId && item.title === 'Rendu à corriger'));
+  assert.equal((await admin('/admin/action', { body: { kind: 'proposal', id: proposalId, action: 'accept' } })).status, 200);
+  assert.equal((await store().get<{ title: string }>('works', work.id))!.title, 'Rendu corrigé');
+  assert.equal((await store().get<{ status: string }>('proposals', proposalId))!.status, 'accepted');
+  assert.equal((await admin('/admin/action', { body: { kind: 'proposal', id: proposalId, action: 'accept' } })).status, 404, 'already closed');
+  // A rejection closes the next proposal without touching the work.
+  const second = await proposer.browser(`/travaux/work/${work.id}/proposal`, { body: { kind: 'edit', changes: { title: 'Autre titre' }, reason: 'Test' } });
+  assert.equal((await admin('/admin/action', { body: { kind: 'proposal', id: second.body.proposal.id, action: 'reject' } })).status, 200);
+  assert.equal((await store().get<{ title: string }>('works', work.id))!.title, 'Rendu corrigé');
+  assert.equal((await store().get<{ status: string }>('proposals', second.body.proposal.id))!.status, 'rejected');
+});

@@ -4,7 +4,7 @@ import { CheckIcon, XMarkIcon, ForwardIcon, ArrowRightIcon, ShieldCheckIcon, Que
 import AccessibleDialog from '../AccessibleDialog.vue';
 import WorkTypeIcon from './WorkTypeIcon.vue';
 import { api, queue, ui, vote, errorText, openedWork, loadQueue, type CorrectionView, type DeclarationView } from '../../scripts/travaux';
-import { WORK_TYPE_LABELS, CONTEST_REASONS, type WorkView } from '../../../shared/travaux';
+import { fmtVotes, WORK_TYPE_LABELS, CONTEST_REASONS, type WorkView } from '../../../shared/travaux';
 import { frenchDate, campusDate, campusTime } from '../../../shared/calendar';
 
 // One proposal at a time: swipe right to confirm, left to contest (a reason is then asked), or use the buttons / ← →.
@@ -73,7 +73,7 @@ const correctionText = (item: CorrectionView) => item.field === 'cancelled' ? 'C
           <p class="swipe-kind"><WorkTypeIcon :type="current.work.type" />{{ WORK_TYPE_LABELS[current.work.type] }}<span v-if="current.proposal"> · {{ current.work.proposal!.kind === 'delete' ? 'suppression proposée' : 'modification proposée' }}</span></p>
           <h3>{{ current.work.title }}</h3>
           <p class="swipe-when">{{ frenchDate(current.work.day, { weekday: 'long', day: 'numeric', month: 'long' }) }} · {{ current.work.time }}</p>
-          <dl class="swipe-facts"><dt>Pour</dt><dd>{{ current.work.scopeLabel }}</dd><template v-if="current.work.details.where"><dt>Où</dt><dd>{{ current.work.details.where }}</dd></template><template v-if="current.work.details.format"><dt>Format</dt><dd>{{ current.work.details.format }}</dd></template><template v-if="current.work.course"><dt>Cours</dt><dd>{{ current.work.course.summary }}</dd></template><dt>Par</dt><dd>{{ current.work.author }} · {{ Math.floor(current.work.up) }}/{{ current.work.required }} 👍</dd></dl>
+          <dl class="swipe-facts"><dt>Pour</dt><dd>{{ current.work.scopeLabel }}</dd><template v-if="current.work.details.where"><dt>Où</dt><dd>{{ current.work.details.where }}</dd></template><template v-if="current.work.details.format"><dt>Format</dt><dd>{{ current.work.details.format }}</dd></template><template v-if="current.work.course"><dt>Cours</dt><dd>{{ current.work.course.summary }}</dd></template><dt>Par</dt><dd>{{ current.work.author }} · {{ fmtVotes(current.work.up) }}/{{ current.work.required }} 👍</dd></dl>
           <ul v-if="current.proposal && current.work.proposal!.kind === 'edit'" class="diff"><li v-for="change in current.work.proposal!.changes" :key="change.field"><span class="muted">{{ change.label }} :</span> <del>{{ change.before }}</del> <ArrowRightIcon class="inline-icon" aria-hidden="true" /> <strong>{{ change.after }}</strong></li></ul>
           <p v-else-if="current.proposal" class="swipe-reason">« {{ current.work.proposal!.reason }} »</p>
           <button class="text-button" @click="openedWork = current.work.id; ui.queue = false">Voir la fiche complète</button>

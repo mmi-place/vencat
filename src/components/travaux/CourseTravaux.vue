@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { CourseDTO } from '../../../shared/courses';
-import { WORK_TYPE_LABELS } from '../../../shared/travaux';
+import { fmtVotes, WORK_TYPE_LABELS } from '../../../shared/travaux';
 import { campusDate, campusTime } from '../../../shared/calendar';
 import AddEvent from './AddEvent.vue';
 import { planningOnly, worksForCourse, isDs, form, openedWork, requireAccount, correctionFor, corrections, api, errorText, vote, me, canContribute, ui, loadCorrections, type CorrectionView } from '../../scripts/travaux';
@@ -32,7 +32,7 @@ const future = computed(() => Date.parse(props.course.end) > Date.now());
 <template><section class="course-travaux" aria-label="Travaux et corrections">
   <AddEvent :title="(course.type && course.type !== 'inconnu' ? course.type + ' · ' : '') + course.summary" :start="course.start" :end="course.end" :location="course.location" :details="[course.module !== course.summary ? course.module : '', course.teachers.join(', ')].filter(Boolean).join('\n')" :ics="`/api/travaux/course-event.ics?group=${encodeURIComponent(selection?.id ?? '')}&uid=${encodeURIComponent(course.uid)}&start=${encodeURIComponent(course.start)}`" label="Ajouter ce cours à mon agenda" hint="Ce cours seul, avec un rappel 15 minutes avant." />
   <template v-if="!planningOnly">
-  <div v-if="correction" class="work-box warn"><strong>Signalé par des étudiants</strong><p>{{ correctionLabel(correction) }}</p><p class="muted">{{ Math.floor(correction.up) }} 👍 · {{ Math.floor(correction.down) }} 👎 · certifié sur l’honneur par {{ correction.author }} · {{ correction.state === 'validated' ? 'validé' : 'à confirmer' }}. CELCAT reste la source officielle.</p><div v-if="!correction.mine && correction.state !== 'validated'" class="button-row"><button :aria-pressed="correction.myVote === 1" @click="voteCorrection(1)">👍 C’est exact</button><button :aria-pressed="correction.myVote === -1" @click="voteCorrection(-1)">👎 Faux</button></div></div>
+  <div v-if="correction" class="work-box warn"><strong>Signalé par des étudiants</strong><p>{{ correctionLabel(correction) }}</p><p class="muted">{{ fmtVotes(correction.up) }} 👍 · {{ fmtVotes(correction.down) }} 👎 · certifié sur l’honneur par {{ correction.author }} · {{ correction.state === 'validated' ? 'validé' : 'à confirmer' }}. CELCAT reste la source officielle.</p><div v-if="!correction.mine && correction.state !== 'validated'" class="button-row"><button :aria-pressed="correction.myVote === 1" @click="voteCorrection(1)">👍 C’est exact</button><button :aria-pressed="correction.myVote === -1" @click="voteCorrection(-1)">👎 Faux</button></div></div>
   <h3>Travaux</h3>
   <ul v-if="linked.length" class="course-work-list"><li v-for="item in linked" :key="item.work.id"><button class="text-action" @click="open(item.work.id)"><span class="type-tag" :class="'tag-' + item.work.type">{{ WORK_TYPE_LABELS[item.work.type] }}</span> {{ item.work.title }} · {{ item.work.hasTime ? item.work.time : 'avant 23:59' }}<template v-if="item.moved"> · cours modifié</template></button></li></ul>
   <p v-else class="muted">Aucun travail lié à ce cours.</p>
