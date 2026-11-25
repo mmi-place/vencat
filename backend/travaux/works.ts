@@ -1,5 +1,6 @@
 import express, {  } from 'express';
 import { HttpError, id, now, authenticate, requireUser, requireContributor, overLimit, groupExists, isNewAccount, displayName, type User, type Delegation } from './auth.js';
+import { notifyAdmins } from './notify.js';
 import {
   parseWorkInput, voteState, scopeIncludes, cleanText, LIMITS, worksToIcs, courseToIcs, audienceScope, widerScope, type WorkInput,
   type WorkView, type HistoryEntry,
@@ -166,6 +167,8 @@ router.post('/travaux/work/:id/report', route(async (req, res) => {
   if (await overLimit('report:' + user.id, 20, 86400)) throw new HttpError(429, 'Trop de signalements aujourd’hui.');
   const report: Report = { id: id(), target: { kind, id: String(req.params.id) }, reason, by: user.id, at: now(), status: 'open' };
   await db().put('reports', report.id, report);
+  const subject = kind === 'work' ? (await db().get<Work>('works', report.target.id))?.title ?? 'travail' : kind === 'delegate' ? 'délégué(e)' : 'correction';
+  await notifyAdmins('reports', `Vencat : signalement (${subject})`, `${displayName(user)} a signalé ${kind === 'work' ? 'le travail' : kind === 'delegate' ? 'une déclaration de délégué(e)' : 'une correction'} « ${subject} ».\nMotif : ${reason}\n\nÀ traiter dans l’administration (/admin › Modération).`);
   res.json({ ok: true, message: 'Signalement envoyé. Merci.' });
 }));
 router.post('/travaux/work/:id/moderate', route(async (req, res) => {

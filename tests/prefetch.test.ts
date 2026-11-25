@@ -25,3 +25,14 @@ test('the prefetch route needs the cron secret', async () => {
   assert.equal((await fetch(base + '?from=999', { headers: { authorization: 'Bearer test-secret' } })).status, 400);
   delete process.env.CRON_SECRET;
 });
+
+test('a visit only starts a refresh on Vercel (or when asked), from the app, and never from a plain request', async () => {
+  const url = `http://127.0.0.1:${address.port}/api/prefetch/touch`;
+  const headers = { 'x-requested-with': 'vencat' };
+  assert.equal((await fetch(url, { method: 'POST', headers })).status, 204, 'local server: its own scheduler does the work');
+  process.env.PREFETCH_ON_VISIT = '1';
+  try {
+    assert.equal((await fetch(url, { method: 'POST' })).status, 400, 'the app header is required');
+    assert.equal((await fetch(url, { method: 'GET' })).status, 404, 'POST only');
+  } finally { delete process.env.PREFETCH_ON_VISIT; }
+});

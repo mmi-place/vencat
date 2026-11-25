@@ -2,13 +2,12 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { PlusIcon } from '@heroicons/vue/24/outline';
 import WorkCard from './WorkCard.vue';
-import WorkItem from './WorkItem.vue';
-import { isDone, worksByDay, today, travauxDay, focusDay, agendaFocus, stripWeek, wide, lateWorks, form, requireAccount, openedWork, worksLoading } from '../../scripts/travaux';
+import { isDone, worksByDay, today, travauxDay, focusDay, agendaFocus, stripWeek, wide, form, requireAccount, openedWork, worksLoading } from '../../scripts/travaux';
 import { preferences } from '../../scripts/calendarStore';
 import { addDay, frenchDate, mondayOf } from '../../../shared/calendar';
 
 // Continuous agenda from the current week: weeks are added while scrolling down (and up),
-// the farthest ones are removed so the page stays light.
+// the farthest ones are removed once the scroll is idle so the page stays light.
 const MAX_WEEKS = 30, STEP = 4;
 const scroller = ref<HTMLElement>(), top = ref<HTMLElement>(), bottom = ref<HTMLElement>();
 const start = mondayOf(today.value);
@@ -36,45 +35,60 @@ async function keep(element: HTMLElement | undefined, change: () => void) {
   const row = before && element?.querySelector<HTMLElement>(`[data-week="${before.week}"]`);
   if (element && row && before) element.scrollTop = row.offsetTop - before.delta;
 }
+// iPad/iPhone: changing scrollTop (or the content above the screen) while a finger or the momentum is still
+// scrolling makes the agenda jump and cuts the inertia. So nothing above the screen is touched until the scroll
+// has stopped; adding weeks at the bottom never moves what is shown and can happen at any time.
+let touching = false, lastScroll = 0;
+const isIdle = () => !touching && Date.now() - lastScroll >= 160;
+const idle = () => new Promise<void>(resolve => { const check = () => isIdle() ? resolve() : setTimeout(check, 60); check(); });
 async function grow(direction: 1 | -1) {
   const element = scroller.value;
   if (direction > 0) {
     const last = weeks.value[weeks.value.length - 1]!;
-    const added = Array.from({ length: STEP }, (_, index) => addDay(last, (index + 1) * 7));
-    // Only weeks already scrolled out of sight above are removed, never the ones on screen.
-    let removable = 0;
-    if (weeks.value.length + STEP > MAX_WEEKS && element) {
-      const top = (week?: string) => week ? element.querySelector<HTMLElement>(`[data-week="${week}"]`)?.offsetTop : undefined;
-      while (removable < STEP) { const next = top(weeks.value[removable + 1]); if (next === undefined || next > element.scrollTop - 200) break; removable++; }
-    }
-    if (removable) await keep(element, () => { weeks.value = [...weeks.value.slice(removable), ...added]; });
-    else weeks.value = [...weeks.value, ...added];
+    weeks.value = [...weeks.value, ...Array.from({ length: STEP }, (_, index) => addDay(last, (index + 1) * 7))];
   } else {
+    // Only called once the scroll is idle (see checkEdges).
+    if (!element || element.scrollTop >= 400) return;
     const first = weeks.value[0]!;
     const added = Array.from({ length: 2 }, (_, index) => addDay(first, -(2 - index) * 7));
-    // Weeks far below the screen can go: removing them below does not move what is shown.
-    let keepCount = weeks.value.length;
-    if (element && keepCount + 2 > MAX_WEEKS) {
-      const limit = element.scrollTop + element.clientHeight + 1200;
-      while (keepCount > MAX_WEEKS - 2) { const row = element.querySelector<HTMLElement>(`[data-week="${weeks.value[keepCount - 1]}"]`); if (!row || row.offsetTop < limit) break; keepCount--; }
-    }
-    await keep(element, () => { weeks.value = [...added, ...weeks.value.slice(0, keepCount)]; });
+    await keep(element, () => { weeks.value = [...added, ...weeks.value]; });
   }
+}
+/** Keeps the page light once the scroll is idle: weeks far above or far below the screen are removed. */
+let pruning = false;
+async function prune() {
+  const element = scroller.value;
+  if (!element || pruning || weeks.value.length <= MAX_WEEKS) return;
+  pruning = true;
+  try { await idle(); } finally { pruning = false; }
+  if (weeks.value.length <= MAX_WEEKS) return;
+  const offset = (week?: string) => week ? element.querySelector<HTMLElement>(`[data-week="${week}"]`)?.offsetTop : undefined;
+  let above = 0, below = weeks.value.length;
+  while (weeks.value.length - above > MAX_WEEKS - 4) { const next = offset(weeks.value[above + 1]); if (next === undefined || next > element.scrollTop - 1500) break; above++; }
+  while (below - above > MAX_WEEKS - 4) { const row = offset(weeks.value[below - 1]); if (row === undefined || row < element.scrollTop + element.clientHeight + 2500) break; below--; }
+  if (above || below < weeks.value.length) await keep(element, () => { weeks.value = weeks.value.slice(above, below); });
 }
 // Load more at both ends, checked on every scroll (and again after each load, in case the end is still close).
 let sections: IntersectionObserver | undefined;
-let growing = false, topArmed = false, frame = 0;
+let growing = false, topArmed = false, topWaiting = false, frame = 0;
 async function checkEdges() {
   const element = scroller.value;
   if (!element || growing) return;
-  const nearBottom = element.scrollTop + element.clientHeight > element.scrollHeight - 900;
+  const nearBottom = element.scrollTop + element.clientHeight > element.scrollHeight - 1200;
   const nearTop = topArmed && element.scrollTop < 400;
-  if (!nearBottom && !nearTop) return;
+  if (!nearBottom && !nearTop) { void prune(); return; }
+  // Earlier weeks are added once the scroll is idle; waiting for that never blocks loading at the bottom.
+  if (!nearBottom) {
+    if (topWaiting) return;
+    topWaiting = true;
+    try { await idle(); } finally { topWaiting = false; }
+  }
   growing = true;
   try { await grow(nearBottom ? 1 : -1); } finally { growing = false; }
   requestAnimationFrame(() => void checkEdges());
 }
-const onScroll = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => void checkEdges()); };
+const onScroll = () => { lastScroll = Date.now(); cancelAnimationFrame(frame); frame = requestAnimationFrame(() => void checkEdges()); };
+const touchStart = () => { touching = true; }, touchEnd = () => { touching = false; lastScroll = Date.now(); };
 // The week bar follows the week at the top of the agenda.
 const visible = new Map<string, number>();
 function observeSections() {
@@ -89,6 +103,9 @@ function observeSections() {
 watch(weeks, () => nextTick(observeSections));
 onMounted(() => {
   scroller.value?.addEventListener('scroll', onScroll, { passive: true });
+  scroller.value?.addEventListener('touchstart', touchStart, { passive: true });
+  scroller.value?.addEventListener('touchend', touchEnd, { passive: true });
+  scroller.value?.addEventListener('touchcancel', touchEnd, { passive: true });
   // Earlier weeks load only once the person scrolls up by themselves: the agenda opens on the current week.
   const armTop = () => { topArmed = true; };
   scroller.value?.addEventListener('wheel', armTop, { passive: true, once: true });
@@ -97,7 +114,7 @@ onMounted(() => {
   void checkEdges();
   if (mondayOf(travauxDay.value) !== start) void scrollTo(travauxDay.value, false);
 });
-onBeforeUnmount(() => { scroller.value?.removeEventListener('scroll', onScroll); cancelAnimationFrame(frame); sections?.disconnect(); });
+onBeforeUnmount(() => { scroller.value?.removeEventListener('scroll', onScroll); scroller.value?.removeEventListener('touchstart', touchStart); scroller.value?.removeEventListener('touchend', touchEnd); scroller.value?.removeEventListener('touchcancel', touchEnd); cancelAnimationFrame(frame); sections?.disconnect(); });
 
 // Go to a day asked by the week bar, the timetable or a link.
 async function scrollTo(day: string, smooth = true) {
@@ -139,10 +156,6 @@ function selectDay(day: string) { focusDay(day, false); if (wide.value) openedWo
 <template>
 <div ref="scroller" class="work-agenda desktop" :aria-busy="worksLoading" tabindex="-1">
   <div ref="top" class="agenda-edge" aria-hidden="true"></div>
-  <section v-if="lateWorks.length" class="agenda-late" aria-label="En retard">
-    <h2>En retard <span class="count">{{ lateWorks.length }}</span></h2>
-    <WorkItem v-for="work in lateWorks" :key="work.id" :work="work" show-date :selected="openedWork === work.id" />
-  </section>
   <div class="agenda-table" :style="{ '--columns': dayCount }" role="grid" aria-label="Agenda des travaux">
     <div class="agenda-head" role="row"><span class="agenda-corner" aria-hidden="true"></span><span v-for="name in ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].slice(0, dayCount)" :key="name" role="columnheader">{{ name }}</span></div>
     <div v-for="week in weeks" :key="week" class="agenda-row" :class="{ current: week === mondayOf(today) }" :data-week="week" role="row">

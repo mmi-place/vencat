@@ -1,6 +1,7 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import { store } from './store.js';
-import { HttpError, id, now, overLimit, roleOf, displayName, shortDisplayName, type User, type Delegation } from './auth.js';
+import { notifyAdmins } from './notify.js';
+import { HttpError, id, now, hash, overLimit, roleOf, displayName, shortDisplayName, type User, type Delegation } from './auth.js';
 import {
   voteState, tally, requiredUpvotes, scopeLabel, scopeMembers, parisInstant, DEFAULT_DUE_TIME, linkDomain, cleanText, LIMITS, WORK_TYPE_LABELS,
   voteWeight, type WorkInput, type WorkView, type WorkState, type Vote, type WorkProposalView, type CourseLink, type WorkScope,
@@ -48,6 +49,7 @@ export async function problem(userId: string, kind: string, detail: string) {
   if (recent.length >= 3 && !(await db().list<Alert>('alerts')).some(alert => alert.userId === userId && alert.status === 'open')) {
     const alert: Alert = { id: id(), userId, at: now(), status: 'open' };
     await db().put('alerts', alert.id, alert);
+    await notifyAdmins('important', 'Vencat : alerte sur un compte', `Un compte a eu 3 problèmes en 7 jours (${kind}). À traiter dans l’administration (/admin › Modération).`);
   }
 }
 export async function adjustReliability(userId: string, delta: number) {
@@ -163,4 +165,22 @@ export async function correctionView(item: Correction, viewer: User | undefined,
   const state = item.status === 'accepted' ? 'validated' : voteState(votes, item.authorId, item.createdAt, author?.reliability ?? 0);
   const t = tally(votes, item.authorId);
   return { id: item.id, groupId: item.groupId, course: item.course, field: item.field, value: item.value, start: item.start, end: item.end, author: shortDisplayName(author), state, up: t.up, down: t.down, myVote: viewer ? votes[viewer.id]?.value : undefined, mine: viewer?.id === item.authorId, status: item.status, createdAt: item.createdAt };
+}
+
+/** Erases an account (the person's request or an administrator's): mail, name, sessions, marks, name requests, sign-in requests
+ *  and feedback replies go. Contributions stay, signed « Ancien étudiant ». A ban or a read-only period is kept as a
+ *  hashed-address sanction, so deleting the account never wipes it. */
+export async function eraseAccount(user: User) {
+  const email = user.email;
+  const sanctioned = !!user.banned || (!!user.readOnlyUntil && user.readOnlyUntil > now());
+  if (email && sanctioned) await db().put('sanctions', hash(email), { banned: user.banned, readOnlyUntil: user.readOnlyUntil });
+  if (email) {
+    await db().delete('emails', email);
+    for (const login of (await db().list<{ id: string; email?: string }>('logins')).filter(item => item.email === email)) await db().delete('logins', login.id);
+    for (const item of (await db().list<{ id: string; email?: string }>('feedback')).filter(entry => entry.email === email)) await db().delete('feedback', item.id);
+  }
+  for (const item of (await db().list<{ id: string; userId: string }>('sessions')).filter(entry => entry.userId === user.id)) await db().delete('sessions', item.id);
+  for (const item of (await db().list<{ id: string; userId: string }>('names')).filter(entry => entry.userId === user.id)) await db().delete('names', item.id);
+  await db().delete('marks', user.id);
+  await db().put('users', user.id, { id: user.id, email: null, firstName: '', lastName: '', createdAt: user.createdAt, reliability: user.reliability, deletedAt: now(), banned: user.banned, readOnlyUntil: user.readOnlyUntil } satisfies User);
 }

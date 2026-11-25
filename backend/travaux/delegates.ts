@@ -1,6 +1,6 @@
 import express, {  } from 'express';
-import { sendMail } from './mail.js';
-import { HttpError, id, now, authenticate, requireUser, requireContributor, displayName, activeDelegations, adminEmails, type Delegation } from './auth.js';
+import { notifyAdmins } from './notify.js';
+import { HttpError, id, now, authenticate, requireUser, requireContributor, displayName, activeDelegations, type Delegation } from './auth.js';
 import { cleanText, LIMITS } from '../../shared/travaux.js';
 import { groupById } from '../../shared/selection.js';
 import { db, route, users, audit, answerCounts } from './common.js';
@@ -40,7 +40,7 @@ router.post('/travaux/delegates/request', route(async (req, res) => {
   await db().put('delegations', delegation.id, delegation);
   // The administration is told at once: it checks with the list of elected representatives.
   const group = groupById(user.groupId);
-  for (const admin of adminEmails()) void sendMail({ to: admin, subject: 'Vencat : déclaration de délégué à vérifier', text: `${displayName(user)} (${user.email}) se déclare délégué(e) ${title} de ${group?.promotion} ${group?.label}, élu(e) le ${electedOn}.${note ? `\nPrécision : ${note}` : ''}\nLes élèves du groupe donnent leur avis dans Vencat. À confirmer ou refuser dans l’administration (/admin › Modération).` }).catch(() => undefined);
+  await notifyAdmins('important', 'Vencat : déclaration de délégué à vérifier', `${displayName(user)} (${user.email}) se déclare délégué(e) ${title} de ${group?.promotion} ${group?.label}, élu(e) le ${electedOn}.${note ? `\nPrécision : ${note}` : ''}\nLes élèves du groupe donnent leur avis dans Vencat. À confirmer ou refuser dans l’administration (/admin › Modération).`);
   res.status(201).json({ ok: true });
 }));
 /** A student of the group says whether the declaration is right: yes, don't know, no. */

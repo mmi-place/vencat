@@ -72,9 +72,9 @@ async function scan() {
       if (page.value !== 'scan' || !video.value) return;
       const value = await read(video.value);
       if (value) {
-        // Recognised by its content (?qr=<id>&n=<number>), whatever the address in front: the server checks the request itself.
-        const found = /[?&]qr=([a-f0-9]{32})(?:&n=(\d{2}))?/.exec(value);
-        if (found) { stopScan(); qrRequest.value = { id: found[1]!, number: Number(found[2] ?? 0) }; ui.value.account = false; return; }
+        // Recognised by its content (?qr=<id>), whatever the address in front: the server checks the request itself.
+        const found = /[?&]qr=([a-f0-9]{32})/.exec(value);
+        if (found) { stopScan(); qrRequest.value = { id: found[1]! }; ui.value.account = false; return; }
         status.value = 'Ce n’est pas un QR code de connexion Vencat.';
       }
       setTimeout(() => requestAnimationFrame(() => void loop()), 120);

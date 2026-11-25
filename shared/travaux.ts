@@ -82,13 +82,13 @@ export function parisInstant(day: string, time = DEFAULT_DUE_TIME): string {
 }
 export const validTime = (value: unknown): value is string => typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 
-/** Countdown shown on labels: in the past, today, tomorrow, J-n. Level grows as the deadline nears (like change badges). */
-export function countdown(dueDay: string, today: string): { label: string; level: 0 | 1 | 2 | 3 | 4; late: boolean } {
+/** Countdown shown on labels: today, tomorrow, J-n; nothing once past (what is past is past). Level grows as the deadline nears (like change badges). */
+export function countdown(dueDay: string, today: string): { label: string; level: 0 | 1 | 2 | 3 | 4 } {
   const days = Math.round((Date.parse(dueDay + 'T12:00:00Z') - Date.parse(today + 'T12:00:00Z')) / 86400000);
-  if (days < 0) return { label: 'en retard', level: 4, late: true };
-  if (days === 0) return { label: 'aujourd’hui', level: 4, late: false };
-  if (days === 1) return { label: 'demain', level: 3, late: false };
-  return { label: `J-${days}`, level: days <= 3 ? 2 : days <= 7 ? 1 : 0, late: false };
+  if (days < 0) return { label: '', level: 0 };
+  if (days === 0) return { label: 'aujourd’hui', level: 4 };
+  if (days === 1) return { label: 'demain', level: 3 };
+  return { label: `J-${days}`, level: days <= 3 ? 2 : days <= 7 ? 1 : 0 };
 }
 
 // ---------------------------------------------------------------------------

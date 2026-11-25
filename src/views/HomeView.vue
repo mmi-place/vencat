@@ -22,6 +22,8 @@ import KeyboardHelp from '../components/KeyboardHelp.vue';
 import SectionSwitch from '../components/travaux/SectionSwitch.vue';
 import SectionTabs from '../components/travaux/SectionTabs.vue';
 import AccountButton from '../components/travaux/AccountButton.vue';
+import FeedbackDialog from '../components/FeedbackDialog.vue';
+import { ChatBubbleLeftEllipsisIcon } from '@heroicons/vue/24/outline';
 import WorkDots from '../components/travaux/WorkDots.vue';
 import TravauxPanel from '../components/travaux/TravauxPanel.vue';
 import TravauxRoot from '../components/travaux/TravauxRoot.vue';
@@ -33,7 +35,7 @@ import { campusDate, campusTime, frenchDate, addDay, validDay, isWeekend, todayP
 const route = useRoute(), router = useRouter();
 const settingsPage = ref<SettingsPage>('home');
 function openSettings(page: SettingsPage = 'home') { settingsPage.value = page; settingsOpen.value = true; }
-const settingsOpen = ref(false), pickerOpen = ref(false), changesOpen = ref(false);
+const settingsOpen = ref(false), pickerOpen = ref(false), changesOpen = ref(false), feedbackOpen = ref(false);
 const routeError = ref('');
 const searchInitial = ref<SearchCriterion>();
 const modesOpen = ref(false), dateOpen = ref(false), searchOpen = ref(false);
@@ -178,7 +180,7 @@ async function openChanges() { changesOpen.value = true; await refreshSharedChan
 function closeChanges() { changesOpen.value = false; }
 const helpOpen = ref(false);
 // A work shown in the side panel (wide Travaux) is not a dialog: shortcuts stay available.
-const dialogOpen = () => Object.values(travauxUi.value).some(Boolean) || !!travauxForm.value || (!!openedWork.value && !(travauxWide.value && section.value === 'travaux')) || searchOpen.value || modesOpen.value || dateOpen.value || settingsOpen.value || pickerOpen.value || changesOpen.value || helpOpen.value || !!focused.value;
+const dialogOpen = () => Object.values(travauxUi.value).some(Boolean) || !!travauxForm.value || (!!openedWork.value && !(travauxWide.value && section.value === 'travaux')) || searchOpen.value || modesOpen.value || dateOpen.value || settingsOpen.value || pickerOpen.value || changesOpen.value || feedbackOpen.value || helpOpen.value || !!focused.value;
 const typing = (target: EventTarget | null) => !!(target as HTMLElement | null)?.closest?.('input, select, textarea, [contenteditable]');
 // The current course, or the next one: entry point of the planning for the keyboard.
 const entryCourse = () => document.querySelector<HTMLElement>('.timeline-stage .course[tabindex="0"]') ?? document.querySelector<HTMLElement>('.timeline-stage .course');
@@ -232,7 +234,7 @@ onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.
 <a class="skip-link" href="#planning">Aller au planning</a>
 <div class="app-shell" :class="{ 'calendar-app': selection }">
   <nav class="app-nav" :class="{ 'onboarding-nav': !selection }" aria-label="Navigation principale">
-    <div class="brand-row"><a class="brand" href="/" @click.prevent="router.push('/')"><img src="../assets/logo.svg" width="26" height="26" alt=""><span>Vencat</span></a><button v-if="selection" class="icon-button quiet" :disabled="loading || !online" aria-label="Actualiser les cours" @click="refreshAll"><ArrowPathIcon aria-hidden="true" :class="{ refreshing: loading }" /></button></div>
+    <div class="brand-row"><a class="brand" href="/" @click.prevent="router.push('/')"><img src="../assets/logo.svg" width="26" height="26" alt=""><span>Vencat</span><sup class="beta-badge">BÊTA</sup></a><button class="icon-button quiet feedback-button" aria-haspopup="dialog" aria-label="Signaler un bug ou donner un avis (bêta)" title="Un bug, une idée ? Dis-le-nous" @click="feedbackOpen = true"><ChatBubbleLeftEllipsisIcon aria-hidden="true" /></button><button v-if="selection" class="icon-button quiet" :disabled="loading || !online" aria-label="Actualiser les cours" @click="refreshAll"><ArrowPathIcon aria-hidden="true" :class="{ refreshing: loading }" /></button></div>
     <SectionTabs v-if="selection && !planningOnly" />
     <div v-if="selection" class="desktop-actions"><button data-key="G" class="group-button" aria-haspopup="dialog" :aria-expanded="pickerOpen" :aria-controls="pickerOpen ? 'group-dialog' : undefined" @click="pickerOpen = true">{{ groupLabel }}</button><button class="icon-button quiet" aria-haspopup="dialog" :aria-expanded="searchOpen" :aria-controls="searchOpen ? 'search-dialog' : undefined" data-key="/" aria-label="Rechercher un cours" @click="toggleSearch"><MagnifyingGlassIcon aria-hidden="true" /></button><button class="icon-button quiet" aria-label="Apparence : thème et couleurs des cours" aria-haspopup="dialog" :aria-expanded="settingsOpen && settingsPage === 'appearance'" @click="openSettings('appearance')"><PaintBrushIcon aria-hidden="true" /></button><button class="icon-button quiet" aria-label="Fond de l’application" aria-haspopup="dialog" :aria-expanded="settingsOpen && settingsPage === 'background'" @click="openSettings('background')"><PhotoIcon aria-hidden="true" /></button><button class="icon-button quiet" aria-label="Réglages" aria-haspopup="dialog" :aria-expanded="settingsOpen" :aria-controls="settingsOpen ? 'settings-dialog' : undefined" @click="openSettings()"><Cog6ToothIcon aria-hidden="true" /></button><button class="icon-button quiet" :class="{ 'unread-bell': unseenChanges.length }" :aria-label="unseenChanges.length ? 'Changements du planning non lus' : 'Changements du planning'" data-key="C" aria-haspopup="dialog" :aria-expanded="changesOpen" :aria-controls="changesOpen ? 'changes-dialog' : undefined" @click="openChanges"><BellSolidIcon aria-hidden="true" v-if="unseenChanges.length" /><BellIcon aria-hidden="true" v-else /></button><AccountButton v-if="!planningOnly" /></div>
   </nav>
@@ -271,6 +273,7 @@ onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.
 <AccessibleDialog id="date-dialog" v-if="dateOpen" title="Choisir une date" @close="dateOpen = false"><label class="settings-label">Date du planning<input type="date" :value="date" @change="event => { const value = (event.target as HTMLInputElement).value; if (validDay(value)) { date = visibleDay(value); dateOpen = false; } }"></label><button class="date-today" @click="today(); dateOpen = false">Revenir à aujourd’hui</button></AccessibleDialog>
 <AccessibleDialog id="help-dialog" v-if="helpOpen" title="Raccourcis clavier" wide @close="helpOpen = false"><KeyboardHelp /></AccessibleDialog>
 <TravauxRoot />
+<FeedbackDialog v-if="feedbackOpen" :group="groupLabel" @close="feedbackOpen = false" />
 <ChangesDialog v-if="changesOpen" @close="closeChanges" @goto="day => { closeChanges(); date = visibleDay(day); }" />
 
 </template>

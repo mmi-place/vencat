@@ -17,7 +17,7 @@ const days = computed(() => dates.value.map(day => {
     const gap = Math.max(0, item.start - previousEnd);
     const pause = { start: previousEnd, end: item.start, minutes: gap };
     previousEnd = Math.max(previousEnd, item.end);
-    return { ...item, pause, height: Math.max(preferences.value.density === 'full' ? 124 : 104, (item.end - item.start) * 1.15) };
+    return { ...item, pause, height: preferences.value.density === 'full' ? 124 : 104 };
   }) };
 }));
 const time = (minute: number) => String(Math.floor(minute / 60)).padStart(2, '0') + ':' + String(minute % 60).padStart(2, '0');

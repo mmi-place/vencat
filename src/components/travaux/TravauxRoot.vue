@@ -10,7 +10,7 @@ import QueueDialog from './QueueDialog.vue';
 import DelegatesDialog from './DelegatesDialog.vue';
 import ModerationDialog from './ModerationDialog.vue';
 import InfoDialogs from './InfoDialogs.vue';
-import { loadConfig, api, errorText, setMe, flushOutbox, notify, toast, readPendingLogin, wide, ui, form, openedWork, me, needsOnboarding, loadMe, launchLinks, loadQueue, loadWorks, loadCorrections, section } from '../../scripts/travaux';
+import { loadConfig, api, errorText, setMe, flushOutbox, notify, toast, readPendingLogin, clearPendingLogin, wide, ui, form, openedWork, me, needsOnboarding, loadMe, launchLinks, loadQueue, loadWorks, loadCorrections, section } from '../../scripts/travaux';
 import { online } from '../../scripts/calendarStore';
 // Dialogs of the Travaux section, available from both sections.
 onMounted(async () => {
@@ -19,17 +19,19 @@ onMounted(async () => {
   if (launchLinks.connexion === 'ok' && me.value) notify(`Connecté en tant que ${me.value.firstName}.`);
   if (launchLinks.connexion === 'expiree') { notify('Ce lien de connexion a expiré ou a déjà servi. Recommence.'); ui.value.login = true; }
   if (launchLinks.work) { section.value = 'travaux'; openedWork.value = launchLinks.work; }
-  if (needsOnboarding.value || (!me.value && readPendingLogin())) ui.value.login = true;
+  // The mail link has its own confirmation: nothing may open above it.
+  if (!magic.value && (needsOnboarding.value || (!me.value && readPendingLogin()))) ui.value.login = true;
 });
-const resume = () => { if (!document.hidden) void loadConfig(); if (!document.hidden && !me.value && !ui.value.login && readPendingLogin()) ui.value.login = true; };
+const resume = () => { if (!document.hidden) void loadConfig(); if (!document.hidden && !magic.value && !me.value && !ui.value.login && readPendingLogin()) ui.value.login = true; };
 document.addEventListener('visibilitychange', resume);
 onBeforeUnmount(() => document.removeEventListener('visibilitychange', resume));
 // Mail link: this device signs in after a confirmation (a link scanner that only opens it signs nobody in).
 const magic = ref(launchLinks.magic), magicBusy = ref(false), magicError = ref('');
+watch(magic, value => { if (!value && !me.value && readPendingLogin()) ui.value.login = true; });
 async function confirmMagic() {
   if (!magic.value) return;
   magicBusy.value = true; magicError.value = '';
-  try { const result = await api<{ me: import('../../../shared/travaux').Me }>('/auth/magic', { body: magic.value }); setMe(result.me); magic.value = undefined; notify(`Connecté en tant que ${result.me.firstName}.`); }
+  try { const result = await api<{ me: import('../../../shared/travaux').Me }>('/auth/magic', { body: magic.value }); setMe(result.me); magic.value = undefined; clearPendingLogin(); notify(`Connecté en tant que ${result.me.firstName}.`); ui.value.login = needsOnboarding.value; }
   catch (error) { magicError.value = errorText(error); }
   finally { magicBusy.value = false; }
 }
@@ -41,7 +43,7 @@ onBeforeUnmount(() => clearInterval(timer));
 <template>
 <WorkDialog v-if="openedWork && !(wide && section === 'travaux')" />
 <WorkForm v-if="form" :key="(form.mode) + (form.work?.id ?? form.day ?? '')" />
-<LoginDialog v-if="ui.login" />
+<LoginDialog v-if="ui.login && !magic" />
 <AccountDialog v-if="ui.account && me" />
 <QueueDialog v-if="ui.queue" />
 <DelegatesDialog v-if="ui.delegates" />

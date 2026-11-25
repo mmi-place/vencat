@@ -2,13 +2,14 @@ import express, { type Request, type Response } from 'express';
 import { persistentStore } from './store.js';
 import { settings as globalSettings, DEFAULT_MESSAGE } from './settings.js';
 import { sendMail, loginMail, mailConfigured } from './mail.js';
+import { notifyAdmins } from './notify.js';
 import {
-  HttpError, id, now, authenticate, requireUser, createSession, clearSessionCookie, overLimit, addressKey, newLogin, loginExpired, samePoll,
+  HttpError, id, now, authenticate, requireUser, createSession, clearSessionCookie, overLimit, addressKey, newLogin, loginExpired, LOGIN_TTL_MS, samePoll,
   newSecrets, checkCode, checkMagic, userForEmail, allowedEmail, groupExists, meOf, REUSE_MAX, MAX_ATTEMPTS, type User, type Session,
   type Login,
 } from './auth.js';
 import { cleanText, LIMITS, semesterOf } from '../../shared/travaux.js';
-import { type Marks, type NameRequest, db, route, origin } from './common.js';
+import { type Marks, type NameRequest, db, route, origin, eraseAccount } from './common.js';
 
 // Configuration and sign-in
 const router = express.Router();
@@ -23,9 +24,11 @@ router.get('/auth/me', route(async (req, res) => {
 
 async function mailLogin(req: Request, login: Login) {
   if (!login.email) throw new HttpError(400, 'Adresse manquante.');
-  if (login.mails >= 3 || await overLimit('mail:' + login.email, 5, 3600) || await overLimit('mail-ip:' + addressKey(req), 20, 3600)) throw new HttpError(429, 'Trop de mails envoyés. Réessaie dans un moment ou valide sur un appareil connecté.');
+  if (login.mails >= 3 || await overLimit('mail:' + login.email, 5, 3600) || await overLimit('mail-ip:' + addressKey(req), 20, 3600)) throw new HttpError(429, 'Trop de mails envoyés. Réessaie dans un moment.');
   const { code, magic } = newSecrets(login);
   login.mails++; login.attempts = 0;
+  // The mail promises 10 minutes from its own sending (a resend extends the request).
+  if (!login.firstUsedAt) login.expiresAt = new Date(Date.now() + LOGIN_TTL_MS).toISOString();
   await db().put('logins', login.id, login);
   const link = `${origin(req)}/?lien=${login.id}&t=${magic}`;
   const mail = loginMail(login.email, code, link, login.device);
@@ -35,25 +38,31 @@ async function mailLogin(req: Request, login: Login) {
   return process.env.NODE_ENV !== 'production' && (!mailConfigured() || process.env.NODE_TEST_CONTEXT || logOnly) ? code : undefined;
 }
 
+/** Sign-in requests (they hold an address) are deleted once expired: on about one start out of ten, at most 100 of them. */
+async function purgeLogins() {
+  if (Math.random() > 0.1) return;
+  try {
+    const old = (await db().list<Login>('logins')).filter(item => Date.parse(item.expiresAt) + 3600_000 < Date.now()).slice(0, 100);
+    for (const item of old) await db().delete('logins', item.id);
+  } catch { /* the next start tries again */ }
+}
 router.post('/auth/start', route(async (req, res) => {
   const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   if (!allowedEmail(email)) throw new HttpError(400, 'Utilise ton adresse étudiante, qui se termine par .uvsq.fr (par exemple prenom.nom@ens.uvsq.fr).');
   if (await overLimit('start-ip:' + addressKey(req), 30, 600)) throw new HttpError(429, 'Trop de demandes. Réessaie dans quelques minutes.');
   const { login, poll } = newLogin(req, email);
   await db().put('logins', login.id, login);
-  const index = await db().get<{ userId: string }>('emails', email);
-  const sessions = index ? (await db().list<Session>('sessions')).filter(session => session.userId === index.userId) : [];
-  // With a connected device the person can approve there; otherwise the mail goes out at once.
-  let devCode: string | undefined;
-  if (!sessions.length) devCode = await mailLogin(req, login);
-  res.json({ requestId: login.id, poll, number: login.number, devices: sessions.length, mailSent: !sessions.length, devCode, expiresAt: login.expiresAt });
+  await purgeLogins();
+  // The mail (code + link) goes out at once.
+  const devCode = await mailLogin(req, login);
+  res.json({ requestId: login.id, poll, mailSent: true, devCode, expiresAt: login.expiresAt });
 }));
 
 router.post('/auth/qr', route(async (req, res) => {
   if (await overLimit('qr-ip:' + addressKey(req), 30, 600)) throw new HttpError(429, 'Trop de demandes. Réessaie dans quelques minutes.');
   const { login, poll } = newLogin(req);
   await db().put('logins', login.id, login);
-  res.json({ requestId: login.id, poll, number: login.number, url: `${origin(req)}/?qr=${login.id}&n=${login.number}`, expiresAt: login.expiresAt });
+  res.json({ requestId: login.id, poll, url: `${origin(req)}/?qr=${login.id}`, expiresAt: login.expiresAt });
 }));
 
 async function ownedLogin(req: Request) {
@@ -64,7 +73,8 @@ async function ownedLogin(req: Request) {
 }
 router.post('/auth/send-mail', route(async (req, res) => {
   const login = await ownedLogin(req);
-  res.json({ mailSent: true, devCode: await mailLogin(req, login) });
+  const devCode = await mailLogin(req, login);
+  res.json({ mailSent: true, devCode, expiresAt: login.expiresAt });
 }));
 
 async function finish(req: Request, res: Response, user: User, login: Login) {
@@ -112,12 +122,6 @@ router.post('/auth/magic', route(async (req, res) => {
   if (!login || loginExpired(login) || !login.email || !checkMagic(login, req.body?.t)) throw new HttpError(410, 'Ce lien a expiré ou a déjà servi. Demande un nouveau code.');
   res.json(await useCode(req, res, login));
 }));
-router.get('/auth/pending', route(async (req, res) => {
-  const { user } = await requireUser(req);
-  // Only the newest request is shown: a connected device never gets a series of requests to approve.
-  const pending = (await db().list<Login>('logins')).filter(login => login.email === user.email && login.status === 'waiting' && !loginExpired(login)).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 1);
-  res.json(pending.map(login => ({ id: login.id, device: login.device, createdAt: login.createdAt, choices: [login.number, ...login.decoys].sort(() => Math.random() - .5) })));
-}));
 router.get('/auth/qr-info', route(async (req, res) => {
   await requireUser(req);
   const login = await db().get<Login>('logins', String(req.query.r ?? ''));
@@ -127,9 +131,8 @@ router.get('/auth/qr-info', route(async (req, res) => {
 router.post('/auth/approve', route(async (req, res) => {
   const { user } = await requireUser(req);
   const login = await db().get<Login>('logins', String(req.body?.requestId ?? ''));
-  if (!login || loginExpired(login) || login.status !== 'waiting' || (login.email && login.email !== user.email)) throw new HttpError(404, 'Demande introuvable ou expirée.');
-  // A wrong number denies the request: accepting someone else's request by reflex is not possible.
-  if (Number(req.body?.number) !== login.number) { login.status = 'denied'; await db().put('logins', login.id, login); throw new HttpError(400, 'Ce n’est pas le bon nombre : la demande est refusée.'); }
+  // Only a QR code request can be approved from a connected device (mail requests sign in with their code or link).
+  if (!login || loginExpired(login) || login.status !== 'waiting' || !login.qr) throw new HttpError(404, 'Demande introuvable ou expirée.');
   login.status = 'approved'; login.approvedUserId = user.id;
   await db().put('logins', login.id, login);
   res.json({ ok: true });
@@ -187,16 +190,12 @@ router.post('/account/name', route(async (req, res) => {
   const open = (await db().list<NameRequest>('names')).find(item => item.userId === user.id && item.status === 'open');
   const request: NameRequest = { id: open?.id ?? id(), userId: user.id, firstName, lastName, at: now(), status: 'open' };
   await db().put('names', request.id, request);
+  await notifyAdmins('important', 'Vencat : demande de changement de nom', `${user.email} demande à s’appeler « ${firstName} ${lastName} ».\nÀ valider dans l’administration (/admin › Modération).`);
   res.json({ ok: true, message: 'Demande envoyée : l’admin la validera.' });
 }));
 router.delete('/account', route(async (req, res) => {
   const { user } = await requireUser(req);
-  // Mail and name are erased at once; contributions stay, signed "Ancien étudiant".
-  if (user.email) await db().delete('emails', user.email);
-  for (const session of (await db().list<Session>('sessions')).filter(item => item.userId === user.id)) await db().delete('sessions', session.id);
-  await db().delete('marks', user.id);
-  const erased: User = { id: user.id, email: null, firstName: '', lastName: '', createdAt: user.createdAt, reliability: user.reliability, deletedAt: now(), banned: user.banned };
-  await db().put('users', user.id, erased);
+  await eraseAccount(user);
   clearSessionCookie(req, res);
   res.json({ ok: true });
 }));

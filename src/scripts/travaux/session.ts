@@ -38,7 +38,7 @@ export const canContribute = computed(() => !!me.value && !needsOnboarding.value
 export const userKey = (base: string, userId = me.value?.id) => userId ? `${base}:${userId}` : base;
 
 // Sign-in in progress, kept on the device: switching to the mail app may reload the page.
-interface PendingLogin { email: string; request: { requestId: string; poll: string; number: number; devices?: number; mailSent?: boolean; expiresAt?: string }; savedAt: number }
+interface PendingLogin { email: string; request: { requestId: string; poll: string; mailSent?: boolean; expiresAt?: string }; savedAt: number }
 const PENDING_KEY = 'vencat:pending-login';
 export function savePendingLogin(email: string, request: PendingLogin['request']) { writePreference(PENDING_KEY, { email, request, savedAt: Date.now() }); }
 export function readPendingLogin(): PendingLogin | undefined {

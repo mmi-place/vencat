@@ -21,11 +21,11 @@ Vencat est une application de consultation des emplois du temps CELCAT de l’IU
 Une bascule **Cours | Travaux** (touche **W**) affiche les devoirs, rendus, évaluations et projets de la promotion, déclarés par les étudiants et vérifiés collectivement. La lecture ne demande pas de compte.
 
 - **Planning** : le mois en cases (étiquettes colorées par type, compte à rebours, pointillés tant que la proposition n’est pas validée, « +N » au-delà de 3). Sur mobile, des points sous les jours et la liste du jour choisi.
-- **Liste** : par semaine, retards en tête, case « fait » privée et progression, filtres (type, portée, à confirmer, masquer les faits).
+- **Liste** : par semaine, case « fait » privée et progression, filtres (type, portée, à confirmer, masquer les faits).
 - **Dans l’emploi du temps** : résumé du jour (« Rendu ×1 · Éval ×2 »), ligne sous le cours lié, pastille « Nouveau devoir », bouton « Ajouter les infos du DS », travaux et corrections dans la fiche d’un cours.
 - **Fiche** : modalités, liens avec leur domaine, auteur, cours lié, votes (Confirmer, Contester avec motif, Proposer une modification, N’existe plus, Signaler), note privée, historique, ←/→.
 - **Validation** : au moins 3 👍 et deux fois plus de 👍 que de 👎, vote de l’auteur exclu ; « probablement correct » après 48 h avec 1 👍 et aucun 👎 ; « contesté » avec au moins 2 👎 majoritaires. Comptes fiables : 1 ou 2 👍. Comptes de moins de 7 jours : votes à moitié, liens inactifs avant validation. Une seule proposition de modification ouverte par travail.
-- **Connexion** : adresse en `.uvsq.fr`, code à 6 chiffres et lien magique par mail (10 minutes, 5 essais, haché), validation sur un appareil déjà connecté en choisissant un nombre parmi trois, ou QR code. Session dans un cookie `HttpOnly` (jeton signé `kind: 'user'`).
+- **Connexion** : adresse en `.uvsq.fr`, code à 6 chiffres et lien magique par mail (10 minutes, 5 essais, haché), ou QR code affiché par le nouvel appareil et validé depuis un appareil déjà connecté. Session dans un cookie `HttpOnly` (jeton signé `kind: 'user'`).
 - **Compte** : appareils et déconnexion à distance, groupe modifiable une fois par semestre, correction du nom validée par l’admin, suppression (contributions gardées sous « Ancien étudiant »).
 - **Délégué(e)s** : pas d’élection dans Vencat. Les délégué(e)s élu(e)s de la classe se déclarent (titulaire ou suppléant(e), date de l’élection, certification sur l’honneur) ; les élèves du groupe reçoivent la déclaration dans « À valider » et répondent oui, je ne sais pas ou non (un avis, pas un vote) ; l’administration, prévenue par mail, vérifie et confirme. Mandat jusqu’à la fin de l’année scolaire ; signalement « ce n’est pas notre délégué(e) », **modération** (signalements, noms, alertes de fiabilité, lecture seule, bannissement, journal), **corrections d’emploi du temps** certifiées sur l’honneur, affichées par-dessus CELCAT et fermées quand CELCAT change le cours.
 - **Abonnement agenda** : `GET /api/travaux/ics/<groupe>.ics`, rappel la veille ; un bouton qui propose d’abord l’agenda le plus probable pour l’appareil.
@@ -53,11 +53,11 @@ Sans SMTP configuré, le développement affiche les mails dans la console et pr�
 
 | Route | Rôle |
 | --- | --- |
-| `POST /api/auth/start`, `/verify`, `/send-mail`, `/poll`, `/qr`, `/approve`, `/deny`, `/logout` ; `GET /api/auth/me`, `/pending`, `/magic`, `/qr-info` | Connexion |
+| `POST /api/auth/start`, `/verify`, `/send-mail`, `/poll`, `/qr`, `/approve`, `/deny`, `/logout` ; `GET /api/auth/me`, `/magic`, `/qr-info` | Connexion |
 | `/api/account/*` | Intégration, appareils, groupe, nom, cases et notes, suppression |
 | `GET /api/travaux/group/:groupId`, `/work/:id`, `/queue` ; `POST /api/travaux/works`, `/work/:id/vote`, `/work/:id/proposal`, `/proposal/:id/vote`, `/work/:id/report`, `/work/:id/moderate` | Travaux |
 | `/api/travaux/delegates/*`, `/api/travaux/moderation*`, `/api/travaux/corrections*` | Délégués, modération, corrections |
-| `POST /api/admin/start`, `/verify`, `/logout`, `/action`, `/work/:id`, `/correction/:id` ; `GET /api/admin/me`, `/overview`, `/works`, `/corrections` ; `GET`/`POST /api/admin/settings` (mode planning seul) | Administration (cookie `vencat_admin`, chemin `/api/admin`) |
+| `POST /api/admin/start`, `/verify`, `/logout`, `/action`, `/work/:id`, `/correction/:id` ; `GET /api/admin/me`, `/overview`, `/works`, `/corrections` ; `GET`/`POST /api/admin/notifications` (destinataires des mails admin par catégorie), `POST /api/admin/notifications/test` ; `GET`/`POST /api/admin/settings` (mode planning seul) | Administration (cookie `vencat_admin`, chemin `/api/admin`) |
 
 Les routes qui modifient des données exigent l’en-tête `X-Requested-With: vencat` et refusent les autres origines.
 
@@ -136,12 +136,17 @@ Les fenêtres courtes du planning sont conservées dix minutes dans Redis. La re
 | Étendue de recherche | Durée de validité |
 | --- | --- |
 | Jusqu’à 2 semaines | 10 minutes |
-| Jusqu’à 1 mois | 12 heures (rafraîchi automatiquement à 2 h et 14 h) |
+| Jusqu’à 1 mois | 12 heures (rafraîchi par le passage quotidien, ou par une visite après 12 h sans passage) |
 | Jusqu’à 3 mois | 24 heures |
 | Jusqu’à 6 mois | 3 jours |
 | Année scolaire | 7 jours |
 
-**Rafraîchissement programmé de la recherche sur 1 mois** : chaque jour à **02:00 et 14:00 (heure de Paris)**, le serveur recharge depuis CELCAT la recherche du mois en cours pour **tous les groupes, d’affilée** (4 à la fois). Sur un serveur Node qui tourne en continu, un minuteur interne s’en charge (`PREFETCH=off` pour le désactiver). Sur Vercel, des crons à 00:00, 01:00, 12:00 et 13:00 UTC appellent `GET /api/prefetch` (protégé par `CRON_SECRET`) : seul l’appel qui tombe dans l’heure de 2 h ou de 14 h à Paris travaille, une fois par créneau (verrou Redis), sous un budget de 240 s, en dessous de la limite de 300 s d’une fonction ; s’il reste des groupes, il passe la main à un dernier appel. Sur l’offre Hobby, un cron s’exécute une fois par jour quelque part dans son heure : le passage a donc lieu entre 2 h et 3 h, et entre 14 h et 15 h.
+**Rafraîchissement de la recherche sur 1 mois** : le serveur recharge depuis CELCAT la recherche du mois en cours pour **tous les groupes, d’affilée** (4 à la fois), puis détecte les changements d’emploi du temps. Sur un serveur Node qui tourne en continu, un minuteur interne s’en charge à **02:00 et 14:00 (heure de Paris)** (`PREFETCH=off` pour le désactiver). Sur Vercel (offre Hobby : un cron ne s’exécute qu’une fois par jour, dans son heure), deux déclencheurs se complètent :
+
+- **Cron quotidien** : `GET /api/prefetch` à **01:00 UTC** (protégé par `CRON_SECRET`), une fois par jour (verrou Redis), quelle que soit l’heure d’été ou d’hiver.
+- **Passage déclenché par une visite** : à l’ouverture ou au retour au premier plan, l’app appelle `POST /api/prefetch/touch` au plus une fois par heure et par appareil. Le serveur ne fait rien (204) tant que le dernier passage complet date de moins de **12 heures** ; sinon, et si aucun passage ne tourne (verrou Redis de 10 min), il lance un passage complet. Ce déclencheur n'agit que sur Vercel (ou avec `PREFETCH_ON_VISIT=1`).
+
+Dans les deux cas, un appel travaille sous un budget de 240 s, en dessous de la limite de 300 s d’une fonction ; s’il reste des groupes, il passe la main à un dernier appel (`?from=N`).
 
 Les bornes exactes des intervalles personnalisés sont de 14, 31, 93, 184 et 366 jours. La recherche annuelle couvre la période du 1er septembre au 31 août. Les deux semaines courantes fraîches complètent les résultats de l’archive annuelle.
 
@@ -175,7 +180,7 @@ Le second appel crée un déploiement de prévisualisation. Pour un déploiement
 
 Les secrets restent côté serveur, dans les variables d’environnement Vercel ou dans `.env.local`, ignoré par Git. Aucune clé Redis n’est transmise au navigateur. Une paire Redis complète est nécessaire pour activer le stockage partagé.
 
-La tâche `/api/monitor` est configurée à **05 h UTC chaque jour**, soit 07 h en France métropolitaine en été et 06 h en hiver. Elle relit depuis CELCAT la semaine en cours et la suivante de **tous les groupes** et enregistre leurs changements ; le passage de 2 h et 14 h (voir plus haut) fait de même. L’historique et les semaines de référence sont gardés dans le stockage des Travaux (Postgres en production, `.data/` en développement) : Redis n’est plus nécessaire pour les changements. Une semaine qui se vide d’un coup n’est prise en compte qu’à la deuxième lecture.
+La tâche `/api/monitor` est configurée à **05 h UTC chaque jour**, soit 07 h en France métropolitaine en été et 06 h en hiver. Elle relit depuis CELCAT la semaine en cours et la suivante de **tous les groupes** et enregistre leurs changements ; le passage de préchargement (voir plus haut) fait de même. L’historique et les semaines de référence sont gardés dans le stockage des Travaux (Postgres en production, `.data/` en développement) : Redis n’est plus nécessaire pour les changements. Une semaine qui se vide d’un coup n’est prise en compte qu’à la deuxième lecture.
 
 Les durées du tableau sont des validités de cache, pas des fréquences de tâche planifiée : un cache expiré est renouvelé à la demande, ou lors du passage quotidien du serveur.
 
@@ -195,7 +200,8 @@ Toutes les routes utilisent le même domaine que le frontend.
 | `GET /api/hours/:groupId` | Heures du premier début et de la dernière fin de l’année scolaire, mises en cache 24 h |
 | `GET /api/history/config` | Disponibilité du stockage partagé |
 | `GET /api/monitor` | Tâche planifiée, protégée par `Authorization: Bearer <CRON_SECRET>` |
-| `GET /api/prefetch` | Rafraîchissement programmé de la recherche sur 1 mois pour tous les groupes (même protection) ; `?from=N` reprend au groupe N |
+| `GET /api/prefetch` | Rafraîchissement de la recherche sur 1 mois pour tous les groupes (même protection) ; `?from=N` reprend au groupe N |
+| `POST /api/prefetch/touch` | Appelé par l’app à l’ouverture : lance un passage seulement si le dernier a plus de 12 h |
 
 Seuls les groupes connus de Vencat sont acceptés. La route planning accepte un écart maximal de 62 jours entre `start` et `end`. La recherche accepte `q=` pour parcourir les cours sans texte, ainsi que les critères facultatifs `type`, `module`, `teacher`, `room` et `group`. `start` et `end` permettent un intervalle personnalisé de 1 à 366 jours inclus. Les scopes internes `week`, `fortnight`, `month`, `quarter`, `semester` et `year` restent disponibles pour les appels API et le préchargement.
 

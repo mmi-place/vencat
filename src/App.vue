@@ -17,7 +17,7 @@ watch([() => preferences.value.background, effectiveTheme, customBackgroundUrl, 
   document.documentElement.dataset.largeText = String(access.largeText);
   document.documentElement.dataset.reduceMotion = String(access.reduceMotion);
   document.documentElement.style.setProperty('--app-background', backgroundStyle(access.plainBackground || highContrast ? 'unified' : background, theme, image));
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f4f5f8' : '#020618');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f4f5f8' : '#020511');
 }, { immediate: true, deep: true });
 </script>
 <template><RouterView /></template>

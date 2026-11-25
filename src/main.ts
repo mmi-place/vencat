@@ -7,6 +7,7 @@ import App from './App.vue'
 import router from './router'
 import './scripts/pwa'
 import './scripts/catalogueSync'
+import './scripts/warmup'
 
 const app = createApp(App)
 

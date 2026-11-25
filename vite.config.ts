@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
@@ -6,6 +7,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+	define: { __APP_VERSION__: JSON.stringify(JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version) },
 	server: {
 		// xfwd: the API sees the real host (X-Forwarded-Host), needed by the same-origin check of the account routes.
 		proxy: { '/api': { target: 'http://127.0.0.1:' + (process.env.PORT || 5000), changeOrigin: true, xfwd: true } },
@@ -44,8 +46,8 @@ export default defineConfig({
 				handle_links: "preferred",
 				launch_handler: { client_mode: ["navigate-existing", "auto"] },
 				display: "standalone",
-				background_color: "#020618",
-				theme_color: '#020618',
+				background_color: "#020511",
+				theme_color: '#020511',
 				icons: [
 					{ src: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
 					{ src: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' },

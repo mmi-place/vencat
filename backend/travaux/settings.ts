@@ -3,7 +3,7 @@ import { store } from './store.js';
 
 // Global switch of the administration: « planning only » turns off every user content (works, accounts,
 // corrections, delegates) when it gets out of control; the timetable keeps working. Read every 20 s at most.
-export interface GlobalSettings { planningOnly: boolean; message?: string; since?: string; by?: string }
+export interface GlobalSettings { planningOnly: boolean; message?: string; since?: string; by?: string; notifyEmails?: Partial<Record<'feedback' | 'reports' | 'important', string[]>> }
 let cached: { value: GlobalSettings; at: number } | undefined;
 export async function settings(): Promise<GlobalSettings> {
   if (cached && Date.now() - cached.at < 20_000) return cached.value;
@@ -11,6 +11,8 @@ export async function settings(): Promise<GlobalSettings> {
   cached = { value, at: Date.now() };
   return value;
 }
+/** Read for a write: never the 20 s cache (another instance may have saved since), and a failed read is an error, not the defaults. */
+export async function freshSettings(): Promise<GlobalSettings> { return await store().get<GlobalSettings>('settings', 'global') ?? { planningOnly: false }; }
 export async function saveSettings(value: GlobalSettings) { await store().put('settings', 'global', value); cached = { value, at: Date.now() }; }
 export const DEFAULT_MESSAGE = 'Les Travaux sont temporairement désactivés. L’emploi du temps reste disponible.';
 /** Refuses user content while « planning only » is on (the configuration route stays open so devices learn it). */
@@ -18,7 +20,7 @@ export async function planningOnlyGuard(req: Request, res: Response, next: NextF
   // The configuration (devices learn the mode) and adding a CELCAT course to a calendar stay open.
   // Mounted on several prefixes: Express strips them from req.path.
   const path = req.baseUrl.replace(/^\/api/, '') + req.path;
-  if (path === '/travaux/config' || path === '/travaux/course-event.ics') return next();
+  if (path === '/travaux/config' || path === '/travaux/course-event.ics' || path === '/travaux/feedback') return next();
   try {
     const current = await settings();
     if (!current.planningOnly) return next();

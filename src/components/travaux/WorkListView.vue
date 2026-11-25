@@ -1,19 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import WorkItem from './WorkItem.vue';
-import { visibleWorks, lateWorks, isDone, today, openedWork } from '../../scripts/travaux';
+import { visibleWorks, isDone, today, openedWork } from '../../scripts/travaux';
 import { addDay, mondayOf } from '../../../shared/calendar';
 // Everything to come, in the style of a reminders list.
 const sections = computed(() => {
-  const late = new Set(lateWorks.value.map(work => work.id));
   const tomorrow = addDay(today.value, 1), weekEnd = addDay(mondayOf(today.value), 6), nextEnd = addDay(weekEnd, 7);
   const buckets: { key: string; title: string; tone?: string; works: typeof visibleWorks.value }[] = [
-    { key: 'late', title: 'En retard', tone: 'late', works: lateWorks.value },
     { key: 'today', title: 'Aujourd’hui', tone: 'today', works: [] }, { key: 'tomorrow', title: 'Demain', works: [] },
     { key: 'week', title: 'Cette semaine', works: [] }, { key: 'next', title: 'Semaine prochaine', works: [] }, { key: 'later', title: 'Plus tard', works: [] },
   ];
   for (const work of visibleWorks.value) {
-    if (late.has(work.id) || work.day < today.value) continue;
+    if (work.day < today.value) continue;
     const key = work.day === today.value ? 'today' : work.day === tomorrow ? 'tomorrow' : work.day <= weekEnd ? 'week' : work.day <= nextEnd ? 'next' : 'later';
     buckets.find(bucket => bucket.key === key)!.works.push(work);
   }

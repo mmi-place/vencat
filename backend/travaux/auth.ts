@@ -135,21 +135,21 @@ export const resetLimits = () => memoryCounters.clear();
 export const addressKey = (req: Request) => hashedAddress(req).slice(0, 24);
 
 // ---------------------------------------------------------------------------
-// Sign-in requests: 6-digit code + magic link by mail, approval on a connected device (pick 1 of 3 numbers), QR code.
+// Sign-in requests: 6-digit code + magic link by mail, or a QR code shown by the new device and approved on a connected one.
 // ---------------------------------------------------------------------------
 export interface Login {
-  id: string; email?: string; pollHash: string; codeHash?: string; magicHash?: string; number: number; decoys: number[];
+  id: string; email?: string; pollHash: string; codeHash?: string; magicHash?: string;
   createdAt: string; expiresAt: string; attempts: number; mails: number; status: 'waiting' | 'approved' | 'denied'; approvedUserId?: string; device: string; qr?: boolean;
   /** A code (or link) already used stays valid for REUSE_MAX sign-ins during REUSE_MS, e.g. when the app was reloaded. */
   firstUsedAt?: string; uses?: number;
 }
 export const LOGIN_TTL_MS = 10 * 60000;
+/** A QR code is shown on a screen for a short while: whoever approves it should be looking at that screen. */
+export const QR_TTL_MS = 3 * 60000;
 export const MAX_ATTEMPTS = 5;
 export function newLogin(req: Request, email?: string) {
-  const number = randomInt(10, 100);
-  const decoys = new Set<number>(); while (decoys.size < 2) { const value = randomInt(10, 100); if (value !== number) decoys.add(value); }
   const poll = randomBytes(24).toString('base64url');
-  const login: Login = { id: id(), email, pollHash: hash(poll), number, decoys: [...decoys], createdAt: now(), expiresAt: new Date(Date.now() + LOGIN_TTL_MS).toISOString(), attempts: 0, mails: 0, status: 'waiting', device: deviceLabel(req), qr: !email };
+  const login: Login = { id: id(), email, pollHash: hash(poll), createdAt: now(), expiresAt: new Date(Date.now() + (email ? LOGIN_TTL_MS : QR_TTL_MS)).toISOString(), attempts: 0, mails: 0, status: 'waiting', device: deviceLabel(req), qr: !email };
   return { login, poll };
 }
 export const REUSE_MS = 3 * 60000, REUSE_MAX = 12;
@@ -183,6 +183,8 @@ export async function userForEmail(email: string): Promise<User> {
   if (index) { const user = await store().get<User>('users', index.userId); if (user && !user.deletedAt) return user; }
   const { firstName, lastName } = nameFromEmail(normalized);
   const user: User = { id: id(), email: normalized, firstName, lastName, createdAt: now(), reliability: 0, staff: isStaffEmail(normalized) && !isStudentEmail(normalized) };
+  const sanction = await store().get<Pick<User, 'banned' | 'readOnlyUntil'>>('sanctions', hash(normalized));
+  if (sanction) { user.banned = sanction.banned; user.readOnlyUntil = sanction.readOnlyUntil; }
   await store().put('users', user.id, user);
   await store().put('emails', normalized, { userId: user.id });
   return user;

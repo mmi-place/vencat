@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { useMemoryStore, store } from '../backend/travaux/store.js';
 import { sentMails } from '../backend/travaux/mail.js';
-import { resetLimits, type User } from '../backend/travaux/auth.js';
+import { resetLimits, userForEmail, type User } from '../backend/travaux/auth.js';
+import { eraseAccount } from '../backend/travaux/common.js';
 import app from '../backend/app.js';
 import { audienceScope, voteState, scopeMembers, scopeChoices, checkLink, parisInstant, countdown, isStudentEmail, nameFromEmail, similarWorks, worksToIcs, parseWorkInput, type Vote, type WorkView } from '../shared/travaux.js';
 import { groupById } from '../shared/selection.js';
@@ -48,7 +49,7 @@ test('scopes, links, deadlines and addresses', () => {
   assert.equal(parisInstant('2026-10-25', '12:00'), '2026-10-25T11:00:00.000Z');
   assert.equal(countdown('2026-11-26', '2026-11-23').label, 'J-3');
   assert.equal(countdown('2026-11-24', '2026-11-23').label, 'demain');
-  assert.ok(countdown('2026-11-20', '2026-11-23').late);
+  assert.equal(countdown('2026-11-20', '2026-11-23').label, '', 'nothing once past');
   assert.ok(isStudentEmail('lea.martin@ens.uvsq.fr'));
   assert.ok(!isStudentEmail('lea.martin@uvsq.fr.evil.com'));
   assert.ok(!isStudentEmail('lea@gmail.com'));
@@ -93,15 +94,14 @@ test('sign-in, proposals, votes, modifications and the ICS feed', async () => {
 
   // Wrong code: attempts are counted.
   const other = client();
+  // Even with a connected device, the mail (code + link) goes out at once: no number to pick.
+  const before = sentMails.length;
   const again = await other('/auth/start', { body: { email: 'lea.martin@ens.uvsq.fr' } });
-  assert.equal(again.body.mailSent, false, 'a connected device exists: approval first');
-  const pending = await lea.browser('/auth/pending');
-  assert.equal(pending.body.length, 1);
-  assert.ok(pending.body[0].choices.includes(again.body.number));
-  assert.equal((await other('/auth/poll', { body: { requestId: again.body.requestId, poll: again.body.poll } })).body.status, 'waiting');
-  assert.equal((await lea.browser('/auth/approve', { body: { requestId: again.body.requestId, number: again.body.number } })).status, 200);
-  const approved = await other('/auth/poll', { body: { requestId: again.body.requestId, poll: again.body.poll } });
-  assert.equal(approved.body.status, 'approved');
+  assert.equal(again.body.mailSent, true);
+  assert.equal(again.body.number, undefined);
+  assert.ok(sentMails.length > before);
+  assert.equal((await lea.browser('/auth/pending')).status, 404, 'the number mechanic is gone');
+  assert.equal((await other('/auth/verify', { body: { requestId: again.body.requestId, poll: again.body.poll, code: again.body.devCode } })).status, 200);
   assert.equal((await other('/account/devices')).body.length, 2);
 
   const work = await lea.browser('/travaux/works', { body: { type: 'rendu', title: 'Rendu maquette Figma', day: '2026-12-02', scope: { kind: 'wide', key: 'MMI-2|B' }, details: { where: 'Moodle', format: 'lien Figma', mode: 'seul', info: '' }, links: ['https://figma.com/file/abc'] } });
@@ -151,14 +151,18 @@ test('sign-in, proposals, votes, modifications and the ICS feed', async () => {
   assert.equal((await anonymous(`/travaux/work/${work.body.id}`)).body.work.author, 'Ancien étudiant');
 });
 
-test('a wrong number denies a device request, and ICS renders', async () => {
+test('a QR code is approved from a connected device, and ICS renders', async () => {
   resetLimits();
   const sam = await signIn('sam.l@ens.uvsq.fr');
   const thief = client();
+  // A mail request cannot be approved by a device: only a QR code can.
   const request = await thief('/auth/start', { body: { email: 'sam.l@ens.uvsq.fr' } });
-  const wrong = (request.body.number % 89) + 10 === request.body.number ? request.body.number + 1 : (request.body.number % 89) + 10;
-  assert.equal((await sam.browser('/auth/approve', { body: { requestId: request.body.requestId, number: wrong } })).status, 400);
-  assert.equal((await thief('/auth/poll', { body: { requestId: request.body.requestId, poll: request.body.poll } })).body.status, 'denied');
+  assert.equal((await sam.browser('/auth/approve', { body: { requestId: request.body.requestId } })).status, 404);
+  const qr = await thief('/auth/qr', { body: {} });
+  assert.equal((await thief('/auth/poll', { body: { requestId: qr.body.requestId, poll: qr.body.poll } })).body.status, 'waiting');
+  assert.equal((await sam.browser('/auth/approve', { body: { requestId: qr.body.requestId } })).status, 200);
+  assert.equal((await thief('/auth/poll', { body: { requestId: qr.body.requestId, poll: qr.body.poll } })).body.status, 'approved');
+  assert.equal((await thief('/auth/me')).body.me.email, 'sam.l@ens.uvsq.fr');
   const view = { id: 'x', type: 'eval', title: 'DS, maths; ch. 3', due: '2026-11-25T13:00:00.000Z', hasTime: true, state: 'validated', details: { where: '', format: '', mode: '', info: '' }, links: [] } as unknown as WorkView;
   assert.match(worksToIcs('MMI-2 B1', [view], 'https://vencat.mmi.place'), /SUMMARY:Éval · DS\\, maths\\; ch. 3/);
 });
@@ -206,7 +210,7 @@ test('links built behind chained proxies use the client protocol and host only',
   resetLimits();
   const response = await fetch(base + '/auth/qr', { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'vencat', 'x-forwarded-proto': 'https,http', 'x-forwarded-host': 'vencat.example,127.0.0.1:5173', origin: 'https://vencat.example' }, body: '{}' });
   assert.equal(response.status, 200);
-  assert.match((await response.json() as { url: string }).url, /^https:\/\/vencat\.example\/\?qr=[a-f0-9]{32}&n=\d{2}$/);
+  assert.match((await response.json() as { url: string }).url, /^https:\/\/vencat\.example\/\?qr=[a-f0-9]{32}$/);
 });
 
 test('a mail code stays valid for a few sign-ins after its first use', async () => {
@@ -334,4 +338,77 @@ test('planning only: the administration switches off every user content, then re
   assert.equal((await admin('/admin/settings', { body: { planningOnly: false } })).body.planningOnly, false);
   assert.equal((await client()(`/travaux/group/${B1}`)).status, 200);
   delete process.env.ADMIN_EMAILS; delete process.env.MAIL_LOG_ONLY;
+});
+
+test('feedback is always kept; it is mailed only to the list chosen in the administration, never to every admin', async () => {
+  resetLimits();
+  process.env.ADMIN_EMAILS = 'chef.admin@gmail.com';
+  process.env.MAIL_LOG_ONLY = '@gmail\\.com$';
+  const anyone = client();
+  assert.equal((await anyone('/travaux/feedback', { body: { kind: 'bug', message: 'x' } })).status, 400, 'too short');
+  // No list yet: nobody is mailed (not even the administrators), but the message is kept.
+  const before = sentMails.length;
+  const sent = await anyone('/travaux/feedback', { body: { kind: 'bug', message: 'Le bouton ne répond pas', email: 'lea@ens.uvsq.fr', context: { page: '/', version: '2.3.0', inconnu: 'ignoré' } } });
+  assert.equal(sent.status, 200, JSON.stringify(sent.body));
+  assert.equal(sentMails.length, before, 'administrators are not mailed by default');
+  const stored = (await store().list<{ message: string; context: Record<string, string> }>('feedback')).find(item => item.message === 'Le bouton ne répond pas')!;
+  assert.ok(stored && stored.context.page === '/' && !stored.context.inconnu);
+  // Recipients chosen by an administrator.
+  const admin = client();
+  const start = await admin('/admin/start', { body: { email: 'chef.admin@gmail.com' } });
+  await admin('/admin/verify', { body: { requestId: start.body.requestId, code: start.body.devCode } });
+  assert.equal((await admin('/admin/notifications', { body: { topic: 'feedback', emails: ['pas un mail'] } })).status, 400);
+  assert.equal((await admin('/admin/notifications', { body: { topic: 'constructor', emails: [] } })).status, 400);
+  const saved = await admin('/admin/notifications', { body: { topic: 'feedback', emails: ['equipe@gmail.com', 'EQUIPE@gmail.com'] } });
+  assert.deepEqual(saved.body.topics.find((topic: { id: string }) => topic.id === 'feedback').emails, ['equipe@gmail.com']);
+  assert.deepEqual(saved.body.topics.find((topic: { id: string }) => topic.id === 'important').emails, [], 'other topics keep the administrators');
+  const count = sentMails.length;
+  assert.equal((await anyone('/travaux/feedback', { body: { kind: 'idea', message: 'Ajouter un mode compact', email: 'lea@ens.uvsq.fr' } })).status, 200);
+  const mail = sentMails.slice(count);
+  assert.deepEqual(mail.map(item => item.to), ['equipe@gmail.com']);
+  assert.ok(/bêta/i.test(mail[0]!.subject) && mail[0]!.replyTo === 'lea@ens.uvsq.fr');
+  assert.ok((await admin('/admin/feedback')).body.length >= 2, 'the administration lists the feedback');
+  // The planning-only switch (which keeps the recipients) does not block feedback.
+  await admin('/admin/settings', { body: { planningOnly: true } });
+  assert.equal((await anyone('/travaux/feedback', { body: { kind: 'bug', message: 'Même en mode planning seul' } })).status, 200);
+  await admin('/admin/settings', { body: { planningOnly: false } });
+  assert.deepEqual((await admin('/admin/notifications')).body.topics.find((topic: { id: string }) => topic.id === 'feedback').emails, ['equipe@gmail.com']);
+  // « Important » goes to its own list; the test mail too.
+  await admin('/admin/notifications', { body: { topic: 'important', emails: ['urgent@gmail.com'] } });
+  const mails = sentMails.length;
+  assert.equal((await admin('/admin/notifications/test', { body: { topic: 'important' } })).body.sent, 1);
+  assert.deepEqual(sentMails.slice(mails).map(item => item.to), ['urgent@gmail.com']);
+  await admin('/admin/settings', { body: { planningOnly: true } });
+  await admin('/admin/settings', { body: { planningOnly: false } });
+  assert.ok(sentMails.slice(mails).some(item => item.to === 'urgent@gmail.com' && /planning seul/.test(item.subject)));
+});
+
+test('release fixes: inherited keys, sanctions kept after deletion, personal data erased, resend extends the request', async () => {
+  resetLimits();
+  process.env.ADMIN_EMAILS = 'chef.admin@gmail.com';
+  process.env.MAIL_LOG_ONLY = '@gmail\\.com$';
+  // « constructor » is not a feedback kind.
+  const anyone = client();
+  const before = sentMails.length;
+  assert.equal((await anyone('/travaux/feedback', { body: { kind: 'constructor', message: 'Type inventé par un appelant' } })).status, 200);
+  assert.ok(!sentMails.slice(before).some(mail => /function|native code/.test(mail.subject)));
+  assert.ok((await store().list<{ kind: string }>('feedback')).some(item => item.kind === 'other'), 'unknown kinds become « other »');
+  // A ban survives the deletion of the account: signing up again with the same address does not clear it.
+  const banned = await userForEmail('banni.test@ens.uvsq.fr');
+  banned.banned = { at: new Date().toISOString(), reason: 'test' };
+  await store().put('users', banned.id, banned);
+  await store().put('names', 'n1', { id: 'n1', userId: banned.id, firstName: 'A', lastName: 'B', at: '', status: 'open' });
+  await store().put('logins', 'l1', { id: 'l1', email: 'banni.test@ens.uvsq.fr' });
+  await eraseAccount(banned);
+  assert.equal(await store().get('names', 'n1'), undefined);
+  assert.equal(await store().get('logins', 'l1'), undefined);
+  const again = await userForEmail('banni.test@ens.uvsq.fr');
+  assert.notEqual(again.id, banned.id);
+  assert.ok(again.banned, 'the ban is kept');
+  // A resend gives the new code its own 10 minutes.
+  const login = await client()('/auth/start', { body: { email: 'renvoi.test@ens.uvsq.fr' } });
+  const first = login.body.expiresAt;
+  await new Promise(resolve => setTimeout(resolve, 20));
+  const resent = await client()('/auth/send-mail', { body: { requestId: login.body.requestId, poll: login.body.poll } });
+  assert.ok(resent.body.expiresAt > first);
 });

@@ -16,7 +16,7 @@ Sources d’inspiration : vue « À venir » de Todoist (liste continue par jour
 - **Carte de cours** : `~~14:00–16:00~~ 13:30–15:30 ⚑`, `~~I22~~ E58 ⚑`, « Annulé » hachuré ; pied : icône + « Rendu 12:00 ».
 - **Travaux (ordinateur)** : barre de semaine (jours, points, flèches, Aujourd’hui) · filtres en puces · agenda par semaines (5 colonnes) · panneau du jour (liste type Rappels, ajout, fiche intégrée, file à valider, comment ça marche, abonnement).
 - **Travaux (mobile)** : barre de semaine collante, filtres défilants, agenda par jours (en-têtes collants), fiche en feuille du bas.
-- **Liste** : style Rappels, sections En retard / Aujourd’hui / Demain / Cette semaine / Semaine prochaine / Plus tard.
+- **Liste** : style Rappels, sections Aujourd’hui / Demain / Cette semaine / Semaine prochaine / Plus tard.
 - **Connexion** : ordinateur = QR code à gauche, mail à droite ; mobile = mail puis validation sur l’appareil connecté s’il existe, sinon code par mail ; un seul champ de code.
 - **Abonnement agenda** : boutons Google Agenda, Apple Calendrier, Outlook, copier le lien.
 - **Fenêtres et champs** : feuille du bas sur mobile, actions dans un pied fixe, champs pleins à coins arrondis, anneau de focus visible.

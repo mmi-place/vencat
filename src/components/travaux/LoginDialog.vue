@@ -9,13 +9,13 @@ import { groupOptions } from '../../../shared/selection';
 import { isStudentEmail, isStaffEmail, type Me } from '../../../shared/travaux';
 
 // Desktop: QR code on the left (scanned by a connected phone), mail on the right.
-// Mobile: mail, then approval on a connected device when there is one, otherwise a code by mail.
-interface Request { requestId: string; poll: string; number: number; devices?: number; mailSent?: boolean; url?: string; expiresAt?: string }
+// Mail: a code to type here, or the link of the mail (it signs in the device that opens it).
+interface Request { requestId: string; poll: string; mailSent?: boolean; url?: string; expiresAt?: string }
 const email = ref(''), code = ref(''), status = ref(''), busy = ref(false);
 const mailRequest = ref<Request>(), qrRequest = ref<Request>(), qrImage = ref(''), qrExpired = ref(false);
 const timers: ReturnType<typeof setInterval>[] = [];
-let mailTimer: ReturnType<typeof setInterval> | undefined;
-onBeforeUnmount(() => timers.forEach(clearInterval));
+let expiryTimer: ReturnType<typeof setTimeout> | undefined;
+onBeforeUnmount(() => { timers.forEach(clearInterval); clearTimeout(expiryTimer); });
 function poll(request: Request, onDone: () => void) {
   const timer = setInterval(async () => {
     if (document.hidden) return;
@@ -38,16 +38,23 @@ async function showQr() {
     const result = await api<Request>('/auth/qr', { body: {} });
     qrRequest.value = result;
     qrImage.value = await QRCode.toDataURL(result.url!, { margin: 1, width: 360, color: { dark: '#0b1020', light: '#ffffff' } });
-    poll(result, () => { qrExpired.value = true; });
+    // A QR code lives 3 minutes: while this window is open it is replaced by a new one.
+    poll(result, () => { qrExpired.value = true; if (!document.hidden && !me.value) void showQr(); });
   } catch { qrExpired.value = true; }
 }
 onMounted(() => {
   // Coming back from the mail app (the system may have reloaded the page): the request in progress is restored.
   const pending = !me.value ? readPendingLogin() : undefined;
-  if (pending) { email.value = pending.email; mailRequest.value = pending.request; mailTimer = poll(pending.request, () => { mailRequest.value = undefined; clearPendingLogin(); }); }
+  if (pending) { email.value = pending.email; mailRequest.value = pending.request; watchExpiry(pending.request); }
   if (wide.value && !me.value) void showQr();
 });
 
+// A mail request that ran out of time goes back to the address form.
+function watchExpiry(request: Request) {
+  clearTimeout(expiryTimer);
+  const left = request.expiresAt ? Date.parse(request.expiresAt) - Date.now() : 0;
+  expiryTimer = setTimeout(() => { if (mailRequest.value?.requestId === request.requestId) { status.value = 'Demande expirée. Recommence.'; mailRequest.value = undefined; clearPendingLogin(); } }, Math.max(0, left));
+}
 async function start() {
   status.value = '';
   if (!isStudentEmail(email.value) && !(config.value.teacherAccounts && isStaffEmail(email.value))) { status.value = 'Utilise ton adresse étudiante, qui se termine par .uvsq.fr (prenom.nom@ens.uvsq.fr).'; return; }
@@ -56,8 +63,7 @@ async function start() {
     const result = await api<Request & { devCode?: string }>('/auth/start', { body: { email: email.value } });
     mailRequest.value = result;
     savePendingLogin(email.value, result);
-    clearInterval(mailTimer);
-    mailTimer = poll(result, () => { status.value = 'Demande expirée. Recommence.'; mailRequest.value = undefined; clearPendingLogin(); });
+    watchExpiry(result);
     if (result.devCode) code.value = result.devCode;
     nextTick(() => document.getElementById('login-code')?.focus());
   } catch (error) { status.value = errorText(error); }
@@ -66,7 +72,7 @@ async function start() {
 async function sendMail() {
   if (!mailRequest.value) return;
   busy.value = true; status.value = '';
-  try { const result = await api<{ devCode?: string }>('/auth/send-mail', { body: { requestId: mailRequest.value.requestId, poll: mailRequest.value.poll } }); mailRequest.value = { ...mailRequest.value, mailSent: true }; savePendingLogin(email.value, mailRequest.value); if (result.devCode) code.value = result.devCode; nextTick(() => document.getElementById('login-code')?.focus()); }
+  try { const result = await api<{ devCode?: string; expiresAt?: string }>('/auth/send-mail', { body: { requestId: mailRequest.value.requestId, poll: mailRequest.value.poll } }); mailRequest.value = { ...mailRequest.value, mailSent: true, expiresAt: result.expiresAt ?? mailRequest.value.expiresAt }; watchExpiry(mailRequest.value); savePendingLogin(email.value, mailRequest.value); if (result.devCode) code.value = result.devCode; nextTick(() => document.getElementById('login-code')?.focus()); }
   catch (error) { status.value = errorText(error); } finally { busy.value = false; }
 }
 async function verify() {
@@ -75,7 +81,7 @@ async function verify() {
   try { const result = await api<{ me: Me }>('/auth/verify', { body: { requestId: mailRequest.value.requestId, poll: mailRequest.value.poll, code: code.value } }); timers.forEach(clearInterval); setMe(result.me); }
   catch (error) { status.value = errorText(error); code.value = ''; if (/expirée/i.test(status.value)) { clearPendingLogin(); mailRequest.value = undefined; } } finally { busy.value = false; }
 }
-function restart() { clearInterval(mailTimer); mailRequest.value = undefined; code.value = ''; status.value = ''; clearPendingLogin(); }
+function restart() { clearTimeout(expiryTimer); mailRequest.value = undefined; code.value = ''; status.value = ''; clearPendingLogin(); }
 
 // First sign-in: name from the address, group, terms.
 const promotion = ref(selection.value?.promotion ?? '');
@@ -118,7 +124,7 @@ const subtitle = computed(() => me.value ? 'Deux réglages et c’est prêt.' : 
     <h3 id="qr-title">Avec ton téléphone</h3>
     <div class="qr-frame" :class="{ expired: qrExpired }"><img v-if="qrImage" :src="qrImage" alt="QR code de connexion"><button v-if="qrExpired" type="button" @click="showQr"><ArrowPathIcon class="inline-icon" aria-hidden="true" /> Nouveau code</button></div>
     <p>Ouvre Vencat sur ton téléphone déjà connecté, puis <strong>Mon compte › Connecter un ordinateur</strong>. L’appareil photo marche aussi.</p>
-    <p v-if="qrRequest && !qrExpired" class="waiting">En attente du téléphone · nombre {{ qrRequest.number }}</p>
+    <p v-if="qrRequest && !qrExpired" class="waiting">En attente du téléphone…</p>
   </section>
   <section class="login-mail" aria-labelledby="mail-title">
     <h3 v-if="wide" id="mail-title">Avec ton mail étudiant</h3>
@@ -128,15 +134,14 @@ const subtitle = computed(() => me.value ? 'Deux réglages et c’est prêt.' : 
       <p class="legal-line">Projet étudiant non officiel · <button type="button" class="text-button" @click="ui.cgu = true">conditions et confidentialité</button></p>
     </form>
     <template v-else>
-      <div v-if="mailRequest.devices && !mailRequest.mailSent" class="approve-hint"><p>Valide sur ton appareil déjà connecté. Choisis ce nombre :</p><p class="big-number" aria-label="Nombre à choisir">{{ mailRequest.number }}</p><p class="waiting">En attente de validation</p></div>
-      <form v-if="mailRequest.mailSent" class="login-mail" @submit.prevent="verify">
+      <form class="login-mail" @submit.prevent="verify">
         <p class="lead">Code envoyé à <strong>{{ email }}</strong>. Il est valable 10 minutes ; le lien du mail fonctionne aussi.</p>
         <label class="settings-label" for="login-code">Code à 6 chiffres</label>
         <input id="login-code" v-model="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required aria-describedby="code-hint" @input="code = code.replace(/\D/g, '').slice(0, 6); if (code.length === 6) verify()">
         <p id="code-hint" class="field-hint">Regarde aussi dans les indésirables.</p>
         <button type="submit" class="primary-action" :disabled="busy || code.length !== 6">Valider</button>
       </form>
-      <button v-else type="button" class="text-button" :disabled="busy" @click="sendMail">Recevoir plutôt un code par mail</button>
+      <button v-if="mailRequest.mailSent" type="button" class="text-button" :disabled="busy" @click="sendMail">Renvoyer le mail</button>
       <button type="button" class="text-button" @click="restart">Utiliser une autre adresse</button>
     </template>
     <p v-if="status" class="form-error" role="alert">{{ status }}</p>

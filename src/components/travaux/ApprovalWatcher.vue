@@ -1,53 +1,32 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import AccessibleDialog from '../AccessibleDialog.vue';
 import { api, errorText, me, meLoaded, qrRequest, ui, notify } from '../../scripts/travaux';
-// On a connected device: sign-in requests of the same account, approved by choosing the number shown on the new device.
-interface Pending { id: string; device: string; createdAt: string; choices: number[] }
-const pending = ref<Pending>();
-const qr = ref<{ id: string; device: string; number: number }>();
+// On a connected device: approves the QR code of a new device (scanned in the app or opened from its link).
+const qr = ref<{ id: string; device: string; createdAt: string }>();
 const busy = ref(false);
-const status = { set value(message: string) { if (message) notify(message); } };
-let timer: ReturnType<typeof setInterval> | undefined;
-// A request already answered (or dismissed) on this device never comes back, even if the answer failed to reach the server.
-const handled = new Set<string>();
-async function check() {
-  if (!me.value || document.hidden || pending.value) return;
-  try { const list = await api<Pending[]>('/auth/pending'); pending.value = list.find(item => !handled.has(item.id)); } catch { /* retried later */ }
-}
-async function answer(number?: number) {
-  const target = qr.value ? { id: qr.value.id } : pending.value;
+async function answer(approve: boolean) {
+  const target = qr.value;
   if (!target) return;
-  handled.add(target.id);
-  busy.value = true; status.value = '';
+  busy.value = true;
   try {
-    if (number === undefined) await api('/auth/deny', { body: { requestId: target.id } });
-    else await api('/auth/approve', { body: { requestId: target.id, number } });
-    status.value = number === undefined ? 'Demande refusée.' : 'Appareil connecté.';
-    pending.value = undefined; qr.value = undefined;
-  } catch (error) { status.value = errorText(error); pending.value = undefined; qr.value = undefined; }
-  finally { busy.value = false; }
+    await api(approve ? '/auth/approve' : '/auth/deny', { body: { requestId: target.id } });
+    notify(approve ? 'Appareil connecté.' : 'Demande refusée.');
+  } catch (error) { notify(errorText(error)); }
+  finally { busy.value = false; qr.value = undefined; }
 }
-async function openQr(id: string, number: number) {
-  if (!me.value) { ui.value.login = true; status.value = 'Connecte-toi d’abord sur ce téléphone pour valider l’autre appareil.'; return; }
-  try { const info = await api<{ id: string; device: string }>(`/auth/qr-info?r=${encodeURIComponent(id)}`); qr.value = { ...info, number }; }
-  catch (error) { status.value = errorText(error); }
+async function openQr(id: string) {
+  if (!me.value) { ui.value.login = true; notify('Connecte-toi d’abord sur ce téléphone pour valider l’autre appareil.'); return; }
+  try { qr.value = await api<{ id: string; device: string; createdAt: string }>(`/auth/qr-info?r=${encodeURIComponent(id)}`); }
+  catch (error) { notify(errorText(error)); }
 }
-onMounted(() => { timer = setInterval(check, 8000); document.addEventListener('visibilitychange', check); });
-onBeforeUnmount(() => { clearInterval(timer); document.removeEventListener('visibilitychange', check); });
-watch(me, value => { if (value) void check(); }, { immediate: true });
-// A scanned QR code waits for the account to be known; without an account, sign-in comes first and the code stays pending.
-watch([meLoaded, me, qrRequest], ([loaded, value, link]) => { if (!loaded || !link) return; if (value) qrRequest.value = undefined; void openQr(link.id, link.number); }, { immediate: true });
+// A scanned QR code waits for the account to be known; without an account, sign-in comes first.
+watch([meLoaded, me, qrRequest], ([loaded, value, link]) => { if (!loaded || !link) return; if (value) qrRequest.value = undefined; void openQr(link.id); }, { immediate: true });
 </script>
 <template>
-<AccessibleDialog v-if="pending" id="approve-dialog" title="Connexion demandée" @close="handled.add(pending.id); pending = undefined">
-  <p><strong>{{ pending.device }}</strong> · {{ new Date(pending.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) }}</p>
-  <p>Choisis le nombre affiché sur le nouvel appareil. Si tu n’as rien demandé, refuse.</p>
-  <div class="number-choices" role="group" aria-label="Nombres"><button v-for="value in pending.choices" :key="value" :disabled="busy" @click="answer(value)">{{ value }}</button></div>
-  <button class="danger-action" :disabled="busy" @click="answer()">Ce n’est pas moi</button>
-</AccessibleDialog>
 <AccessibleDialog v-if="qr" id="qr-approve-dialog" title="Connecter cet appareil ?" @close="qr = undefined">
-  <p>Le QR code scanné demande à connecter <strong>{{ qr.device }}</strong> à ton compte. Vérifie que l’écran affiche le nombre <strong>{{ qr.number }}</strong>.</p>
-  <div class="button-row end"><button class="danger-action" :disabled="busy" @click="answer()">Refuser</button><button class="primary-action" :disabled="busy" @click="answer(qr.number)">Connecter</button></div>
+  <p>Le QR code scanné demande à connecter <strong>{{ qr.device }}</strong> à ton compte, demandé à {{ new Date(qr.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }}.</p>
+  <p class="muted">Valide seulement si tu es devant l’écran qui affiche ce QR code. Si quelqu’un te l’a envoyé, refuse : il pourrait accéder à ton compte.</p>
+  <div class="button-row end"><button class="danger-action" :disabled="busy" @click="answer(false)">Refuser</button><button class="primary-action" :disabled="busy" @click="answer(true)">Connecter</button></div>
 </AccessibleDialog>
 </template>

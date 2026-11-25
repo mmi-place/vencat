@@ -4,7 +4,7 @@ import { PlusIcon, CheckBadgeIcon, ChevronRightIcon } from '@heroicons/vue/24/ou
 import WorkDetail from './WorkDetail.vue';
 import WorkItem from './WorkItem.vue';
 import InfoCard from './InfoCard.vue';
-import { travauxDay, today, worksByDay, openedWork, form, requireAccount, queueCount, ui, me, relativeDay, worksForCourse, section, travauxView, visibleWorks, lateWorks } from '../../scripts/travaux';
+import { travauxDay, today, worksByDay, openedWork, form, requireAccount, queueCount, ui, me, relativeDay, worksForCourse, section, travauxView, visibleWorks } from '../../scripts/travaux';
 import { savedCourses, focused } from '../../scripts/calendarStore';
 import { campusDate, campusTime, frenchDate } from '../../../shared/calendar';
 import type { CourseDTO } from '../../../shared/courses';
@@ -14,7 +14,7 @@ const courses = computed(() => savedCourses.value.filter(course => campusDate(co
 const add = () => requireAccount(() => { form.value = { mode: 'create', day: travauxDay.value }; });
 // In the list there is no selected day: the panel always shows a work, the first one by default.
 const listMode = computed(() => travauxView.value === 'liste');
-const firstWork = computed(() => lateWorks.value[0] ?? visibleWorks.value.find(work => work.day >= today.value) ?? visibleWorks.value[0]);
+const firstWork = computed(() => visibleWorks.value.find(work => work.day >= today.value) ?? visibleWorks.value[0]);
 watch([listMode, firstWork, openedWork], () => { if (listMode.value && !openedWork.value && firstWork.value) openedWork.value = firstWork.value.id; }, { immediate: true });
 // Échap closes the work shown in the panel (wherever the focus is) and gives the focus back to the agenda.
 function closeDetail(event: KeyboardEvent) {

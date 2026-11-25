@@ -6,7 +6,9 @@ import type { WorkType, WorkView, ScopeKind } from '../../../shared/travaux';
 
 // Links opened from outside (ICS, mails, QR codes) are read before the router rewrites the address.
 const launch = new URLSearchParams(location.search);
-export const launchLinks: { work?: string; qr?: { id: string; number: number }; connexion?: string; magic?: { r: string; t: string } } = { magic: launch.get('lien') && launch.get('t') ? { r: launch.get('lien')!, t: launch.get('t')! } : undefined, work: launch.get('travail') ?? undefined, qr: launch.get('qr') ? { id: launch.get('qr')!, number: Number(launch.get('n')) } : undefined, connexion: launch.get('connexion') ?? undefined };
+export const launchLinks: { work?: string; qr?: { id: string }; connexion?: string; magic?: { r: string; t: string } } = { magic: launch.get('lien') && launch.get('t') ? { r: launch.get('lien')!, t: launch.get('t')! } : undefined, work: launch.get('travail') ?? undefined, qr: launch.get('qr') ? { id: launch.get('qr')! } : undefined, connexion: launch.get('connexion') ?? undefined };
+// The mail link must not stay in the address bar: a reload would ask again for a link that has already been used.
+if (launch.has('lien') || launch.has('t')) { try { launch.delete('lien'); launch.delete('t'); const query = launch.toString(); history.replaceState(history.state, '', location.pathname + (query ? '?' + query : '') + location.hash); } catch { /* address not editable */ } }
 /** QR code of another device to approve (opened from its link or scanned in the app). */
 export const qrRequest = ref(launchLinks.qr);
 

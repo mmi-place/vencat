@@ -1,9 +1,11 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
 import { randomBytes, randomInt } from 'node:crypto';
-import { settings as globalSettings, saveSettings } from './settings.js';
+import { settings as globalSettings, freshSettings, saveSettings } from './settings.js';
 import { sendMail, layout } from './mail.js';
+import { notifyAdmins, TOPICS, isTopic, type Topic } from './notify.js';
+import type { Feedback } from './feedback.js';
 import { HttpError, hash, id, now, sameOrigin, overLimit, addressKey, deviceLabel, adminEmails, activeDelegations, displayName, type User, type Session, type Delegation } from './auth.js';
-import { db, settle, workView, users, history, audit, schoolYearEnd, type Work } from './common.js';
+import { db, settle, workView, users, history, audit, schoolYearEnd, eraseAccount, type Work } from './common.js';
 import { moderationData, moderationAction } from './moderation.js';
 import { normalizeEmail, cleanText, LIMITS, scopeLabel, type WorkState } from '../../shared/travaux.js';
 import { groupById } from '../../shared/selection.js';
@@ -50,9 +52,13 @@ router.post('/admin/start', route(async (req, res) => {
 router.post('/admin/verify', route(async (req, res) => {
   const login = await db().get<AdminLogin>('adminLogins', String(req.body?.requestId ?? ''));
   if (!login || login.expiresAt < now()) throw new HttpError(410, 'Code expiré. Recommence.');
+  if (await overLimit('admin-verify-ip:' + addressKey(req), 30, 600)) throw new HttpError(429, 'Trop d’essais. Réessaie dans quelques minutes.');
   if (login.attempts >= 5) throw new HttpError(429, 'Trop d’essais. Demande un nouveau code.');
   const code = String(req.body?.code ?? '').replace(/\D/g, '');
-  if (!login.codeHash || hash(login.id + ':' + code) !== login.codeHash) { login.attempts++; await db().put('adminLogins', login.id, login); throw new HttpError(400, 'Code incorrect.'); }
+  if (!login.codeHash || hash(login.id + ':' + code) !== login.codeHash) {
+    // Counted atomically too: parallel guesses cannot all read « 0 attempts ».
+    if (await overLimit('admin-verify-fail:' + login.id, 5, 3600)) { login.attempts = 5; await db().put('adminLogins', login.id, login); throw new HttpError(429, 'Trop d’essais. Demande un nouveau code.'); }
+    login.attempts++; await db().put('adminLogins', login.id, login); throw new HttpError(400, 'Code incorrect.'); }
   await db().delete('adminLogins', login.id);
   const token = randomBytes(32).toString('base64url');
   const session: AdminSession = { email: login.email, createdAt: now(), expiresAt: new Date(Date.now() + 12 * 3600000).toISOString(), device: deviceLabel(req) };
@@ -87,9 +93,35 @@ router.post('/admin/settings', route(async (req, res) => {
   const session = await requireAdmin(req);
   const planningOnly = req.body?.planningOnly === true;
   const message = cleanText(req.body?.message, 300);
-  await saveSettings({ planningOnly, message: message || undefined, since: new Date().toISOString(), by: session.email });
+  await saveSettings({ ...await freshSettings(), planningOnly, message: message || undefined, since: new Date().toISOString(), by: session.email });
   await audit('admin:' + session.email, planningOnly ? 'mode planning seul : activé' : 'mode planning seul : désactivé', 'global', message);
+  await notifyAdmins('important', `Vencat : mode planning seul ${planningOnly ? 'activé' : 'désactivé'}`, `${session.email} a ${planningOnly ? 'activé' : 'désactivé'} le mode planning seul.${message ? `\nMessage affiché : ${message}` : ''}`);
   res.json(await globalSettings());
+}));
+const notificationsView = async () => ({ topics: await Promise.all((Object.keys(TOPICS) as Topic[]).map(async id => ({ id, ...TOPICS[id], emails: (await freshSettings()).notifyEmails?.[id] ?? [] }))) });
+router.get('/admin/notifications', route(async (req, res) => { await requireAdmin(req); res.json(await notificationsView()); }));
+router.post('/admin/notifications', route(async (req, res) => {
+  const session = await requireAdmin(req);
+  if (!isTopic(req.body?.topic)) throw new HttpError(400, 'Catégorie inconnue.');
+  const topic: Topic = req.body.topic;
+  const list = (Array.isArray(req.body?.emails) ? req.body.emails : []).map((value: unknown) => normalizeEmail(String(value))).filter(Boolean);
+  if (list.length > 10 || list.some((value: string) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))) throw new HttpError(400, 'Adresses invalides (10 au maximum).');
+  const emails = [...new Set<string>(list)];
+  const current = await freshSettings();
+  await saveSettings({ ...current, notifyEmails: { ...current.notifyEmails, [topic]: emails } });
+  await audit('admin:' + session.email, `notifications « ${TOPICS[topic].label} »`, 'global', emails.join(', ') || 'par défaut (administrateurs)');
+  res.json(await notificationsView());
+}));
+router.get('/admin/feedback', route(async (req, res) => {
+  await requireAdmin(req);
+  res.json((await db().list<Feedback>('feedback')).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 50));
+}));
+router.post('/admin/notifications/test', route(async (req, res) => {
+  const session = await requireAdmin(req);
+  if (!isTopic(req.body?.topic)) throw new HttpError(400, 'Catégorie inconnue.');
+  if (await overLimit('notify-test:' + session.email, 10, 3600)) throw new HttpError(429, 'Trop de tests. Réessaie plus tard.');
+  const result = await notifyAdmins(req.body.topic, `[Test] Vencat : ${TOPICS[req.body.topic as Topic].label}`, `Ceci est un mail de test de la catégorie « ${TOPICS[req.body.topic as Topic].label} », envoyé par ${session.email}.\nSi tu le reçois, tu seras prévenu(e) pour ce type d’événement.`);
+  res.json(result);
 }));
 router.get('/admin/works', route(async (req, res) => {
   await requireAdmin(req);
@@ -105,7 +137,7 @@ router.post('/admin/work/:id', route(async (req, res) => {
   if (!work || work.personal) throw new HttpError(404, 'Travail introuvable.');
   const action = String(req.body?.action ?? ''), reason = cleanText(req.body?.reason, LIMITS.reason), actor = 'admin:' + session.email;
   const states: Record<string, WorkState | undefined> = { validate: 'validated', remove: 'removed', restore: undefined };
-  if (!(action in states)) throw new HttpError(400, 'Action inconnue.');
+  if (!Object.hasOwn(states, action)) throw new HttpError(400, 'Action inconnue.');
   work.forced = states[action] as Work['forced']; work.updatedAt = now();
   // The state follows from settle() (validate) or is set here (remove, restore), so reliability is handled once, in one place.
   if (action !== 'validate') work.state = states[action] ?? 'pending';
@@ -136,9 +168,7 @@ router.post('/admin/action', route(async (req, res) => {
   } else if (body.kind === 'user-delete') {
     const user = await db().get<User>('users', String(body.id));
     if (!user) throw new HttpError(404, 'Compte introuvable.');
-    if (user.email) await db().delete('emails', user.email);
-    for (const item of (await db().list<Session>('sessions')).filter(entry => entry.userId === user.id)) await db().delete('sessions', item.id);
-    await db().put('users', user.id, { id: user.id, email: null, firstName: '', lastName: '', createdAt: user.createdAt, reliability: user.reliability, deletedAt: now(), banned: user.banned } satisfies User);
+    await eraseAccount(user);
     await audit(actor, 'compte:suppression', user.id, reason);
   } else await moderationAction(actor, true, [], body);
   res.json({ ok: true });

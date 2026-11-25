@@ -69,7 +69,6 @@ export const worksByDay = computed(() => {
 });
 /** All works of a day, whatever the filters (used in the timetable). */
 export const worksOn = (day: string) => works.value.filter(work => work.day === day && work.state !== 'removed');
-export const lateWorks = computed(() => visibleWorks.value.filter(work => work.due < clock.value.toISOString() && !isDone(work.id) && work.day >= addDay(today.value, -30)));
 export const label = (work: WorkView) => countdown(work.day, today.value);
 
 /** Works linked to a course: same CELCAT identifier and start, else same subject on the same day ("cours modifié"). */

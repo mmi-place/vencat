@@ -1,6 +1,6 @@
 // Mails go through the Oracle SMTP server (nodemailer). Without SMTP settings, development logs the message
 // in the console so sign-in still works locally.
-export interface Mail { to: string; subject: string; text: string; html?: string }
+export interface Mail { to: string; subject: string; text: string; html?: string; replyTo?: string }
 const smtpPassword = () => process.env.SMTP_PASSWORD || process.env.SMTP_PASS;
 export const mailConfigured = () => !!(process.env.SMTP_HOST && process.env.SMTP_USER && smtpPassword());
 /** Sender: SMTP_FROM, or SMTP_SENDER_NAME <SMTP_ADMIN_EMAIL> (approved sender of the Oracle Email Delivery). */
@@ -23,7 +23,7 @@ export async function sendMail(mail: Mail): Promise<void> {
     host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587), secure: Number(process.env.SMTP_PORT) === 465,
     auth: { user: process.env.SMTP_USER, pass: smtpPassword() },
   }));
-  await (await transport).sendMail({ from: sender(), replyTo: process.env.CONTACT_EMAIL || undefined, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html ?? textToHtml(mail.subject, mail.text) });
+  await (await transport).sendMail({ from: sender(), replyTo: mail.replyTo || process.env.CONTACT_EMAIL || undefined, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html ?? textToHtml(mail.subject, mail.text) });
 }
 
 const escape = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);

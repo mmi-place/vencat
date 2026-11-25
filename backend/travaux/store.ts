@@ -48,7 +48,8 @@ class NeonStore implements DocStore {
       const client = neon(this.url);
       this.sql = (query, params = []) => client.query(query, params) as Promise<Record<string, unknown>[]>;
     }
-    this.ready ??= this.sql(`CREATE TABLE IF NOT EXISTS vencat_docs (col text NOT NULL, id text NOT NULL, data jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (col, id))`).then(() => undefined);
+    // A failed creation (Neon waking up, network blip) is not kept: the next call tries again.
+    this.ready ??= this.sql(`CREATE TABLE IF NOT EXISTS vencat_docs (col text NOT NULL, id text NOT NULL, data jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (col, id))`).then(() => undefined, error => { this.ready = undefined; throw error; });
     await this.ready;
     return this.sql;
   }

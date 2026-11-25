@@ -4,11 +4,13 @@ import { configured, redis } from './storage.js';
 import { groupOptions } from '../shared/selection.js';
 import { campusDate } from '../shared/calendar.js';
 import { detectAll } from './changes.js';
+import { rateLimited } from './identity.js';
 
-// Scheduled refresh of the one-month search for every group, at 02:00 and 14:00 (Paris), in one pass.
-// Vercel limits (Hobby): a cron runs once a day within its hour, a function stops after 300 s.
-// So one call refreshes every group, a few at a time, under a time budget; if the budget runs out,
-// it hands the rest to one more call.
+// Refresh of the one-month search for every group, in one pass (plus the change detection).
+// Long-running server (local, VPS): in-process, at 02:00 and 14:00 (Paris).
+// Vercel (Hobby: a cron runs once a day, a function stops after 300 s): the daily cron, plus a pass started by a visit
+// when the last one is old (see below). One call refreshes the groups a few at a time under a time budget; if the
+// budget runs out, it hands the rest to one more call.
 export const PREFETCH_HOURS = [2, 14];
 export const PREFETCH_CONCURRENCY = 4;
 /** Seconds of work per call, below the 300 s limit of a function. */
@@ -58,8 +60,30 @@ export function startPrefetchScheduler(log: (message: string) => void = console.
   return () => clearTimeout(timer);
 }
 
-// Serverless (Vercel cron). Cron entries exist for both UTC hours that can be 02:00 / 14:00 in Paris;
-// only the call that falls in the right Paris hour works, once per slot (Redis), the others answer 204.
+// Serverless (Vercel). Hobby crons run once a day, so the daily cron does the full pass and a visit can start one too:
+// when the last full pass is older than PREFETCH_STALE_MS, the next visitor's app asks for a new one (POST /prefetch/touch).
+export const PREFETCH_STALE_MS = 12 * 3600_000;
+const LAST_KEY = 'vencat:prefetch:last', LOCK_KEY = 'vencat:prefetch:lock';
+let memoryLast = 0;
+async function lastPass() {
+  if (configured()) { try { const value = Number(await redis('GET', LAST_KEY)); if (value) return value; } catch { /* per-instance value */ } }
+  return memoryLast;
+}
+async function markPass() { memoryLast = Date.now(); if (configured()) { try { await redis('SET', LAST_KEY, String(memoryLast)); } catch { /* per-instance value */ } } }
+const originOf = (req: { protocol: string; headers: { host?: string } }) => process.env.PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : `${req.protocol}://${req.headers.host}`);
+
+/** One call of the full pass: groups from `from`, then change detection; hands the rest to one more call when out of budget. */
+async function runPass(req: { protocol: string; headers: { host?: string } }, from: number, slot: string) {
+  const result = await prefetchAll(from);
+  // Change detection in the same call when the budget allows it (otherwise the daily /api/monitor does it).
+  const changes = result.next === undefined && from === 0 ? await detectAll(prefetchGroups(), Math.max(0, PREFETCH_BUDGET_MS - result.ms)) : undefined;
+  if (result.next !== undefined) {
+    // Out of budget: one more call finishes the pass (only its start is awaited).
+    await fetch(`${originOf(req)}/api/prefetch?from=${result.next}&slot=${encodeURIComponent(slot)}`, { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` }, signal: AbortSignal.timeout(4000) }).catch(() => undefined);
+  } else await markPass();
+  return { slot, from, ...result, changes };
+}
+
 export const prefetchRouter = Router();
 prefetchRouter.get('/prefetch', async (req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -67,18 +91,22 @@ prefetchRouter.get('/prefetch', async (req, res, next) => {
   const from = Number(req.query.from ?? 0);
   if (!Number.isInteger(from) || from < 0 || from >= prefetchGroups().length) return res.status(400).json({ error: 'Index invalide.' });
   const clock = parisClock();
-  const slot = typeof req.query.slot === 'string' ? req.query.slot : `${clock.day}-${clock.hour}`;
-  if (from === 0 && req.query.force !== '1' && !PREFETCH_HOURS.includes(clock.hour)) return res.status(204).end();
+  // One pass per day for the cron (whatever the hour: summer and winter time shift it), once per slot.
+  const slot = typeof req.query.slot === 'string' ? req.query.slot : `${clock.day}`;
   try {
     if (configured() && !await redis('SET', `vencat:prefetch:${slot}:${from}`, '1', 'NX', 'EX', 86400)) return res.status(202).json({ duplicate: true });
-    const result = await prefetchAll(from);
-    // Change detection in the same call when the budget allows it (otherwise the daily /api/monitor does it).
-    const changes = result.next === undefined && from === 0 ? await detectAll(prefetchGroups(), Math.max(0, PREFETCH_BUDGET_MS - result.ms)) : undefined;
-    if (result.next !== undefined) {
-      // Out of budget: one more call finishes the slot (only its start is awaited).
-      const origin = process.env.PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : `${req.protocol}://${req.headers.host}`);
-      await fetch(`${origin}/api/prefetch?from=${result.next}&slot=${encodeURIComponent(slot)}`, { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` }, signal: AbortSignal.timeout(4000) }).catch(() => undefined);
-    }
-    res.json({ slot, from, ...result, changes });
+    res.json(await runPass(req, from, slot));
+  } catch (error) { next(error); }
+});
+// A visit: the app calls this once in a while. Nothing happens unless the last full pass is old and no pass is running.
+prefetchRouter.post('/prefetch/touch', async (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  if (!process.env.VERCEL && process.env.PREFETCH_ON_VISIT !== '1') return res.status(204).end();
+  if (req.headers['x-requested-with'] !== 'vencat') return res.sendStatus(400);
+  try {
+    if (Date.now() - await lastPass() < PREFETCH_STALE_MS) return res.status(204).end();
+    if (configured() && await rateLimited(req)) return res.status(429).end();
+    if (configured() ? !await redis('SET', LOCK_KEY, '1', 'NX', 'EX', 600) : false) return res.status(202).json({ running: true });
+    res.json(await runPass(req, 0, `visit-${Date.now()}`));
   } catch (error) { next(error); }
 });

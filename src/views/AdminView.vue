@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { ChartBarIcon, ShieldExclamationIcon, UsersIcon, ClipboardDocumentListIcon, MapPinIcon, UserGroupIcon, ClockIcon, ArrowRightOnRectangleIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
+import { ChartBarIcon, ShieldExclamationIcon, UsersIcon, ClipboardDocumentListIcon, MapPinIcon, UserGroupIcon, ClockIcon, ArrowRightOnRectangleIcon, ArrowPathIcon, BellAlertIcon } from '@heroicons/vue/24/outline';
 import { api, errorText } from '../scripts/travaux';
 import { groupById, groupOptions } from '../../shared/selection';
 import { WORK_TYPE_LABELS, WORK_STATE_LABELS, scopeIncludes, type WorkView } from '../../shared/travaux';
 import { frenchDate, frenchStamp } from '../../shared/calendar';
 
 // Administration: its own sign-in by mail code, a session that ends with the browser session.
-type Tab = 'overview' | 'moderation' | 'accounts' | 'works' | 'corrections' | 'delegates' | 'log';
+type Tab = 'overview' | 'moderation' | 'accounts' | 'works' | 'corrections' | 'delegates' | 'notifications' | 'log';
 interface Overview {
   stats: { accounts: number; active: number; works: number; states: Record<string, number>; newWorks: number; groups: number };
   reports: { id: string; kind: string; targetId: string; title: string; reason: string; by: string; at: string }[];
@@ -31,6 +31,23 @@ const query = ref(''), workQuery = ref(''), workState = ref(''), reason = ref(''
 const global = ref<{ planningOnly: boolean; message?: string; since?: string; by?: string }>({ planningOnly: false });
 const globalMessage = ref('');
 async function loadGlobal() { try { global.value = await api('/admin/settings'); globalMessage.value = global.value.message ?? ''; } catch { /* shown on next load */ } }
+// Mails to the administration, by topic: one list of addresses each (empty: every administrator).
+interface Topic { id: string; label: string; description: string; emails: string[] }
+const topics = ref<Topic[]>([]), topicText = ref<Record<string, string>>({});
+function showTopics(data: { topics: Topic[] }) { topics.value = data.topics; topicText.value = Object.fromEntries(data.topics.map(topic => [topic.id, topic.emails.join(', ')])); }
+async function loadTopics() { try { showTopics(await api('/admin/notifications')); } catch { /* shown on next load */ } }
+async function saveTopic(topic: Topic) {
+  busy.value = true;
+  try { showTopics(await api('/admin/notifications', { body: { topic: topic.id, emails: (topicText.value[topic.id] ?? '').split(/[\s,;]+/).filter(Boolean) } })); status.value = `« ${topic.label} » enregistré.`; }
+  catch (error) { status.value = errorText(error); } finally { busy.value = false; }
+}
+const feedbackList = ref<{ id: string; at: string; kind: string; message: string; email?: string; context: Record<string, string> }[]>([]);
+async function loadFeedbackList() { try { feedbackList.value = await api('/admin/feedback'); } catch { /* shown on next load */ } }
+async function testTopic(topic: Topic) {
+  busy.value = true;
+  try { const result = await api<{ to: number; sent: number }>('/admin/notifications/test', { body: { topic: topic.id } }); status.value = result.sent ? `Mail de test envoyé à ${result.sent} adresse(s). Enregistre d’abord tes changements pour tester la nouvelle liste.` : 'Aucun mail n’a pu partir (SMTP ou destinataires).'; }
+  catch (error) { status.value = errorText(error); } finally { busy.value = false; }
+}
 async function setPlanningOnly(value: boolean) {
   if (value && !confirm('Passer Vencat en mode planning seul ? Les Travaux, les comptes, les votes et les corrections seront coupés pour tout le monde, l’emploi du temps restera.')) return;
   busy.value = true;
@@ -38,7 +55,7 @@ async function setPlanningOnly(value: boolean) {
   catch (error) { status.value = errorText(error); } finally { busy.value = false; }
 }
 
-async function check() { try { session.value = await api('/admin/me'); await load(); await loadGlobal(); } catch { session.value = undefined; } checked.value = true; }
+async function check() { try { session.value = await api('/admin/me'); await load(); await loadGlobal(); await loadTopics(); await loadFeedbackList(); } catch { session.value = undefined; } checked.value = true; }
 onMounted(() => { document.title = 'Administration · Vencat'; void check(); });
 async function start() {
   busy.value = true; status.value = '';
@@ -114,6 +131,7 @@ const tabs = computed(() => [
   { id: 'works' as const, label: 'Travaux', icon: ClipboardDocumentListIcon },
   { id: 'corrections' as const, label: 'Corrections', icon: MapPinIcon },
   { id: 'delegates' as const, label: 'Délégués', icon: UserGroupIcon },
+  { id: 'notifications' as const, label: 'Notifications', icon: BellAlertIcon },
   { id: 'log' as const, label: 'Journal', icon: ClockIcon },
 ]);
 const day = frenchStamp;
@@ -188,6 +206,19 @@ const day = frenchStamp;
       <template v-else-if="data && tab === 'delegates'">
         <section class="admin-card"><h2>Mandats en cours</h2><p v-if="!data.activeDelegates.length" class="muted">Aucun(e) délégué(e).</p><div v-for="item in data.activeDelegates" :key="item.id" class="admin-row"><div><strong>{{ item.name }}</strong><small>{{ item.title }} · {{ item.group }} · jusqu’au {{ item.until ? new Date(item.until).toLocaleDateString('fr-FR') : '—' }}</small></div><button class="danger-action" :disabled="busy" @click="act({ kind: 'delegate-end', id: item.id })">Mettre fin</button></div></section>
         <p class="muted">Les délégué(e)s élu(e)s se déclarent dans Vencat (Mon compte › Groupe et délégués) ; les élèves du groupe donnent leur avis, et tu confirmes ici après vérification. Pour enregistrer directement un(e) délégué(e) : onglet Comptes › Nommer délégué(e).</p>
+      </template>
+      <template v-else-if="tab === 'notifications'">
+        <p class="muted">Choisis qui reçoit un mail pour chaque type d’événement (adresses séparées par des virgules, 10 au maximum). Les administrateurs ne sont pas prévenus d’office : une liste vide ne prévient personne.</p>
+        <section v-for="topic in topics" :key="topic.id" class="admin-card"><h2>{{ topic.label }}</h2>
+          <p class="muted">{{ topic.description }}</p>
+          <p v-if="!topic.emails.length" class="form-error">Aucune adresse : personne n’est prévenu.</p>
+          <label class="settings-label">Adresses<input v-model="topicText[topic.id]" type="text" inputmode="email" placeholder="equipe@exemple.fr, autre@exemple.fr"></label>
+          <div class="admin-actions"><button class="primary-action" :disabled="busy" @click="saveTopic(topic)">Enregistrer</button><button :disabled="busy" @click="testTopic(topic)">Envoyer un mail de test</button></div>
+        </section>
+        <section class="admin-card"><h2>Retours reçus</h2>
+          <p v-if="!feedbackList.length" class="muted">Aucun retour pour l’instant. Ils sont tous gardés ici, même sans destinataire.</p>
+          <ul v-else class="feedback-inbox"><li v-for="item in feedbackList" :key="item.id"><strong>{{ item.kind === 'bug' ? 'Bug' : item.kind === 'idea' ? 'Idée' : 'Autre' }}</strong> · {{ day(item.at) }}<template v-if="item.email"> · {{ item.email }}</template><p>{{ item.message }}</p><small class="muted">{{ Object.values(item.context).join(' · ') }}</small></li></ul>
+        </section>
       </template>
       <template v-else-if="data && tab === 'log'">
         <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Quand</th><th>Qui</th><th>Action</th><th>Motif</th></tr></thead><tbody><tr v-for="item in data.log" :key="item.id"><td>{{ day(item.at) }}</td><td>{{ item.by }}</td><td>{{ item.action }}</td><td class="muted">{{ item.reason }}</td></tr></tbody></table></div>
