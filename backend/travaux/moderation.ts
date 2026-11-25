@@ -110,7 +110,7 @@ export async function moderationAction(actorId: string, admin: boolean, delegate
       if (person.email) await sendMail({ to: person.email, subject: 'Vencat : compte en lecture seule pendant 7 jours', text: explanation(person.firstName, `Ton compte passe en lecture seule pendant 7 jours. ${reason}`, contact) }).catch(() => undefined);
     } else if (action === 'ban' && admin) {
       person.banned = { at: now(), reason };
-      for (const session of (await db().list<Session>('sessions')).filter(item => item.userId === person.id)) await db().delete('sessions', session.id);
+      for (const session of await db().find<Session>('sessions', 'userId', person.id)) await db().delete('sessions', session.id);
       if (person.email) await sendMail({ to: person.email, subject: 'Vencat : compte banni', text: explanation(person.firstName, `Ton compte a été banni. ${reason}`, contact) }).catch(() => undefined);
     } else if (action === 'lift' && admin) { person.readOnlyUntil = undefined; person.banned = undefined; }
     else throw new HttpError(400, 'Action inconnue.');

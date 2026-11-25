@@ -154,6 +154,20 @@ La validité part de la récupération des données universitaires, et n’est p
 
 Sans Redis, les caches en mémoire restent disponibles, mais sont propres à chaque instance du serveur. Redis permet leur partage entre les fonctions Vercel ainsi que la conservation de l’historique commun.
 
+## Stockage et données
+
+**Sans compte**, rien de personnel n'est gardé côté serveur : le groupe, les préférences, les cases « Fait » et les notes restent sur l'appareil (`localStorage` et IndexedDB). À la connexion, ce qui existe sur l'appareil et pas sur le compte est ajouté au compte (jamais l'inverse en écrasant).
+
+**Avec un compte**, tout est dans Postgres (Neon), sans jamais écraser :
+- **Cases « Fait » et notes** : un document par case ou par note ; un décochage laisse une trace de 30 jours pour qu'un appareil hors ligne ne le rétablisse pas.
+- **Préférences** (thème, couleurs, palette, options d'affichage, accessibilité) : fusionnées clé par clé, la modification la plus récente d'une clé gagne (`/api/account/preferences`). Sur un nouvel appareil, elles arrivent seules, ainsi que le groupe du compte.
+- **Téléchargement des données** : `GET /api/account/export` (compte, contributions, votes, cases, notes, préférences).
+- **Planning reconstructible** (semaines de référence et historique des changements) : table séparée `vencat_planning`, à part des comptes et contributions.
+
+**Nettoyage quotidien** (cron `/api/monitor`) : sessions inactives depuis 60 jours, demandes de connexion expirées, problèmes (90 jours), signalements traités (90 jours), propositions closes et leurs votes (90 jours), journal d'audit, historique et retours (1 an). Les comptes inactifs reçoivent un mail à 11 mois puis sont supprimés à 12 mois (jamais les administrateurs ni les délégué(e)s).
+
+**Appareil** : stockage persistant demandé une fois, et si le quota dépasse 80 % les copies reconstructibles (travaux par groupe, vieilles semaines de planning) sont effacées en premier, jamais les cases ni les notes.
+
 ## Vercel et Redis
 
 Importer le dépôt dans Vercel avec la racine du dépôt comme **Root Directory** et `main` comme **Production Branch**. La configuration de `vercel.json` installe les dépendances, compile le frontend dans `dist` et déploie les fonctions API. L’intégration GitHub déclenche automatiquement un déploiement après chaque push sur `main`. Le workflow GitHub Actions exécute les tests et la compilation. L’ancien déploiement FTP est supprimé.

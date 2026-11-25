@@ -166,7 +166,7 @@ router.post('/account/onboard', route(async (req, res) => {
 }));
 router.get('/account/devices', route(async (req, res) => {
   const { user, session } = await requireUser(req);
-  const sessions = (await db().list<Session>('sessions')).filter(item => item.userId === user.id).sort((a, b) => b.lastSeen.localeCompare(a.lastSeen));
+  const sessions = (await db().find<Session>('sessions', 'userId', user.id)).sort((a, b) => b.lastSeen.localeCompare(a.lastSeen));
   res.json(sessions.map(item => ({ id: item.id, device: item.device, createdAt: item.createdAt, lastSeen: item.lastSeen, current: item.id === session.id })));
 }));
 router.delete('/account/devices/:id', route(async (req, res) => {
@@ -187,7 +187,7 @@ router.post('/account/name', route(async (req, res) => {
   const { user } = await requireUser(req);
   const firstName = cleanText(req.body?.firstName, 60), lastName = cleanText(req.body?.lastName, 60);
   if (!firstName) throw new HttpError(400, 'Prénom manquant.');
-  const open = (await db().list<NameRequest>('names')).find(item => item.userId === user.id && item.status === 'open');
+  const open = (await db().find<NameRequest>('names', 'userId', user.id)).find(item => item.status === 'open');
   const request: NameRequest = { id: open?.id ?? id(), userId: user.id, firstName, lastName, at: now(), status: 'open' };
   await db().put('names', request.id, request);
   await notifyAdmins('important', 'Vencat : demande de changement de nom', `${user.email} demande à s’appeler « ${firstName} ${lastName} ».\nÀ valider dans l’administration (/admin › Modération).`);

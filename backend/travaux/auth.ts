@@ -9,6 +9,8 @@ import { groupById } from '../../shared/selection.js';
 export interface User {
   id: string; email: string | null; firstName: string; lastName: string; groupId?: string; groupSemester?: string; createdAt: string;
   cguAcceptedAt?: string; reliability: number; staff?: boolean; readOnlyUntil?: string; banned?: { at: string; reason: string }; deletedAt?: string;
+  /** Last use of the account (updated at most once an hour), for the automatic deletion of inactive accounts. */
+  lastActiveAt?: string; inactiveWarnedAt?: string;
 }
 export interface Session { id: string; userId: string; createdAt: string; lastSeen: string; device: string }
 /** Real class representatives (elected at the IUT) declare themselves; the administration checks and confirms. No vote in Vencat. */
@@ -74,6 +76,7 @@ export function deviceLabel(req: Request) {
 export async function createSession(req: Request, res: Response, user: User) {
   const session: Session = { id: id(), userId: user.id, createdAt: now(), lastSeen: now(), device: deviceLabel(req) };
   await store().put('sessions', session.id, session);
+  if (user.lastActiveAt !== session.lastSeen) { user.lastActiveAt = session.lastSeen; user.inactiveWarnedAt = undefined; await store().put('users', user.id, user); }
   setSessionCookie(req, res, issueSessionToken(session.id));
   return session;
 }
@@ -87,7 +90,10 @@ export async function authenticate(req: Request): Promise<Authed> {
   if (!session) return {};
   const user = await store().get<User>('users', session.userId);
   if (!user || user.deletedAt || !user.email) return {};
-  if (Date.now() - Date.parse(session.lastSeen) > 3600000) { session.lastSeen = now(); await store().put('sessions', session.id, session); }
+  if (Date.now() - Date.parse(session.lastSeen) > 3600000) {
+    session.lastSeen = now(); await store().put('sessions', session.id, session);
+    user.lastActiveAt = session.lastSeen; user.inactiveWarnedAt = undefined; await store().put('users', user.id, user);
+  }
   return { user, session };
 }
 export async function requireUser(req: Request) {

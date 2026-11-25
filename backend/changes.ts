@@ -1,4 +1,4 @@
-import { store } from './travaux/store.js';
+import { planningStore } from './travaux/store.js';
 import { compareSnapshots, type Snapshot, type CourseChange } from '../shared/changes.js';
 import { addDay, campusDate, mondayOf } from '../shared/calendar.js';
 
@@ -15,28 +15,28 @@ export async function recordSnapshot(snapshot: Snapshot): Promise<CourseChange[]
   // The fallback calendar has other identifiers: it never produces changes.
   if (snapshot.source !== 'post' || !isWeek(snapshot)) return [];
   const id = `${snapshot.groupId}:${snapshot.start}`;
-  const baseline = await store().get<Baseline>('baselines', id);
+  const baseline = await planningStore().get<Baseline>('baselines', id);
   const old = baseline?.snapshot;
   // Same or older read (cache): nothing new to compare.
   if (old && Date.parse(old.fetchedAt) >= Date.parse(snapshot.fetchedAt)) return [];
   // A week that suddenly empties is only believed when seen twice (CELCAT sometimes answers empty).
   if (old?.courses.length && !snapshot.courses.length && !baseline?.emptySeenAt) {
-    await store().put<Baseline>('baselines', id, { snapshot: old, emptySeenAt: snapshot.fetchedAt });
+    await planningStore().put<Baseline>('baselines', id, { snapshot: old, emptySeenAt: snapshot.fetchedAt });
     return [];
   }
   const changes = compareSnapshots(old, snapshot);
-  await store().put<Baseline>('baselines', id, { snapshot });
+  await planningStore().put<Baseline>('baselines', id, { snapshot });
   if (changes.length) {
-    const log = await store().get<Changelog>('changelog', snapshot.groupId) ?? { groupId: snapshot.groupId, changes: [] };
+    const log = await planningStore().get<Changelog>('changelog', snapshot.groupId) ?? { groupId: snapshot.groupId, changes: [] };
     const merged = new Map(log.changes.map(change => [change.id, change]));
     changes.forEach(change => merged.set(change.id, change));
     log.changes = [...merged.values()].filter(change => Date.parse(change.detectedAt) > Date.now() - RETENTION_MS).sort((a, b) => b.detectedAt.localeCompare(a.detectedAt)).slice(0, MAX_ENTRIES);
-    await store().put('changelog', snapshot.groupId, log);
+    await planningStore().put('changelog', snapshot.groupId, log);
   }
   return changes;
 }
 export async function changesFor(groupId: string): Promise<CourseChange[]> {
-  return (await store().get<Changelog>('changelog', groupId))?.changes.filter(change => Date.parse(change.detectedAt) > Date.now() - RETENTION_MS) ?? [];
+  return (await planningStore().get<Changelog>('changelog', groupId))?.changes.filter(change => Date.parse(change.detectedAt) > Date.now() - RETENTION_MS) ?? [];
 }
 /** Reads the current and next week of a group from CELCAT (fresh) and records their changes. */
 export async function detectGroup(groupId: string) {

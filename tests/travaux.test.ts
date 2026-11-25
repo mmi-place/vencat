@@ -488,3 +488,61 @@ test('marks: one document per mark, the sync only adds, removals stay removed, o
   await laptop.browser('/account', { method: 'DELETE' });
   assert.equal((await store().list('marks', user.id + ':')).length, 0);
 });
+
+test('housekeeping: old data is purged, inactive accounts are warned then erased, admins and recent data are kept', async () => {
+  resetLimits();
+  process.env.ADMIN_EMAILS = 'chef.admin@gmail.com';
+  process.env.MAIL_LOG_ONLY = '@gmail\\.com$|@ens\\.uvsq\\.fr$';
+  const { housekeeping } = await import('../backend/travaux/housekeeping.js');
+  const day = 86400_000, old = (days: number) => new Date(Date.now() - days * day).toISOString();
+  await store().put('sessions', 'hk-old', { id: 'hk-old', userId: 'x', createdAt: old(90), lastSeen: old(90), device: '' });
+  await store().put('sessions', 'hk-new', { id: 'hk-new', userId: 'x', createdAt: old(1), lastSeen: old(1), device: '' });
+  await store().put('audit', 'hk-audit-old', { id: 'hk-audit-old', at: old(400), by: 'x', action: 'a', target: 't', reason: '' });
+  await store().put('audit', 'hk-audit-new', { id: 'hk-audit-new', at: old(5), by: 'x', action: 'a', target: 't', reason: '' });
+  await store().put('reports', 'hk-r-old', { id: 'hk-r-old', target: { kind: 'work', id: 'w' }, reason: '', by: 'x', at: old(120), status: 'done' });
+  await store().put('reports', 'hk-r-open', { id: 'hk-r-open', target: { kind: 'work', id: 'w' }, reason: '', by: 'x', at: old(120), status: 'open' });
+  await store().put('proposals', 'hk-p', { id: 'hk-p', workId: 'w', kind: 'edit', changes: {}, authorId: 'a', createdAt: old(120), status: 'rejected', closedAt: old(110) });
+  await store().put('votes', 'hk-p:v1', { targetId: 'hk-p', userId: 'v1', value: 1, weight: 1, at: old(115) });
+  const sleeper = await userForEmail('dort.depuis.longtemps@ens.uvsq.fr');
+  sleeper.lastActiveAt = old(340); await store().put('users', sleeper.id, sleeper);
+  const fresh = await userForEmail('actif.recent@ens.uvsq.fr');
+  const before = sentMails.length;
+  const first = await housekeeping();
+  assert.equal(first.sessions, 1); assert.equal(first.audit, 1); assert.equal(first.reports, 1); assert.equal(first.proposals, 1); assert.equal(first.votes, 1);
+  assert.ok(await store().get('sessions', 'hk-new') && await store().get('audit', 'hk-audit-new') && await store().get('reports', 'hk-r-open'), 'recent or open data stays');
+  // Warned once after 11 months, not erased yet; the recent account is untouched.
+  assert.equal(first.warned, 1); assert.equal(first.erased, 0);
+  assert.ok(sentMails.slice(before).some(mail => mail.to === 'dort.depuis.longtemps@ens.uvsq.fr' && /supprimé/.test(mail.subject)));
+  assert.equal((await housekeeping()).warned, 0, 'warned only once');
+  // Erased after 12 months of inactivity and 14 days after the warning.
+  const warned = (await store().get<User>('users', sleeper.id))!;
+  warned.lastActiveAt = old(380); warned.inactiveWarnedAt = old(20); await store().put('users', warned.id, warned);
+  assert.equal((await housekeeping()).erased, 1);
+  assert.equal((await store().get<User>('users', sleeper.id))!.deletedAt !== undefined, true);
+  assert.ok((await store().get<User>('users', fresh.id))!.email, 'active account kept');
+});
+
+test('preferences follow the account, key by key, the most recent change wins', async () => {
+  resetLimits();
+  const laptop = await signIn('prefs.sync@ens.uvsq.fr');
+  const t = Date.now();
+  const put = (changes: Record<string, { v: unknown; at: number }>) => laptop.browser('/account/preferences', { method: 'PUT', body: { changes } });
+  assert.deepEqual((await laptop.browser('/account/preferences')).body, {});
+  await put({ theme: { v: 'light', at: t }, palette: { v: 'vencat', at: t } });
+  // An older change of a key does not replace a newer one; another key is not touched.
+  const merged = (await put({ theme: { v: 'dark', at: t - 1000 }, density: { v: 'full', at: t + 1 } })).body;
+  assert.equal(merged.theme.v, 'light'); assert.equal(merged.palette.v, 'vencat'); assert.equal(merged.density.v, 'full');
+  // Unknown keys and future dates are ignored.
+  const ignored = (await put({ secret: { v: 'x', at: t }, theme: { v: 'dark', at: t + 3_600_000 } })).body;
+  assert.equal(ignored.secret, undefined); assert.equal(ignored.theme.v, 'light');
+  assert.equal((await laptop.browser('/account/preferences', { method: 'PUT', body: { changes: { colors: { v: 'x'.repeat(5000), at: t + 5 } } } })).status, 400);
+  // « Download my data ».
+  const workId = 'e'.repeat(32);
+  await laptop.browser('/account/marks', { method: 'PUT', body: { done: { [workId]: true }, notes: { [workId]: 'ma note' } } });
+  const exported = await laptop.browser('/account/export');
+  assert.equal(exported.status, 200);
+  assert.equal(exported.body.account.email, 'prefs.sync@ens.uvsq.fr');
+  assert.ok(exported.body.marks.done[workId]); assert.equal(exported.body.marks.notes[workId], 'ma note');
+  assert.equal(exported.body.preferences.theme, 'light');
+  assert.equal((await client()('/account/export')).status, 401, 'needs an account');
+});
