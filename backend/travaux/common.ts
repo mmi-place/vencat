@@ -61,12 +61,18 @@ export async function adjustReliability(userId: string, delta: number) {
 /** Validated delegates vote with a full weight whatever the age of their account (kept 10 s per instance: read at every vote count). */
 let delegateIds: { at: number; ids: Set<string> } | undefined;
 const delegateUsers = async () => {
-  if (!delegateIds || Date.now() - delegateIds.at > 10_000) delegateIds = { at: Date.now(), ids: new Set((await activeDelegations()).map(item => item.userId)) };
+  if (!delegateIds || Date.now() - delegateIds.at > 10_000) {
+    // Delegates and accounts validated by hand by the administration (no probation week).
+    const trusted = (await db().list<User>('users')).filter(person => person.trusted && !person.deletedAt).map(person => person.id);
+    delegateIds = { at: Date.now(), ids: new Set([...(await activeDelegations()).map(item => item.userId), ...trusted]) };
+  }
   return delegateIds.ids;
 };
+/** Called when a mandate or a validation by hand changes: the full-weight list is read again at once on this instance. */
+export const resetFullWeightCache = () => { delegateIds = undefined; };
 export const votesOf = async (targetId: string) => {
   const delegates = await delegateUsers();
-  // Votes cast before the mandate was confirmed (weight 0.5) count fully from then on.
+  // Votes cast before the mandate (or the validation by hand) was confirmed (weight 0.5) count fully from then on.
   return Object.fromEntries((await db().list<VoteDoc>('votes', targetId + ':')).map(vote => [vote.userId, delegates.has(vote.userId) ? { ...vote, weight: Math.max(vote.weight, 1) } : vote])) as Record<string, VoteDoc>;
 };
 
@@ -162,7 +168,7 @@ export async function castVote(user: User, targetId: string, value: unknown, rea
   if (value === -1 && !text) throw new HttpError(400, 'Indique pourquoi tu contestes.');
   // Validated delegates and administrators vote with a full weight; the others with the weight of their account's age.
   const { role } = await roleOf(user);
-  const vote: VoteDoc = { targetId, userId: user.id, value, reason: value === -1 ? text : undefined, at: now(), weight: role === 'delegate' || role === 'admin' ? 1 : voteWeight(user.createdAt) };
+  const vote: VoteDoc = { targetId, userId: user.id, value, reason: value === -1 ? text : undefined, at: now(), weight: role === 'delegate' || role === 'admin' || user.trusted ? 1 : voteWeight(user.createdAt) };
   await db().put('votes', key, vote);
 }
 

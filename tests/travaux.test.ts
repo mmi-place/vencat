@@ -576,3 +576,28 @@ test('a validated delegate votes with a full weight, even on a new account, and 
   assert.equal(sheet.work.title, 'Rendu des délégués'); assert.equal(sheet.voters.length, 1); assert.equal(sheet.voters[0].weight, 1);
   assert.equal((await client()(`/admin/work/${work.id}`)).status, 401);
 });
+
+test('the administration can validate an account by hand: full vote weight from the first week; admin cookie lasts 3 hours', async () => {
+  resetLimits();
+  process.env.ADMIN_EMAILS = 'chef.admin@gmail.com';
+  process.env.MAIL_LOG_ONLY = '@gmail\\.com$';
+  const author = await signIn('tr.author@ens.uvsq.fr');
+  const newcomer = await signIn('tr.nouveau@ens.uvsq.fr', B1, false);
+  const body = { type: 'rendu', title: 'Rendu de confiance', day: '2026-12-10', scope: { kind: 'group', key: B1 }, details: { where: '', format: '', mode: '', info: '' }, links: [], clientId: 'client-tr-1' };
+  const work = (await author.browser('/travaux/works', { body })).body;
+  assert.equal((await newcomer.browser(`/travaux/work/${work.id}/vote`, { body: { value: 1 } })).body.up, 0.5, 'probation week');
+  const admin = client();
+  const start = await admin('/admin/start', { body: { email: 'chef.admin@gmail.com' } });
+  const verify = await fetch(base + '/admin/verify', { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'vencat' }, body: JSON.stringify({ requestId: start.body.requestId, code: start.body.devCode }) });
+  assert.match(verify.headers.get('set-cookie') ?? '', /Max-Age=10800/, 'persistent cookie, 3 hours');
+  await admin('/admin/verify', { body: { requestId: (await admin('/admin/start', { body: { email: 'chef.admin@gmail.com' } })).body.requestId, code: '000000' } });
+  const again = await admin('/admin/start', { body: { email: 'chef.admin@gmail.com' } });
+  await admin('/admin/verify', { body: { requestId: again.body.requestId, code: again.body.devCode } });
+  const person = ((await admin('/admin/overview')).body.students as { id: string; name: string; email: string; newAccount: boolean; trusted: boolean }[]).find(item => item.email === 'tr.nouveau@ens.uvsq.fr')!;
+  assert.equal(person.newAccount, true); assert.equal(person.trusted, false);
+  assert.equal((await admin('/admin/action', { body: { kind: 'user', id: person.id, action: 'trust' } })).status, 200);
+  assert.equal((await newcomer.browser(`/travaux/work/${work.id}`)).body.work.up, 1, 'the vote already cast counts fully');
+  assert.equal((await newcomer.browser('/auth/me')).body.me.newAccount, false);
+  await admin('/admin/action', { body: { kind: 'user', id: person.id, action: 'untrust' } });
+  assert.equal((await newcomer.browser(`/travaux/work/${work.id}`)).body.work.up, 0.5, 'back to the probation week');
+});

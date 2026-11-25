@@ -5,14 +5,14 @@ import { sendMail, layout } from './mail.js';
 import { notifyAdmins, defaultRecipients, TOPICS, isTopic, type Topic } from './notify.js';
 import type { Feedback } from './feedback.js';
 import { HttpError, hash, id, now, sameOrigin, overLimit, addressKey, deviceLabel, adminEmails, activeDelegations, displayName, type User, type Session, type Delegation } from './auth.js';
-import { db, settle, workView, users, history, audit, schoolYearEnd, eraseAccount, votesOf, type Work } from './common.js';
+import { db, settle, workView, users, history, audit, schoolYearEnd, eraseAccount, votesOf, resetFullWeightCache, type Work } from './common.js';
 import { moderationData, moderationAction } from './moderation.js';
 import { normalizeEmail, cleanText, LIMITS, scopeLabel, type WorkState } from '../../shared/travaux.js';
 import { groupById } from '../../shared/selection.js';
 
 // Administration on /admin: separate from student accounts, signed in by a mail code only,
-// for the addresses of ADMIN_EMAILS. The session survives leaving the app or closing the browser (persistent cookie), for 3 days at most.
-const ADMIN_SESSION_MS = 3 * 24 * 3600_000;
+// for the addresses of ADMIN_EMAILS. The session survives leaving the app or closing the browser (persistent cookie), for 3 hours at most.
+const ADMIN_SESSION_MS = 3 * 3600_000;
 interface AdminLogin { id: string; email: string; codeHash: string; expiresAt: string; attempts: number }
 interface AdminSession { email: string; createdAt: string; expiresAt: string; device: string }
 const COOKIE = 'vencat_admin';
@@ -179,6 +179,7 @@ router.post('/admin/action', route(async (req, res) => {
     if ((await activeDelegations(user.id)).length) throw new HttpError(409, 'Déjà délégué(e).');
     const delegation: Delegation = { id: id(), userId: user.id, groupId: user.groupId, status: 'active', title: body.title === 'suppléant' ? 'suppléant' : 'titulaire', createdAt: now(), decidedAt: now(), until: schoolYearEnd() };
     await db().put('delegations', delegation.id, delegation);
+    resetFullWeightCache();
     await audit(actor, 'délégué(e) : nomination', user.id, reason);
   } else if (body.kind === 'user-delete') {
     const user = await db().get<User>('users', String(body.id));

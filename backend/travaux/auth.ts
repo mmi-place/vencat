@@ -11,6 +11,8 @@ export interface User {
   cguAcceptedAt?: string; reliability: number; staff?: boolean; readOnlyUntil?: string; banned?: { at: string; reason: string }; deletedAt?: string;
   /** Last use of the account (updated at most once an hour), for the automatic deletion of inactive accounts. */
   lastActiveAt?: string; inactiveWarnedAt?: string;
+  /** Validated by hand by the administration: no probation week (votes count fully, links open). */
+  trusted?: string;
 }
 export interface Session { id: string; userId: string; createdAt: string; lastSeen: string; device: string }
 /** Real class representatives (elected at the IUT) declare themselves; the administration checks and confirms. No vote in Vencat. */
@@ -41,7 +43,7 @@ export async function roleOf(user: User): Promise<{ role: Role; delegateGroups: 
   const delegateGroups = (await activeDelegations(user.id)).map(item => item.groupId);
   return { role: isAdmin(user) ? 'admin' : delegateGroups.length ? 'delegate' : user.staff ? 'teacher' : 'student', delegateGroups };
 }
-export const isNewAccount = (user: User) => Date.now() - Date.parse(user.createdAt) < NEW_ACCOUNT_DAYS * 86400000;
+export const isNewAccount = (user: User) => !user.trusted && Date.now() - Date.parse(user.createdAt) < NEW_ACCOUNT_DAYS * 86400000;
 export const displayName = (user: User | undefined) => !user || user.deletedAt ? 'Ancien étudiant' : [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Étudiant';
 export const shortDisplayName = (user: User | undefined) => !user || user.deletedAt ? 'Ancien étudiant' : [user.firstName, user.lastName ? user.lastName[0] + '.' : ''].filter(Boolean).join(' ');
 
