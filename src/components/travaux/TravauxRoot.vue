@@ -10,7 +10,7 @@ import QueueDialog from './QueueDialog.vue';
 import DelegatesDialog from './DelegatesDialog.vue';
 import ModerationDialog from './ModerationDialog.vue';
 import InfoDialogs from './InfoDialogs.vue';
-import { loadConfig, api, errorText, setMe, flushOutbox, notify, toast, readPendingLogin, clearPendingLogin, wide, ui, form, openedWork, me, needsOnboarding, loadMe, launchLinks, loadQueue, loadWorks, loadCorrections, section } from '../../scripts/travaux';
+import { refreshMarks, loadConfig, api, errorText, setMe, flushOutbox, notify, toast, readPendingLogin, clearPendingLogin, wide, ui, form, openedWork, me, needsOnboarding, loadMe, launchLinks, loadQueue, loadWorks, loadCorrections, section } from '../../scripts/travaux';
 import { online } from '../../scripts/calendarStore';
 // Dialogs of the Travaux section, available from both sections.
 onMounted(async () => {
@@ -22,7 +22,7 @@ onMounted(async () => {
   // The mail link has its own confirmation: nothing may open above it.
   if (!magic.value && (needsOnboarding.value || (!me.value && readPendingLogin()))) ui.value.login = true;
 });
-const resume = () => { if (!document.hidden) void loadConfig(); if (!document.hidden && !magic.value && !me.value && !ui.value.login && readPendingLogin()) ui.value.login = true; };
+const resume = () => { if (!document.hidden) { void loadConfig(); refreshMarks(); } if (!document.hidden && !magic.value && !me.value && !ui.value.login && readPendingLogin()) ui.value.login = true; };
 document.addEventListener('visibilitychange', resume);
 onBeforeUnmount(() => document.removeEventListener('visibilitychange', resume));
 // Mail link: this device signs in after a confirmation (a link scanner that only opens it signs nobody in).
@@ -35,9 +35,9 @@ async function confirmMagic() {
   catch (error) { magicError.value = errorText(error); }
   finally { magicBusy.value = false; }
 }
-watch(online, value => { if (value) { void loadWorks(); void loadQueue(); void loadCorrections(); } });
+watch(online, value => { if (value) { refreshMarks(true); void loadWorks(); void loadQueue(); void loadCorrections(); } });
 let timer: ReturnType<typeof setInterval> | undefined;
-onMounted(() => { timer = setInterval(() => { if (!document.hidden) { void loadConfig(); void loadQueue(); if (section.value === 'travaux') void loadWorks(); } }, 5 * 60_000); });
+onMounted(() => { timer = setInterval(() => { if (!document.hidden) { void loadConfig(); void loadQueue(); refreshMarks(); if (section.value === 'travaux') void loadWorks(); } }, 5 * 60_000); });
 onBeforeUnmount(() => clearInterval(timer));
 </script>
 <template>

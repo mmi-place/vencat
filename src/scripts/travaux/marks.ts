@@ -20,8 +20,12 @@ function pruned(value: Marks): Marks {
 }
 export const marks = ref<Marks>(pruned(read(userKey(BASE))));
 const mirror = () => writePreference(userKey(BASE), marks.value);
+// Changes leave one after the other, in the order they were made (two quick taps never overtake each other).
+let chain: Promise<void> = Promise.resolve();
 const isEmpty = (value: Marks) => !Object.keys(value.done).length && !Object.keys(value.notes).length;
 export async function loadMarks() {
+  // Changes made here and still on their way go first, so that the account never answers with an older state.
+  await chain;
   const local = pruned(read(userKey(BASE)));
   marks.value = local;
   if (!me.value) return;
@@ -50,8 +54,6 @@ export async function loadMarks() {
     mirror();
   } catch { /* the device copy stays shown */ }
 }
-// Changes leave one after the other, in the order they were made (two quick taps never overtake each other).
-let chain: Promise<void> = Promise.resolve();
 function send(change: { done?: Record<string, boolean>; notes?: Record<string, string> }, userId = me.value?.id) {
   // The change belongs to the account it was made with: if that account signed out meanwhile, it is dropped.
   if (userId !== me.value?.id) return;
@@ -79,3 +81,12 @@ export function setNote(id: string, text: string) {
 export function cancelNoteTimers() { for (const timer of noteTimers.values()) clearTimeout(timer); noteTimers.clear(); }
 export const isDone = (id: string) => !!marks.value.done[id];
 export const marksKey = BASE;
+
+/** Marks made on another device show up here without restarting the app: asked again when the app comes back to the screen
+ *  or the network returns, and every few minutes while it stays open (never more than once every 15 seconds). */
+let lastRefresh = 0;
+export function refreshMarks(force = false) {
+  if (!me.value || document.hidden || (!force && Date.now() - lastRefresh < 15_000)) return;
+  lastRefresh = Date.now();
+  void loadMarks();
+}
