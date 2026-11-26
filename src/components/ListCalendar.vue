@@ -11,13 +11,15 @@ import { date, week, weekCourses, savedCourses, preferences, clock } from '../sc
 import { calendarWeekDays, campusDate, campusTime, courseOccursOn, courseKey, frenchDate, layoutDay } from '../../shared/calendar';
 const props = defineProps<{ daily: boolean }>();
 const dates = computed(() => props.daily ? [date.value] : calendarWeekDays(week.value, savedCourses.value, preferences.value.weekend));
+// A card is as tall as the course lasts: one minute = LIST_SCALE pixels (above 1, so a long course is clearly taller than a short one).
+const LIST_SCALE = 1.15;
 const days = computed(() => dates.value.map(day => {
   let previousEnd = 480;
   return { day, items: layoutDay(weekCourses.value.filter(course => courseOccursOn(course, day)), day).map(item => {
     const gap = Math.max(0, item.start - previousEnd);
     const pause = { start: previousEnd, end: item.start, minutes: gap };
     previousEnd = Math.max(previousEnd, item.end);
-    return { ...item, pause, height: preferences.value.density === 'full' ? 124 : 104 };
+    return { ...item, pause, height: Math.max(preferences.value.density === 'full' ? 124 : 104, (item.end - item.start) * LIST_SCALE) };
   }) };
 }));
 const time = (minute: number) => String(Math.floor(minute / 60)).padStart(2, '0') + ':' + String(minute % 60).padStart(2, '0');

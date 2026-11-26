@@ -239,7 +239,7 @@ input::placeholder { color: var(--muted); }
 .list-pause { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--muted); font-size: .7rem; min-height: 32px; height: var(--pause-height); text-align: center; }
 .list-empty { padding: 28px 12px; color: var(--muted); font-size: .85rem; text-align: center; }
 .daily-list .list-day-heading { display: none; }
-.daily-list .list-course { height: auto; min-height: 86px; }
+.daily-list .list-course { height: var(--list-course-height, auto); min-height: 86px; }
 .daily-list .list-course.full-course { min-height: 112px; }
 .daily-list .list-pause { height: auto; padding: 18px 0; font-size: .8rem; flex-direction: row; gap: 10px; }
 .daily-list .first-pause { display: none; }
