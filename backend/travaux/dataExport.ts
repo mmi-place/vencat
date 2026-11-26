@@ -17,6 +17,7 @@ router.get('/account/export', route(async (req, res) => {
     db().find<Proposal>('proposals', 'authorId', user.id),
     db().find<Correction>('corrections', 'authorId', user.id),
   ]);
+  const feedback = user.email ? await db().find<{ at: string; kind: string; message: string; context: Record<string, string> }>('feedback', 'email', user.email) : [];
   const done: Record<string, string> = {}, notes: Record<string, string> = {};
   for (const row of marksRows) { const [, kind, work] = String(row.k).split(':'); if (kind === 'd' && !row.gone && work && row.at) done[work] = row.at; else if (kind === 'n' && work && row.text) notes[work] = row.text; }
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -26,6 +27,6 @@ router.get('/account/export', route(async (req, res) => {
     account: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, groupId: user.groupId, createdAt: user.createdAt, lastActiveAt: user.lastActiveAt, reliability: user.reliability },
     marks: { done, notes },
     preferences: Object.fromEntries(Object.entries(prefs?.values ?? {}).map(([key, entry]) => [key, entry.v])),
-    works, proposals, corrections, votes, delegations, nameRequests: names,
+    works, proposals, corrections, votes, delegations, nameRequests: names, feedback,
   }, null, 2));
 }));
