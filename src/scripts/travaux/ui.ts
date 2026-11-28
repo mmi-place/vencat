@@ -15,7 +15,11 @@ export const qrRequest = ref(launchLinks.qr);
 // Section shown (Cours | Travaux) and Travaux view, remembered like the timetable view.
 export type Section = 'cours' | 'travaux';
 export const section = ref<Section>(readPreference<Section>('vencat:section', 'cours') === 'travaux' ? 'travaux' : 'cours');
-watch(section, value => writePreference('vencat:section', value));
+watch(section, value => {
+  writePreference('vencat:section', value);
+  // On a wide screen a work opened in the Travaux side panel is not shown as a window over the timetable when leaving Travaux.
+  if (value === 'cours' && wide.value) openedWork.value = undefined;
+});
 export type TravauxView = 'planning' | 'liste';
 export const travauxView = ref<TravauxView>(readPreference<TravauxView>('vencat:travaux-view', 'planning') === 'liste' ? 'liste' : 'planning');
 watch(travauxView, value => writePreference('vencat:travaux-view', value));

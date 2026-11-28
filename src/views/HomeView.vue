@@ -27,7 +27,7 @@ import { ChatBubbleLeftEllipsisIcon } from '@heroicons/vue/24/outline';
 import WorkDots from '../components/travaux/WorkDots.vue';
 import TravauxPanel from '../components/travaux/TravauxPanel.vue';
 import TravauxRoot from '../components/travaux/TravauxRoot.vue';
-import { section, toggleSection, ui as travauxUi, form as travauxForm, openedWork, requireAccount, travauxDay, wide as travauxWide, planningOnly, config as travauxConfig } from '../scripts/travaux';
+import { highlightCourse, section, toggleSection, ui as travauxUi, form as travauxForm, openedWork, requireAccount, travauxDay, wide as travauxWide, planningOnly, config as travauxConfig } from '../scripts/travaux';
 import { selection, date, view, week, preferences, selectedIds, loading, error, storageError, hasData, missingGroups, lastFetched, online, fallback, loadCalendar, weekCourses, clock, focused, history, unseenChanges, resolveTodayDate, snapshots, showLinkedView } from '../scripts/calendarStore';
 import { readPreference, writePreference, saveHistory } from '../scripts/storage';
 import { groupById, groupByPath, type GroupOption } from '../../shared/selection';
@@ -274,6 +274,6 @@ onBeforeUnmount(() => { viewport.removeEventListener('change', resized); window.
 <AccessibleDialog id="help-dialog" v-if="helpOpen" title="Raccourcis clavier" wide @close="helpOpen = false"><KeyboardHelp /></AccessibleDialog>
 <TravauxRoot />
 <FeedbackDialog v-if="feedbackOpen" :group="groupLabel" @close="feedbackOpen = false" />
-<ChangesDialog v-if="changesOpen" @close="closeChanges" @goto="day => { closeChanges(); date = visibleDay(day); }" />
+<ChangesDialog v-if="changesOpen" @close="closeChanges" @goto="(day, course) => { closeChanges(); openedWork = undefined; section = 'cours'; date = visibleDay(day); highlightCourse(course); }" />
 
 </template>
