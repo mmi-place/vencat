@@ -27,7 +27,7 @@ onMounted(() => window.addEventListener('keydown', closeDetail));
 onBeforeUnmount(() => window.removeEventListener('keydown', closeDetail));
 // Opening a work moves the focus to its title, so screen readers announce it.
 watch(openedWork, id => { if (id) requestAnimationFrame(() => document.querySelector<HTMLElement>('.day-panel .panel-header h2')?.focus({ preventScroll: true })); });
-function openCourse(course: CourseDTO) { section.value = 'cours'; focused.value = course; }
+function openCourse(course: CourseDTO) { openedWork.value = undefined; section.value = 'cours'; focused.value = course; }
 </script>
 <template><section class="day-panel" aria-label="Journée ou travail sélectionné">
   <WorkDetail v-if="openedWork" :key="openedWork" inline :back="!listMode" />

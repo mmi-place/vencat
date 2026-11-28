@@ -6,9 +6,10 @@ import AccessibleDialog from './AccessibleDialog.vue';
 import { visibleChanges, unseenChanges, markChangeSeen, markChangesSeen, dismissChanges, restoreChanges, clock } from '../scripts/calendarStore';
 import { changeDetails, changeBadge, changeHeadline } from '../../shared/changePresentation';
 import type { CourseChange } from '../../shared/changes';
+import type { CourseDTO } from '../../shared/courses';
 import { repairText } from '../../shared/text';
 import { addDay, campusDate, campusTime, frenchDate } from '../../shared/calendar';
-const emit = defineEmits<{ close: []; goto: [day: string] }>();
+const emit = defineEmits<{ close: []; goto: [day: string, course: CourseDTO] }>();
 const onlyUnread = ref(false), status = ref(''), removed = ref<string[]>([]);
 const unreadIds = computed(() => new Set(unseenChanges.value.map(item => item.id)));
 const touch = matchMedia('(pointer: coarse)').matches;
@@ -97,7 +98,7 @@ function keyCard(event: KeyboardEvent, id: string) {
               <p class="notification-when">{{ frenchDate(campusDate(course(change).start), { weekday: 'short', day: 'numeric', month: 'short' }) }} · {{ campusTime(course(change).start) }}–{{ campusTime(course(change).end) }}</p>
               <ul class="notification-diff"><li v-for="detail in change.details" :key="detail.field"><span class="diff-field">{{ detail.field }}</span><del v-if="change.kind !== 'added'">{{ detail.before }}</del><ArrowRightIcon v-if="change.kind === 'changed'" aria-hidden="true" /><span v-if="change.kind === 'changed'" class="sr-only">devient</span><strong v-if="change.kind !== 'removed'">{{ detail.after }}</strong></li></ul>
               <div class="notification-actions">
-                <button v-if="change.after" class="text-action" @click="emit('goto', campusDate(change.after.start))"><CalendarDaysIcon aria-hidden="true" />Voir le cours</button>
+                <button v-if="change.after" class="text-action" @click="emit('goto', campusDate(change.after.start), change.after)"><CalendarDaysIcon aria-hidden="true" />Voir le cours</button>
                 <button v-if="unreadIds.has(change.id)" class="text-action" @click="markChangeSeen(change.id)"><CheckIcon aria-hidden="true" />Lu</button>
                 <button class="icon-button quiet notification-delete" :aria-label="'Supprimer la notification : ' + repairText(course(change).summary)" @click="remove([change.id], true)"><TrashIcon aria-hidden="true" /></button>
               </div>
